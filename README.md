@@ -84,6 +84,52 @@ title = page.text_id("page-title")
 | `open(url)` | URL を開く |
 | `save_screenshot(prefix)` | スクリーンショットを `logs/` に保存 |
 
+#### サンプル実装
+
+`examples/sample_login/` に実際に動くサンプルがある。
+
+```
+examples/
+└── sample_login/
+    ├── pages/
+    │   ├── login_page.py   # ログイン画面
+    │   └── secure_page.py  # ログイン後の画面
+    └── run.py              # 実行スクリプト
+```
+
+```python
+# pages/login_page.py の例
+from src.selenium.base_page import BasePage
+
+class LoginPage(BasePage):
+    URL = "https://example.com/login"
+
+    def open(self) -> None:
+        self._driver.get(self.URL)
+
+    def login(self, username: str, password: str) -> None:
+        self.input_id("username", username)
+        self.input_id("password", password)
+        self.click_id("login-btn")
+```
+
+```python
+# run.py の例
+from src.selenium.driver import EdgeDriver
+from pages.login_page import LoginPage
+
+with EdgeDriver(driver_path=r"C:\...\msedgedriver.exe") as d:
+    page = LoginPage(d.driver)
+    page.open()
+    page.login("yamada", "password123")
+```
+
+実行:
+```bash
+cd F:\dev\original_libs
+python -m examples.sample_login.run
+```
+
 ---
 
 ## Excel（openpyxl）
