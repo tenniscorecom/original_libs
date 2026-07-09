@@ -1,51 +1,88 @@
+import win32api
 import win32com.client
-import win32gui
 import win32con
+import win32gui
 import pywintypes
 
 
-def open_excel_com(path: str, password: str = "") -> tuple:
-    """Excel ファイルを COM で開く。数式の計算結果を読む場合に使用する。"""
-    excel = win32com.client.Dispatch("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    kwargs = {"Filename": path}
-    if password:
-        kwargs["Password"] = password
-    wb = excel.Workbooks.Open(**kwargs)
-    excel.CalculateFull()
-    return excel, wb
+class ExcelComHandler:
+    """win32com を使った Excel 操作クラス。数式の計算結果を読む場合に使用する。"""
+
+    def __init__(self, path: str, password: str = "") -> None:
+        self._excel = win32com.client.Dispatch("Excel.Application")
+        self._excel.Visible = False
+        self._excel.DisplayAlerts = False
+        kwargs = {"Filename": path}
+        if password:
+            kwargs["Password"] = password
+        self._wb = self._excel.Workbooks.Open(**kwargs)
+        self._excel.CalculateFull()
+
+    def __enter__(self) -> "ExcelComHandler":
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
+    def sheet(self, name: str):
+        return self._wb.Sheets(name)
+
+    def read_cell(self, sheet_name: str, row: int, col: int):
+        return self._wb.Sheets(sheet_name).Cells(row, col).Value
+
+    def write_cell(self, sheet_name: str, row: int, col: int, value) -> None:
+        self._wb.Sheets(sheet_name).Cells(row, col).Value = value
+
+    def count_a(self, sheet_name: str, row: int) -> int:
+        """指定行の空でないセル数を返す（空行判定に使用）。"""
+        ws = self._wb.Sheets(sheet_name)
+        return self._excel.WorksheetFunction.CountA(ws.Rows(row))
+
+    def used_last_row(self, sheet_name: str) -> int:
+        ws = self._wb.Sheets(sheet_name)
+        return ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
+
+    def save_as(self, path: str, read_pw: str = "", write_pw: str = "") -> None:
+        self._wb.SaveAs(path, Password=read_pw, WriteResPassword=write_pw)
+
+    def close(self) -> None:
+        if self._wb:
+            self._wb.Close(SaveChanges=False)
+        if self._excel:
+            self._excel.Quit()
 
 
-def save_excel_com(wb, path: str, read_pw: str = "", write_pw: str = "") -> None:
-    """パスワードをかけて Excel ファイルを保存する。"""
-    wb.SaveAs(path, Password=read_pw, WriteResPassword=write_pw)
+class WindowHandler:
+    """ウィンドウ操作クラス。"""
+
+    def __init__(self, title: str) -> None:
+        self._hwnd = win32gui.FindWindow(None, title)
+        if self._hwnd == 0:
+            raise RuntimeError(f"ウィンドウが見つかりません: {title}")
+
+    def activate(self) -> None:
+        win32gui.ShowWindow(self._hwnd, win32con.SW_RESTORE)
+        win32gui.SetForegroundWindow(self._hwnd)
+
+    def get_title(self) -> str:
+        return win32gui.GetWindowText(self._hwnd)
 
 
-def close_excel_com(excel, wb) -> None:
-    if wb:
-        wb.Close(SaveChanges=False)
-    if excel:
-        excel.Quit()
+class RegistryHandler:
+    """レジストリ操作クラス。"""
 
+    def __init__(self, hive: int, key_path: str) -> None:
+        self._key = win32api.RegOpenKey(hive, key_path)
 
-def find_window(title: str) -> int:
-    hwnd = win32gui.FindWindow(None, title)
-    if hwnd == 0:
-        raise RuntimeError(f"ウィンドウが見つかりません: {title}")
-    return hwnd
+    def __enter__(self) -> "RegistryHandler":
+        return self
 
+    def __exit__(self, *args) -> None:
+        self.close()
 
-def activate_window(hwnd: int) -> None:
-    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-    win32gui.SetForegroundWindow(hwnd)
-
-
-def read_registry(hive: int, key_path: str, value_name: str) -> str:
-    import win32api
-    key = win32api.RegOpenKey(hive, key_path)
-    try:
-        value, _ = win32api.RegQueryValueEx(key, value_name)
+    def read(self, value_name: str) -> str:
+        value, _ = win32api.RegQueryValueEx(self._key, value_name)
         return value
-    finally:
-        win32api.RegCloseKey(key)
+
+    def close(self) -> None:
+        win32api.RegCloseKey(self._key)
