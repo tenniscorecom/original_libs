@@ -247,6 +247,41 @@ sf.delete("Account", record_id=new_id)
 
 ---
 
+### SalesforceReportClient（レポート取得）
+
+既存の Salesforce レポートを実行してデータを取得する。
+
+```python
+from src.salesforce.report import SalesforceReportClient
+
+sf = SalesforceReportClient(
+    instance_url="https://xxx.salesforce.com",
+    access_token="アクセストークン",
+)
+
+# 2000行以下：同期実行
+rows = sf.run("00O000000000001")
+# → [{"ACCOUNT_NAME": "株式会社A", "AMOUNT": "100,000"}, ...]
+
+# 2000行超え：非同期実行
+rows = sf.run_async("00O000000000001")
+
+# 絞り込みあり
+rows = sf.run("00O000000000001", filters=[
+    {"column": "CREATED_DATE", "operator": "greaterThan", "value": "2026-01-01"}
+])
+```
+
+> **注意**: レポート ID は Salesforce でレポートを開いたときの URL から確認できる。
+> `https://xxx.salesforce.com/00O000000000001`
+
+| メソッド | 上限 | 説明 |
+|---|---|---|
+| `run(report_id, filters)` | 2000行 | 同期実行。小〜中規模レポート向け |
+| `run_async(report_id, filters)` | 上限なし | 非同期実行。大規模レポート向け |
+
+---
+
 ## 改訂履歴
 
 | 日付 | 内容 |
