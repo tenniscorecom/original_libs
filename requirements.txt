@@ -1,0 +1,4 @@
+selenium>=4.0.0
+openpyxl>=3.0.0
+pywin32>=306
+simple-salesforce>=1.12.0
