@@ -261,7 +261,8 @@ sf = SalesforceReportClient(
 
 # 2000行以下：同期実行
 rows = sf.run("00O000000000001")
-# → [{"ACCOUNT_NAME": "株式会社A", "AMOUNT": "100,000"}, ...]
+# → [{"取引先名": "株式会社A", "金額": "100,000"}, ...]
+# 列名はSalesforceの表示名（日本語）で返る
 
 # 2000行超え：非同期実行
 rows = sf.run_async("00O000000000001")

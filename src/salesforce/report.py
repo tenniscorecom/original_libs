@@ -85,10 +85,15 @@ class SalesforceReportClient:
         raise TimeoutError(f"レポートの取得がタイムアウトしました（{self._ASYNC_TIMEOUT}秒）")
 
     def _parse(self, data: dict) -> list[dict]:
-        """API レスポンスを [{列名: 値, ...}] の形式に変換する。"""
+        """API レスポンスを [{表示名: 値, ...}] の形式に変換する。"""
         columns = data["reportMetadata"]["detailColumns"]
+        col_info = data.get("reportExtendedMetadata", {}).get("detailColumnInfo", {})
+
+        # 表示名が取れればそちらを使い、なければ内部名をそのまま使う
+        labels = [col_info.get(col, {}).get("label", col) for col in columns]
+
         rows = data.get("factMap", {}).get("T!T", {}).get("rows", [])
         return [
-            {col: row["dataCells"][i]["label"] for i, col in enumerate(columns)}
+            {label: row["dataCells"][i]["label"] for i, label in enumerate(labels)}
             for row in rows
         ]
