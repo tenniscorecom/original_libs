@@ -40,17 +40,16 @@ with EdgeDriver(driver_path=r"C:\Users\Public\Documents\msedgedriver.exe") as d:
 
 ### BasePage
 
-画面ごとに `BasePage` を継承したクラスを作る。
+画面ごとに `BasePage` を継承したクラスを作る。`By.ID` などは不要。
 
 ```python
-from selenium.webdriver.common.by import By
 from src.selenium.base_page import BasePage
 
 class LoginPage(BasePage):
     def login(self, user: str, password: str) -> None:
-        self.input_text(By.ID, "username", user)
-        self.input_text(By.ID, "password", password)
-        self.click(By.ID, "login-btn")
+        self.input_id("username", user)
+        self.input_id("password", password)
+        self.click_id("login-btn")
 ```
 
 ```python
@@ -60,12 +59,29 @@ with EdgeDriver(driver_path=r"C:\...\msedgedriver.exe") as d:
     page.login("yamada", "password123")
 ```
 
+#### メソッド一覧
+
+| 操作 | ID | name属性 | CSSセレクター | XPath |
+|---|---|---|---|---|
+| クリック | `click_id` | `click_name` | `click_css` | `click_xpath` |
+| テキスト入力 | `input_id` | `input_name` | `input_css` | `input_xpath` |
+| テキスト取得 | `text_id` | `text_name` | `text_css` | `text_xpath` |
+
+```python
+# 使用例
+page.click_id("submit-btn")
+page.click_css(".btn-primary")
+page.click_xpath("//button[@type='submit']")
+
+page.input_id("search", "キーワード")
+page.input_css("#email", "test@example.com")
+
+title = page.text_id("page-title")
+```
+
 | メソッド | 説明 |
 |---|---|
 | `open(url)` | URL を開く |
-| `click(by, value)` | 要素をクリック |
-| `input_text(by, value, text)` | テキストを入力 |
-| `get_text(by, value)` | 要素のテキストを取得 |
 | `save_screenshot(prefix)` | スクリーンショットを `logs/` に保存 |
 
 ---
