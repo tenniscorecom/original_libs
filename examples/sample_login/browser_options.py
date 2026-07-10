@@ -1,4 +1,4 @@
-from src.selenium.options import BrowserOptions
+from comken.selenium.options import BrowserOptions
 
 
 class SampleBrowserOptions(BrowserOptions):

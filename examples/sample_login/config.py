@@ -1,4 +1,4 @@
-from src.config import Config
+from comken.config import Config
 
 
 class AppConfig(Config):

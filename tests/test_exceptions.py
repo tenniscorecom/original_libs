@@ -8,7 +8,7 @@
 
 import pytest
 
-from src.exceptions import (
+from comken.exceptions import (
     ColumnNotFoundError,
     ConfigError,
     CsvError,

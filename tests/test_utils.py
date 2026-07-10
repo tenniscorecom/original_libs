@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from src.utils import dated_filename, find_latest_file, find_today_file
+from comken.utils import dated_filename, find_latest_file, find_today_file
 
 
 class TestDatedFilename:
