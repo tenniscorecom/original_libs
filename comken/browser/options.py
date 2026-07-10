@@ -6,12 +6,14 @@ BrowserOptions: Edge/Chrome 起動オプションの定義クラス。
 
 プロジェクト側でサブクラスを作り、必要な属性だけ上書きする:
 
-    from src.selenium.options import BrowserOptions
+    from comken.browser.options import BrowserOptions
 
     class MyOptions(BrowserOptions):
         INCOGNITO = False
         WINDOW_SIZE = "1600,1024"
 """
+
+from pathlib import Path
 
 
 class BrowserOptions:
@@ -19,6 +21,7 @@ class BrowserOptions:
     # ── ドライバー設定 ──
     DRIVER_PATH: str = r"C:\Users\Public\Documents\msedgedriver.exe"
     WAIT_SECONDS: int = 10
+    DOWNLOAD_DIR: str = str(Path.home() / "Downloads" / "comken")
 
     # 属性名 → 実際の Chrome 引数
     _BOOL_ARGS: dict[str, str] = {
@@ -107,7 +110,7 @@ class BrowserOptions:
             lines.append(f"    {attr:<35} = {display}{diff}")
 
         lines.append("  ── ドライバー設定 ──")
-        for attr in ("DRIVER_PATH", "WAIT_SECONDS"):
+        for attr in ("DRIVER_PATH", "WAIT_SECONDS", "DOWNLOAD_DIR"):
             current = getattr(self, attr)
             default = getattr(base, attr)
             diff = " *" if current != default else ""

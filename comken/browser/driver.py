@@ -42,14 +42,15 @@ class EdgeDriver:
         for arg in opts.build():
             options.add_argument(arg)
 
-        if download_dir:
-            options.add_experimental_option(
-                "prefs",
-                {
-                    "download.default_directory": str(Path(download_dir)),
-                    "download.prompt_for_download": False,
-                },
-            )
+        dl_path = Path(download_dir) if download_dir else Path(opts.DOWNLOAD_DIR)
+        dl_path.mkdir(parents=True, exist_ok=True)
+        options.add_experimental_option(
+            "prefs",
+            {
+                "download.default_directory": str(dl_path),
+                "download.prompt_for_download": False,
+            },
+        )
 
         service = Service(executable_path=opts.DRIVER_PATH)
         self._driver = webdriver.Edge(service=service, options=options)
