@@ -14,11 +14,10 @@ import getpass
 
 from ..exceptions import CredentialNotFoundError
 from .store import (
+    CREDENTIAL_NAME_PATTERN,
     CREDENTIALS_PATH,
-    SERVICE_NAME_PATTERN,
-    Credential,
     delete_credential,
-    list_services,
+    list_names,
     save_credential,
 )
 
@@ -27,7 +26,7 @@ def main() -> None:
     print("=== comken 認証情報の管理 ===")
     while True:
         print()
-        _show_services()
+        _show_names()
         print()
         print("1: 登録（新規追加・上書き）")
         print("2: 削除")
@@ -45,49 +44,56 @@ def main() -> None:
             print("1, 2, q のいずれかを入力してください。")
 
 
-def _show_services() -> None:
-    registered = list_services()
+def _show_names() -> None:
+    registered = list_names()
     if registered:
-        print(f"登録済みのサービス: {', '.join(registered)}")
+        print("登録済みのキー名:")
+        for name in registered:
+            print(f"  {name}")
     else:
-        print("登録済みのサービスはまだありません。")
+        print("登録済みのキー名はまだありません。")
 
 
 def _register() -> None:
-    service = input("サービス名（例: salesforce）: ").strip()
-    if not service:
-        print("サービス名が入力されなかったため中止しました。")
+    name = input("キー名（例: salesforce_password）: ").strip()
+    if not name:
+        print("キー名が入力されなかったため中止しました。")
         return
-    if not SERVICE_NAME_PATTERN.fullmatch(service):
-        print("サービス名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。")
+    if not CREDENTIAL_NAME_PATTERN.fullmatch(name):
+        print("キー名に使えるのは半角英数字とアンダースコアだけです（例: salesforce_password）。")
         return
-    if service in list_services():
-        print(f"{service} は登録済みのため、上書きになります。")
+    if name in list_names():
+        print(f"{name} は登録済みのため、上書きになります。")
 
-    username = input("ユーザー名: ").strip()
-    password = getpass.getpass("パスワード（入力しても画面には表示されません）: ")
-    token = input("トークン等（不要なら Enter）: ").strip()
+    value = getpass.getpass("値（入力しても画面には表示されません）: ")
+    confirm = getpass.getpass("値（確認のためもう一度）: ")
+    if value != confirm:
+        print("2回の入力が一致しなかったため中止しました。")
+        return
+    if not value:
+        print("値が入力されなかったため中止しました。")
+        return
 
-    save_credential(service, Credential(username, password, token))
+    save_credential(name, value)
     print(f"保存しました: {CREDENTIALS_PATH}")
 
 
 def _delete() -> None:
-    service = input("削除するサービス名: ").strip()
-    if not service:
-        print("サービス名が入力されなかったため中止しました。")
+    name = input("削除するキー名: ").strip()
+    if not name:
+        print("キー名が入力されなかったため中止しました。")
         return
 
-    confirm = input(f"{service} を削除します。よろしいですか？（y で実行）: ").strip().lower()
+    confirm = input(f"{name} を削除します。よろしいですか？（y で実行）: ").strip().lower()
     if confirm != "y":
         print("中止しました。")
         return
 
     try:
-        delete_credential(service)
-        print(f"削除しました: {service}")
+        delete_credential(name)
+        print(f"削除しました: {name}")
     except CredentialNotFoundError:
-        print(f"サービス名が見つかりません: {service}")
+        print(f"キー名が見つかりません: {name}")
 
 
 if __name__ == "__main__":

@@ -83,11 +83,11 @@ class CredentialNotFoundError(CredentialError):
     """
 
 
-class InvalidServiceNameError(CredentialError):
-    """サービス名に使えない文字が含まれている場合。
+class InvalidCredentialNameError(CredentialError):
+    """キー名に使えない文字が含まれている場合。
 
     発生箇所: credentials.save_credential()
 
-    サービス名に使えるのは半角英数字とアンダースコアのみ。
+    キー名に使えるのは半角英数字とアンダースコアのみ。
     漢字・スペース・記号を含む名前はコードや config.ini に書きにくいため弾く。
     """

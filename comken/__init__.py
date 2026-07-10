@@ -6,7 +6,7 @@ from .exceptions import (
     CredentialNotFoundError,
     CsvError,
     ExcelError,
-    InvalidServiceNameError,
+    InvalidCredentialNameError,
     MacroError,
     OriginalLibsError,
     SheetNotFoundError,
@@ -23,5 +23,5 @@ __all__ = [
     "ConfigError",
     "CredentialError",
     "CredentialNotFoundError",
-    "InvalidServiceNameError",
+    "InvalidCredentialNameError",
 ]

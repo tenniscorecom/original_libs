@@ -4,11 +4,15 @@ credentials/store.py — 認証情報の暗号化保存（Windows DPAPI）
 パスワード・トークン・ユーザー名など、config.ini に書けない機密情報・個人情報を
 Windows ログオンユーザーに紐付けて暗号化し、ユーザープロファイル内に保存する。
 
+キー名1つに値1つを登録するシンプルな形式。
+「ユーザー名とパスワードが必ずセット」という決め打ちをしないため、
+パスワードだけ・トークンだけのシステムにも対応できる。
+
 仕組み:
     - 暗号化には Windows 標準の DPAPI を使う。暗号鍵の管理は不要で、
       Windows がログオン中のアカウントに紐付けて暗号化・復号してくれる
     - 保存先は %USERPROFILE%\\.comken\\credentials.dat（ユーザーごとに別ファイル）
-    - 同じ Windows アカウントでないと復号できないため、ファイルを
+    - 同じ「ユーザー × PC」でないと復号できないため、ファイルを
       他人にコピーされても中身は読まれない
 
 登録は対話式ツールで行う（非エンジニア向け）:
@@ -17,106 +21,94 @@ Windows ログオンユーザーに紐付けて暗号化し、ユーザープロ
 使い方（コード側）:
     from comken.credentials import load_credential
 
-    cred = load_credential("salesforce")
-    cred.username   # → "user@example.com"
-    cred.password   # → "xxxx"
-    cred.token      # → セキュリティトークン（未登録なら空文字）
+    username = load_credential("salesforce_username")
+    password = load_credential("salesforce_password")
 """
 
 from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import win32crypt
 
-from ..exceptions import CredentialNotFoundError, InvalidServiceNameError
+from ..exceptions import CredentialNotFoundError, InvalidCredentialNameError
 
 CREDENTIALS_PATH = Path.home() / ".comken" / "credentials.dat"
 
-# サービス名に使える文字（半角英数字とアンダースコアのみ）
+# キー名に使える文字（半角英数字とアンダースコアのみ）
 # 漢字・スペース・記号はコードや config.ini に書きにくいため弾く
-SERVICE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+CREDENTIAL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 
 # 復号失敗時に DPAPI が返す説明文字列（デバッグ用。動作には影響しない）
 _FILE_DESCRIPTION = "comken credentials"
 
 
-@dataclass
-class Credential:
-    """1サービス分の認証情報。token は不要なら空文字のまま。"""
-
-    username: str
-    password: str
-    token: str = ""
-
-
-def save_credential(service: str, credential: Credential, path: Path | None = None) -> None:
-    """認証情報を暗号化して保存する。同じサービス名は上書きされる。
+def save_credential(name: str, value: str, path: Path | None = None) -> None:
+    """認証情報を暗号化して保存する。同じキー名は上書きされる。
 
     Args:
-        service: サービス名（例: "salesforce"）。取得時のキーになる。
+        name: キー名（例: "salesforce_password"）。取得時のキーになる。
             半角英数字とアンダースコアのみ使用できる。
-        credential: 保存する認証情報。
+        value: 保存する値（パスワード・トークン・ユーザー名など）。
         path: 保存先ファイル。省略時は CREDENTIALS_PATH（通常は省略する）。
 
     Raises:
-        InvalidServiceNameError: サービス名に使えない文字が含まれている場合。
+        InvalidCredentialNameError: キー名に使えない文字が含まれている場合。
     """
-    if not SERVICE_NAME_PATTERN.fullmatch(service):
-        raise InvalidServiceNameError(
-            f"サービス名に使えるのは半角英数字とアンダースコアだけです: {service}\n"
-            f"例: salesforce, oju_sys, salesforce_test"
+    if not CREDENTIAL_NAME_PATTERN.fullmatch(name):
+        raise InvalidCredentialNameError(
+            f"キー名に使えるのは半角英数字とアンダースコアだけです: {name}\n"
+            f"例: salesforce_username, salesforce_password, oju_sys_password"
         )
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
-    data[service] = asdict(credential)
+    data[name] = value
     _save_all(data, path)
 
 
-def load_credential(service: str, path: Path | None = None) -> Credential:
+def load_credential(name: str, path: Path | None = None) -> str:
     """保存済みの認証情報を復号して返す。
 
     Args:
-        service: 登録時に指定したサービス名。
+        name: 登録時に指定したキー名。
 
     Raises:
-        CredentialNotFoundError: サービス名が未登録の場合。
+        CredentialNotFoundError: キー名が未登録の場合。
     """
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
-    if service not in data:
+    if name not in data:
         raise CredentialNotFoundError(
-            f"認証情報が登録されていません: {service}\n"
+            f"認証情報が登録されていません: {name}\n"
             f"python -m comken.credentials を実行して登録してください。"
         )
-    return Credential(**data[service])
+    return data[name]
 
 
-def delete_credential(service: str, path: Path | None = None) -> None:
+def delete_credential(name: str, path: Path | None = None) -> None:
     """登録済みの認証情報を削除する。
 
     Raises:
-        CredentialNotFoundError: サービス名が未登録の場合。
+        CredentialNotFoundError: キー名が未登録の場合。
     """
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
-    if service not in data:
-        raise CredentialNotFoundError(f"認証情報が登録されていません: {service}")
-    del data[service]
+    if name not in data:
+        raise CredentialNotFoundError(f"認証情報が登録されていません: {name}")
+    del data[name]
     _save_all(data, path)
 
 
-def list_services(path: Path | None = None) -> list[str]:
-    """登録済みのサービス名一覧を返す（認証情報そのものは返さない）。"""
+def list_names(path: Path | None = None) -> list[str]:
+    """登録済みのキー名一覧を返す（値そのものは返さない）。"""
     path = path or CREDENTIALS_PATH
     return sorted(_load_all(path))
 
 
-def _load_all(path: Path) -> dict:
-    """暗号化ファイルを復号して全サービスの辞書を返す。未作成なら空辞書。"""
+def _load_all(path: Path) -> dict[str, str]:
+    """暗号化ファイルを復号して全キーの辞書を返す。未作成なら空辞書。"""
     if not path.exists():
         return {}
     encrypted = path.read_bytes()
@@ -124,8 +116,8 @@ def _load_all(path: Path) -> dict:
     return json.loads(decrypted.decode("utf-8"))
 
 
-def _save_all(data: dict, path: Path) -> None:
-    """全サービスの辞書を暗号化してファイルに書き込む。"""
+def _save_all(data: dict[str, str], path: Path) -> None:
+    """全キーの辞書を暗号化してファイルに書き込む。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
     encrypted = win32crypt.CryptProtectData(raw, _FILE_DESCRIPTION, None, None, None, 0)

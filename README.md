@@ -80,7 +80,8 @@ config.ini には機密情報を書かず、このモジュールを使う。
 - Windows がログオン中のアカウントに紐付けて暗号化する。鍵の管理は不要
 - 同じ「ユーザー × PC」でないと復号できない。ファイルをコピーされても読まれない
 - 逆に言うと、**実行する PC ごとに登録が必要**（別の PC やサーバーで実行する場合はそこでも登録する）
-- 1ユーザーにつき1ファイルで、サービス名をキーに何件でも登録できる
+- 1ユーザーにつき1ファイルで、キー名1つに値1つを何件でも登録できる
+- 「ユーザー名とパスワードが必ずセット」という決め打ちはしない。パスワードだけのシステムにも対応できる
 
 ### 登録・削除（対話式ツール）
 
@@ -90,57 +91,57 @@ config.ini には機密情報を書かず、このモジュールを使う。
 > python -m comken.credentials
 === comken 認証情報の管理 ===
 
-登録済みのサービス: oju_sys, salesforce
+登録済みのキー名:
+  salesforce_password
+  salesforce_username
 
 1: 登録（新規追加・上書き）
 2: 削除
 q: 終了
 選択: 1
 
-サービス名（例: salesforce）: salesforce
-salesforce は登録済みのため、上書きになります。
-ユーザー名: user@example.com
-パスワード（入力しても画面には表示されません）:
-トークン等（不要なら Enter）:
+キー名（例: salesforce_password）: salesforce_token
+値（入力しても画面には表示されません）:
+値（確認のためもう一度）:
 保存しました: C:\Users\xxx\.comken\credentials.dat
 ```
 
 - 一覧にない名前を入力すれば「追加」、同じ名前なら「上書き（＝変更）」になる
-- パスワードを変えたいときも同じ名前で登録し直せばよい
+- パスワードを変えたいときも同じキー名で登録し直せばよい
+- 値は打ち間違い防止のため2回入力する（画面には表示されない）
 
 ### コードからの利用
 
 ```python
 from comken.credentials import load_credential
 
-cred = load_credential("salesforce")
-cred.username # → "user@example.com"
-cred.password # → パスワード
-cred.token    # → トークン（未登録なら空文字）
+username = load_credential("salesforce_username") # → "user@example.com"
+password = load_credential("salesforce_password")
 ```
 
-未登録のサービス名を指定すると `CredentialNotFoundError` になる（登録コマンドを案内するメッセージ付き）。
+未登録のキー名を指定すると `CredentialNotFoundError` になる（登録コマンドを案内するメッセージ付き）。
 
-### サービス名の付け方
+### キー名の付け方
 
-| 状況 | 付け方 | 例 |
-|---|---|---|
-| サイト・システムごと | システム名をローマ字で | `salesforce`, `oju_sys` |
-| 同じサイトでアカウントを使い分ける | システム名 + 用途 | `salesforce_honban`, `salesforce_test` |
+| ルール | 例 |
+|---|---|
+| `システム名_項目名` の形式にする | `salesforce_password`, `oju_sys_password` |
+| アカウントを使い分けるときはシステム名に用途を含める | `salesforce_test_password` |
 
-サービス名に使えるのは**半角英数字とアンダースコアのみ**。
-それ以外（漢字・スペース・記号）は `InvalidServiceNameError` で弾かれる。
+キー名に使えるのは**半角英数字とアンダースコアのみ**。
+それ以外（漢字・スペース・記号）は `InvalidCredentialNameError` で弾かれる。
 
-どのサービス名を使うかはプロジェクトの config.ini の `[CREDENTIALS]` セクションに書く（キー名は機密ではない）:
+どのシステム名（プレフィックス）を使うかはプロジェクトの config.ini の `[CREDENTIALS]` セクションに書く（キー名は機密ではない）:
 
 ```ini
 [CREDENTIALS]
 SALESFORCE = salesforce
-OJU_SYS = oju_sys
 ```
 
 ```python
-cred = load_credential(config.CREDENTIALS.SALESFORCE)
+prefix = config.CREDENTIALS.SALESFORCE
+password = load_credential(f"{prefix}_password")
+# SALESFORCE = salesforce_test に変えるだけでテスト用アカウントに切り替わる
 ```
 
 ---
@@ -491,11 +492,11 @@ python -m examples.sample_login.run
 from comken.credentials import load_credential
 from comken.salesforce.simple_sf import SalesforceClient
 
-cred = load_credential("salesforce") # 事前に python -m comken.credentials で登録しておく
+# 事前に python -m comken.credentials で登録しておく
 sf = SalesforceClient(
-    username=cred.username,
-    password=cred.password,
-    security_token=cred.token,
+    username=load_credential("salesforce_username"),
+    password=load_credential("salesforce_password"),
+    security_token=load_credential("salesforce_token"),
     # domain="test" # Sandbox の場合
 )
 

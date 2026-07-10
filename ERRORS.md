@@ -21,10 +21,10 @@
 | エラー名 | 意味 | 自分でできる対処 |
 |---|---|---|
 | `CredentialNotFoundError` | ID・パスワードが未登録 | `python -m comken.credentials` を実行して登録する（画面の指示に従うだけ） |
-| `InvalidServiceNameError` | サービス名に使えない文字がある | 半角英数字とアンダースコアだけで入力し直す（例: `salesforce`, `oju_sys`） |
+| `InvalidCredentialNameError` | キー名に使えない文字がある | 半角英数字とアンダースコアだけで入力し直す（例: `salesforce_password`） |
 | `ConfigError` | config.ini の内容に問題がある | `config.ini.example` と見比べて、書き間違い・消してしまった行がないか確認する |
 
-**パスワードを変更した後にエラーが出る場合** → `python -m comken.credentials` で同じサービス名で登録し直す（上書きされます）。
+**パスワードを変更した後にエラーが出る場合** → `python -m comken.credentials` で同じキー名で登録し直す（上書きされます）。
 
 ---
 
