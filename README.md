@@ -92,22 +92,32 @@ config.ini には機密情報を書かず、このモジュールを使う。
 === comken 認証情報の管理 ===
 
 登録済みのキー名:
-  salesforce_password
-  salesforce_username
+  oju_sys_password
 
 1: 登録（新規追加・上書き）
 2: 削除
 q: 終了
 選択: 1
 
-キー名（例: salesforce_password）: salesforce_token
+システム名（例: salesforce）: salesforce
+salesforce は新しいシステム名です。この名前で登録しますか？（y で続行）: y
+項目名（例: username / password / token。空 Enter で終了）: username
 値（入力しても画面には表示されません）:
 値（確認のためもう一度）:
-保存しました: C:\Users\xxx\.comken\credentials.dat
+保存しました: salesforce_username
+項目名（例: username / password / token。空 Enter で終了）: password
+値（入力しても画面には表示されません）:
+値（確認のためもう一度）:
+保存しました: salesforce_password
+項目名（例: username / password / token。空 Enter で終了）: ← 空 Enter で終了
+保存先: C:\Users\xxx\.comken\credentials.dat
 ```
 
-- 一覧にない名前を入力すれば「追加」、同じ名前なら「上書き（＝変更）」になる
-- パスワードを変えたいときも同じキー名で登録し直せばよい
+- **システム名は1回だけ入力**し、項目（username / password / token…）を続けて登録できる。
+  項目ごとにシステム名を打ち直さないので「password のときだけスペルミス」が起きない
+- 新しいシステム名のときは確認が入る（既存システムに追加するつもりのタイプミスに気づける）
+- 既存のシステム名なら登録済みの項目一覧が表示される
+- 同じキー名なら「上書き（＝変更）」になる。パスワードを変えたいときも同じ名前で登録し直せばよい
 - 値は打ち間違い防止のため2回入力する（画面には表示されない）
 
 ### コードからの利用

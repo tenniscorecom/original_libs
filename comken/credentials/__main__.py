@@ -55,27 +55,52 @@ def _show_names() -> None:
 
 
 def _register() -> None:
-    name = input("キー名（例: salesforce_password）: ").strip()
-    if not name:
-        print("キー名が入力されなかったため中止しました。")
+    prefix = input("システム名（例: salesforce）: ").strip()
+    if not prefix:
+        print("システム名が入力されなかったため中止しました。")
         return
-    if not CREDENTIAL_NAME_PATTERN.fullmatch(name):
-        print("キー名に使えるのは半角英数字とアンダースコアだけです（例: salesforce_password）。")
-        return
-    if name in list_names():
-        print(f"{name} は登録済みのため、上書きになります。")
-
-    value = getpass.getpass("値（入力しても画面には表示されません）: ")
-    confirm = getpass.getpass("値（確認のためもう一度）: ")
-    if value != confirm:
-        print("2回の入力が一致しなかったため中止しました。")
-        return
-    if not value:
-        print("値が入力されなかったため中止しました。")
+    if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
+        print("システム名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。")
         return
 
-    save_credential(name, value)
-    print(f"保存しました: {CREDENTIALS_PATH}")
+    # 既存システムへの追加なら登録済み項目を表示し、
+    # 新しいシステム名なら確認を挟む（既存システム名のスペルミス防止）
+    registered_items = [
+        n.removeprefix(f"{prefix}_") for n in list_names() if n.startswith(f"{prefix}_")
+    ]
+    if registered_items:
+        print(f"{prefix} の登録済み項目: {', '.join(registered_items)}")
+    else:
+        confirm = input(f"{prefix} は新しいシステム名です。この名前で登録しますか？（y で続行）: ")
+        if confirm.strip().lower() != "y":
+            print("中止しました。既存のシステム名に追加する場合はスペルを確認してください。")
+            return
+
+    while True:
+        item = input("項目名（例: username / password / token。空 Enter で終了）: ").strip()
+        if not item:
+            break
+        if not CREDENTIAL_NAME_PATTERN.fullmatch(item):
+            print("項目名に使えるのは半角英数字とアンダースコアだけです（例: username）。")
+            continue
+
+        name = f"{prefix}_{item}"
+        if name in list_names():
+            print(f"{name} は登録済みのため、上書きになります。")
+
+        value = getpass.getpass("値（入力しても画面には表示されません）: ")
+        confirm_value = getpass.getpass("値（確認のためもう一度）: ")
+        if value != confirm_value:
+            print("2回の入力が一致しなかったため、この項目はスキップしました。")
+            continue
+        if not value:
+            print("値が空だったため、この項目はスキップしました。")
+            continue
+
+        save_credential(name, value)
+        print(f"保存しました: {name}")
+
+    print(f"保存先: {CREDENTIALS_PATH}")
 
 
 def _delete() -> None:
