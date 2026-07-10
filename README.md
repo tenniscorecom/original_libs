@@ -97,6 +97,32 @@ lookup = reader.index("注文番号")
 
 ---
 
+## ネットワーク・NAS ファイルの読み込み
+
+NAS やネットワークドライブ上のファイルを直接開くと遅い場合や、
+win32com が不安定な場合は `local_copy` でローカルにコピーしてから処理する。
+`with` ブロックを抜けるとテンポラリファイルは自動削除される。
+
+```python
+from src.utils import local_copy
+from src.excel.handler import ExcelFile
+from src.windows.handler import ExcelComHandler
+
+NAS_PATH = r"\\nas-server\share\data.xlsx"
+
+# openpyxl で読む場合
+with local_copy(NAS_PATH) as local_path:
+    with ExcelFile(local_path) as f:
+        rows = f.read_rows_as_dicts("Sheet1")
+
+# win32com で読む場合
+with local_copy(NAS_PATH) as local_path:
+    with ExcelComHandler(local_path) as h:
+        rows = h.read_rows_as_dicts("Sheet1")
+```
+
+---
+
 ## Excel
 
 数式の計算結果や VBA マクロが必要な場合は自動で win32com にフォールバックする。
