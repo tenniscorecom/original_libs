@@ -105,12 +105,14 @@ from src.utils import dated_filename, find_today_file, find_latest_file
 FOLDER = r"\\nas-server\share"
 
 # 今日の日付付きファイル名を生成
-dated_filename("売上レポート")            # → "20260710_売上レポート.xlsx"
-dated_filename("売上レポート", pre=False) # → "売上レポート_20260710.xlsx"
-dated_filename("ログ", suffix=".csv")     # → "20260710_ログ.csv"
+dated_filename("売上レポート")                         # → "20260710_売上レポート.xlsx"
+dated_filename("売上レポート", pre=False)              # → "売上レポート_20260710.xlsx"
+dated_filename("月次レポート", date_format="%Y%m")     # → "202607_月次レポート.xlsx"
+dated_filename("ログ", suffix=".csv")                  # → "20260710_ログ.csv"
 
-# 今日の日付（YYYYMMDD）を含むファイルを取得
-path = find_today_file(FOLDER)
+# 今日の日付を含むファイルを取得
+path = find_today_file(FOLDER)                         # YYYYMMDD で探す
+path = find_today_file(FOLDER, date_format="%Y%m")     # YYYYMM で探す
 if path is None:
     raise FileNotFoundError("今日のファイルが見つかりません")
 

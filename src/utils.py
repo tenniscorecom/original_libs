@@ -57,47 +57,59 @@ def local_copy(path: str | Path):
         tmp_path.unlink(missing_ok=True)
 
 
-def dated_filename(name: str, suffix: str = ".xlsx", pre: bool = True) -> str:
+def dated_filename(
+    name: str,
+    suffix: str = ".xlsx",
+    pre: bool = True,
+    date_format: str = "%Y%m%d",
+) -> str:
     """今日の日付を付けたファイル名を返す。
 
     使い方:
-        dated_filename("売上レポート")            # → "20260710_売上レポート.xlsx"
-        dated_filename("売上レポート", pre=False) # → "売上レポート_20260710.xlsx"
-        dated_filename("ログ", suffix=".csv")     # → "20260710_ログ.csv"
+        dated_filename("売上レポート")                        # → "20260710_売上レポート.xlsx"
+        dated_filename("売上レポート", pre=False)             # → "売上レポート_20260710.xlsx"
+        dated_filename("月次レポート", date_format="%Y%m")    # → "202607_月次レポート.xlsx"
+        dated_filename("ログ", suffix=".csv")                 # → "20260710_ログ.csv"
 
     Args:
         name: ファイル名（拡張子なし）。
         suffix: 拡張子（デフォルト: ".xlsx"）。
         pre: True でプレフィックス、False でサフィックス。
+        date_format: 日付フォーマット（デフォルト: "%Y%m%d"）。
 
     Returns:
         日付付きのファイル名文字列。
     """
-    date = datetime.date.today().strftime("%Y%m%d")
+    date = datetime.date.today().strftime(date_format)
     return f"{date}_{name}{suffix}" if pre else f"{name}_{date}{suffix}"
 
 
-def find_today_file(folder: str | Path, pattern: str = "*.xlsx") -> Path | None:
-    """フォルダ内から今日の日付（YYYYMMDD）を含むファイルを返す。
+def find_today_file(
+    folder: str | Path,
+    pattern: str = "*.xlsx",
+    date_format: str = "%Y%m%d",
+) -> Path | None:
+    """フォルダ内から今日の日付を含むファイルを返す。
 
     該当ファイルが複数ある場合は更新日時が最も新しいものを返す。
     見つからない場合は None を返す。
 
     使い方:
         path = find_today_file(r"\\nas\share")
+        path = find_today_file(r"\\nas\share", date_format="%Y%m") # 年月で探す
+
         if path is None:
             raise FileNotFoundError("今日のファイルが見つかりません")
-        with ExcelFile(path) as f:
-            rows = f.read_rows_as_dicts("Sheet1")
 
     Args:
         folder: 検索するフォルダのパス。
         pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
+        date_format: 日付フォーマット（デフォルト: "%Y%m%d"）。
 
     Returns:
         見つかったファイルの Path。見つからない場合は None。
     """
-    today = datetime.date.today().strftime("%Y%m%d")
+    today = datetime.date.today().strftime(date_format)
     matched = [p for p in Path(folder).glob(pattern) if today in p.name]
     if not matched:
         return None
