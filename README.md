@@ -67,6 +67,9 @@ config = AppConfig()
 ```python
 from src.csv.handler import CsvReader
 
+ORDER_ID = "A001"
+STAFF_NAME = "山田"
+
 reader = CsvReader("data.csv")
 # Shift-JIS の場合: CsvReader("data.csv", encoding="cp932")
 
@@ -78,10 +81,10 @@ rows = reader.rows()
 rows = reader.rows(columns=["注文番号", "金額"])
 
 # キーで1件検索（見つからなければ None）
-row = reader.find("注文番号", "A001")
+row = reader.find("注文番号", ORDER_ID)
 
 # キーで複数行検索
-rows = reader.filter("担当者", "山田")
+rows = reader.filter("担当者", STAFF_NAME)
 
 # 列の値一覧
 amounts = reader.column("金額")
@@ -101,20 +104,21 @@ lookup = reader.index("注文番号")
 ```python
 from src.excel.handler import ExcelFile
 
-# 読み取り
-with ExcelFile("data.xlsx") as f:
-    rows = f.read_rows("Sheet1") # タプルのリスト
-    rows = f.read_rows_as_dicts("Sheet1") # 辞書のリスト（ヘッダーをキーに）
-
-# 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
-with ExcelFile("data.xlsx") as f:
-    rows = f.read_computed_rows("Sheet1")
-
-# 書き込み・保存
 SHEET = "Sheet1"
 ROW = 2
 COL = 1
+MACRO_NAME = "Module1.UpdateData"
 
+# 読み取り
+with ExcelFile("data.xlsx") as f:
+    rows = f.read_rows(SHEET) # タプルのリスト
+    rows = f.read_rows_as_dicts(SHEET) # 辞書のリスト（ヘッダーをキーに）
+
+# 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
+with ExcelFile("data.xlsx") as f:
+    rows = f.read_computed_rows(SHEET)
+
+# 書き込み・保存
 with ExcelFile("data.xlsx") as f:
     f.write_cell(SHEET, row=ROW, col=COL, value="値")
     f.save()
@@ -122,7 +126,7 @@ with ExcelFile("data.xlsx") as f:
 
 # VBA マクロの実行（常に win32com を使用）
 with ExcelFile("data.xlsm") as f:
-    f.run_macro("Module1.UpdateData")
+    f.run_macro(MACRO_NAME)
 ```
 
 ---
@@ -141,6 +145,9 @@ SHEET = "Sheet1"
 DATA_ROW = 2
 DATA_COL = 3
 CHECK_ROW = 5
+MACRO_NAME = "Module1.UpdateData"
+READ_PW = "読み取りPW"
+WRITE_PW = "書き込みPW"
 
 with ExcelComHandler("data.xlsx") as h:
     value = h.read_cell(SHEET, row=DATA_ROW, col=DATA_COL)
@@ -149,10 +156,10 @@ with ExcelComHandler("data.xlsx") as h:
     last_row = h.used_last_row(SHEET)
 
     if h.count_a(SHEET, row=CHECK_ROW) == 0:
-        print("5行目は空行")
+        print(f"{CHECK_ROW}行目は空行")
 
-    h.run_macro("Module1.UpdateData")
-    h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
+    h.run_macro(MACRO_NAME)
+    h.save_as("output.xlsx", read_pw=READ_PW, write_pw=WRITE_PW)
 ```
 
 ### WindowHandler
@@ -160,7 +167,9 @@ with ExcelComHandler("data.xlsx") as h:
 ```python
 from src.windows.handler import WindowHandler
 
-w = WindowHandler("メモ帳")
+WINDOW_TITLE = "メモ帳"
+
+w = WindowHandler(WINDOW_TITLE)
 w.activate() # ウィンドウを前面に表示
 w.get_title() # タイトルを取得
 ```
@@ -171,8 +180,10 @@ w.get_title() # タイトルを取得
 import win32con
 from src.windows.handler import RegistryHandler
 
+SETTING_KEY = "SettingName"
+
 with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
-    value = r.read("SettingName")
+    value = r.read(SETTING_KEY)
 ```
 
 ---
@@ -185,8 +196,11 @@ with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
 from src.selenium.driver import EdgeDriver
 from src.selenium.options import BrowserOptions
 
-with EdgeDriver(driver_path=r"C:\Users\Public\Documents\msedgedriver.exe") as d:
-    d.driver.get("https://example.com")
+DRIVER_PATH = r"C:\Users\Public\Documents\msedgedriver.exe"
+URL = "https://example.com"
+
+with EdgeDriver(driver_path=DRIVER_PATH) as d:
+    d.driver.get(URL)
 ```
 
 **ブラウザオプションのカスタマイズ:**
@@ -231,14 +245,17 @@ from src.selenium.base_page import BasePage
 
 class LoginPage(BasePage):
     URL = "https://example.com/login"
+    USERNAME_ID = "username"
+    PASSWORD_ID = "password"
+    LOGIN_BTN_ID = "login-btn"
 
     def open(self) -> None:
         self._driver.get(self.URL)
 
     def login(self, username: str, password: str) -> None:
-        self.input_id("username", username)
-        self.input_id("password", password)
-        self.click_id("login-btn")
+        self.input_id(self.USERNAME_ID, username)
+        self.input_id(self.PASSWORD_ID, password)
+        self.click_id(self.LOGIN_BTN_ID)
 ```
 
 | 操作 | ID | name属性 | CSSセレクター | XPath |
@@ -312,9 +329,13 @@ sf = SalesforceRestClient.from_password(
     client_secret="クライアントシークレット",
 )
 
-records = sf.query("SELECT Id, Name FROM Account")
-new_id = sf.insert("Account", {"Name": "新規取引先"})
-sf.update("Account", record_id=new_id, data={"Name": "更新後"})
+SOQL = "SELECT Id, Name FROM Account"
+ACCOUNT_NAME = "新規取引先"
+ACCOUNT_NAME_UPDATED = "更新後"
+
+records = sf.query(SOQL)
+new_id = sf.insert("Account", {"Name": ACCOUNT_NAME})
+sf.update("Account", record_id=new_id, data={"Name": ACCOUNT_NAME_UPDATED})
 sf.delete("Account", record_id=new_id)
 ```
 
