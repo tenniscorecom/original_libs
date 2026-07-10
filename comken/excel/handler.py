@@ -19,7 +19,8 @@ import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ..exceptions import SheetNotFoundError
@@ -239,6 +240,66 @@ class ExcelFile:
         """
         fill = PatternFill(fill_type="solid", fgColor=color)
         self._sheet(sheet_name).cell(row=row, column=col).fill = fill
+
+    def set_column_width(self, sheet_name: str, col: int, width: float) -> None:
+        """列幅を設定する。
+
+        Excel の列幅の目安: 標準フォント（11pt）で 1文字 ≈ 1。
+        日本語文字は全角なので 2文字分として計算する（"山田太郎" = 8程度）。
+
+        使い方:
+            with ExcelFile("data.xlsx") as f:
+                f.set_column_width("Sheet1", col=1, width=20)  # A列を幅20に
+                f.save()
+
+        Args:
+            sheet_name: シート名。
+            col: 列番号（1始まり。A列=1、B列=2、…）。
+            width: 列幅（Excel の列幅単位）。
+        """
+        col_letter = get_column_letter(col)
+        self._sheet(sheet_name).column_dimensions[col_letter].width = width
+
+    def set_number_format(self, sheet_name: str, row: int, col: int, fmt: str) -> None:
+        """セルの数値フォーマットを設定する。
+
+        よく使うフォーマット:
+            "#,##0"          → 1,000（カンマ区切り整数）
+            "#,##0.00"       → 1,000.00（小数2桁）
+            "0%"             → 50%（パーセント）
+            "yyyy/mm/dd"     → 2026/07/10（日付）
+            "yyyy/mm/dd hh:mm" → 2026/07/10 09:00（日時）
+            "@"              → 文字列として扱う
+
+        使い方:
+            with ExcelFile("data.xlsx") as f:
+                f.set_number_format("Sheet1", row=2, col=3, fmt="#,##0")
+                f.save()
+
+        Args:
+            sheet_name: シート名。
+            row: 行番号（1始まり）。
+            col: 列番号（1始まり）。
+            fmt: Excel の書式文字列。
+        """
+        self._sheet(sheet_name).cell(row=row, column=col).number_format = fmt
+
+    def set_bold(self, sheet_name: str, row: int, col: int, bold: bool = True) -> None:
+        """セルの太字を設定する。
+
+        使い方:
+            with ExcelFile("data.xlsx") as f:
+                f.set_bold("Sheet1", row=1, col=1)  # ヘッダーを太字に
+                f.save()
+
+        Args:
+            sheet_name: シート名。
+            row: 行番号（1始まり）。
+            col: 列番号（1始まり）。
+            bold: True で太字、False で解除。
+        """
+        cell = self._sheet(sheet_name).cell(row=row, column=col)
+        cell.font = Font(bold=bold)
 
     def run_macro(self, macro_name: str) -> None:
         """VBA マクロを実行する。内部で win32com（pywin32）を使用する。

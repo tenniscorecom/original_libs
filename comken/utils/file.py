@@ -79,6 +79,51 @@ def local_copy(path: str | Path):
         tmp_path.unlink(missing_ok=True)
 
 
+def wait_for_download(download_dir: str | Path, timeout: int = 30) -> list[Path]:
+    """ダウンロードが完了するまで待機し、完了したファイルの一覧を返す。
+
+    Edge/Chrome はダウンロード中のファイルを ".crdownload" 拡張子で保存する。
+    この拡張子のファイルが消えたらダウンロード完了と判断する。
+
+    使い方:
+        import shutil
+        from comken.utils import make_download_dir, wait_for_download
+
+        dl_dir = make_download_dir()
+        with EdgeDriver(download_dir=dl_dir) as d:
+            d.driver.get("https://example.com/download")
+            d.driver.find_element(By.ID, "download-btn").click()
+
+            files = wait_for_download(dl_dir)  # 完了まで待機
+            shutil.move(str(files[0]), "output/report.xlsx")
+
+        shutil.rmtree(dl_dir)  # 不要なら削除
+
+    Args:
+        download_dir: ダウンロード先フォルダのパス。
+        timeout: タイムアウトまでの秒数（デフォルト: 30秒）。
+
+    Returns:
+        ダウンロードされたファイルのパスリスト。
+
+    Raises:
+        TimeoutError: timeout 秒以内にダウンロードが完了しなかった場合。
+    """
+    import time
+
+    dl_path = Path(download_dir)
+    deadline = time.monotonic() + timeout
+
+    while time.monotonic() < deadline:
+        in_progress = list(dl_path.glob("*.crdownload")) + list(dl_path.glob("*.tmp"))
+        files = [p for p in dl_path.iterdir() if p.is_file() and p.suffix not in (".crdownload", ".tmp")]
+        if files and not in_progress:
+            return sorted(files, key=lambda p: p.stat().st_mtime)
+        time.sleep(0.5)
+
+    raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {download_dir}")
+
+
 def dated_filename(
     name: str,
     suffix: str = ".xlsx",
