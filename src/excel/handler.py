@@ -14,6 +14,8 @@ ExcelFile クラスを通じて Excel ファイルの読み書きを行う。
         f.save()
 """
 
+import shutil
+import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -55,14 +57,38 @@ class ExcelFile:
             f.run_macro("Module1.UpdateData")
     """
 
-    def __init__(self, path: str | Path, data_only: bool = False, read_only: bool = False) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        data_only: bool = False,
+        read_only: bool = False,
+        local_copy_threshold_mb: int = 10,
+    ) -> None:
         """
         Args:
             path: Excel ファイルのパス。
             data_only: True にすると数式セルのキャッシュ値を読む（read_computed_rows 推奨）。
             read_only: True にすると読み取り専用で開く（大きなファイルで高速化）。
+            local_copy_threshold_mb: この MB 以上のファイルはローカルにコピーしてから開く。
+                NAS・ネットワークドライブのファイルが遅い・不安定な場合に有効。
+                0 を指定するとローカルコピーを無効化できる。
         """
-        self._path = Path(path)
+        src = Path(path)
+
+        # ── NAS・ネットワークファイルのローカルコピー ──────────────────
+        # 社内ルールでローカルへのコピーが不可の場合は、
+        # このブロックを丸ごと削除し「self._tmp = None」だけ残す。
+        # close() 内の対応する削除ブロックも併せて削除すること。
+        self._tmp = None
+        if local_copy_threshold_mb and src.stat().st_size > local_copy_threshold_mb * 1024 * 1024:
+            tmp = tempfile.NamedTemporaryFile(suffix=src.suffix, delete=False)
+            self._tmp = Path(tmp.name)
+            tmp.close()
+            shutil.copy2(src, self._tmp)
+            src = self._tmp
+        # ────────────────────────────────────────────────────────────────
+
+        self._path = src
         self._wb: Workbook = load_workbook(self._path, data_only=data_only, read_only=read_only)
 
     def __enter__(self) -> "ExcelFile":
@@ -202,3 +228,8 @@ class ExcelFile:
     def close(self) -> None:
         """ワークブックを閉じる。with 文を使う場合は自動で呼ばれる。"""
         self._wb.close()
+
+        # ── ローカルコピーの後処理（__init__ の対応ブロックと一緒に削除）──
+        if self._tmp:
+            self._tmp.unlink(missing_ok=True)
+        # ──────────────────────────────────────────────────────────────────
