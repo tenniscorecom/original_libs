@@ -207,3 +207,32 @@ class TestDownloadDir:
         dl.remove()
 
         assert not dl.path.exists()
+
+    def test_uses_specified_path(self, tmp_path):
+        """path 指定で既存フォルダをそのまま使えることを確認する。"""
+        target = tmp_path / "downloads"
+
+        dl = DownloadDir(path=target)
+
+        assert dl.path == target
+        assert target.is_dir()  # なければ作成される
+
+    def test_wait_ignores_preexisting_files(self, tmp_path):
+        """path 指定時、作成前からあったファイルは完了対象にならないことを確認する。"""
+        old_file = tmp_path / "前回のダウンロード.xlsx"
+        old_file.touch()
+
+        dl = DownloadDir(path=tmp_path)
+        new_file = tmp_path / "今回のダウンロード.xlsx"
+        new_file.touch()
+
+        assert dl.wait(timeout=3) == [new_file]
+
+    def test_wait_times_out_when_only_old_files(self, tmp_path):
+        """path 指定時、前回のファイルしかなければタイムアウトすることを確認する。"""
+        (tmp_path / "前回のダウンロード.xlsx").touch()
+
+        dl = DownloadDir(path=tmp_path)
+
+        with pytest.raises(TimeoutError):
+            dl.wait(timeout=1)

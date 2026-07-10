@@ -312,6 +312,14 @@ shutil.move(str(files[0]), "output/report.xlsx")
 dl.remove()  # 不要なら削除（残したい場合は呼ばない）
 ```
 
+固定のフォルダに落としたい場合は `path` を指定する（なければ作成される）。
+
+```python
+dl = DownloadDir(path=r"C:\作業\downloads")
+# wait() は作成時点で既にあったファイルを無視し、新しく増えたファイルだけを返す
+# （前回のダウンロードが残っていても誤検出しない）
+```
+
 ---
 
 ## ネットワーク・NAS ファイルの読み込み

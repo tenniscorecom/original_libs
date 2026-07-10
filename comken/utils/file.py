@@ -33,7 +33,7 @@ from pathlib import Path
 
 
 class DownloadDir:
-    """ブラウザダウンロード用の一時フォルダ。作成・完了待ち・削除をまとめて扱う。
+    """ブラウザダウンロード用のフォルダ。作成・完了待ち・削除をまとめて扱う。
 
     使い方:
         import shutil
@@ -47,14 +47,27 @@ class DownloadDir:
 
         shutil.move(str(files[0]), "output/report.xlsx")
         dl.remove()  # 不要なら削除（残したい場合は呼ばない）
+
+    固定のフォルダに落としたい場合は path を指定する:
+        dl = DownloadDir(path=r"C:\\作業\\downloads")  # なければ作成される
+        # wait() は作成時点で既にあったファイルを無視し、
+        # 新しく増えたファイルだけを完了対象にする
     """
 
-    def __init__(self, prefix: str = "comken_dl_") -> None:
+    def __init__(self, prefix: str = "comken_dl_", path: str | Path | None = None) -> None:
         """
         Args:
-            prefix: フォルダ名のプレフィックス。
+            prefix: 一時フォルダ名のプレフィックス（path 指定時は使われない）。
+            path: 使用するフォルダのパス。指定するとそのフォルダを使う（なければ作成）。
+                  省略時は一時フォルダを新規作成する。
         """
-        self.path = Path(tempfile.mkdtemp(prefix=prefix))
+        if path:
+            self.path = Path(path)
+            self.path.mkdir(parents=True, exist_ok=True)
+        else:
+            self.path = Path(tempfile.mkdtemp(prefix=prefix))
+        # 既存フォルダを指定した場合、前回のファイルを wait() の完了対象にしないための記録
+        self._initial_files = {p.name for p in self.path.iterdir() if p.is_file()}
 
     def __fspath__(self) -> str:
         # os.PathLike 対応。EdgeDriver(download_dir=dl) のように直接渡せるようにする
@@ -65,12 +78,14 @@ class DownloadDir:
 
         Edge/Chrome はダウンロード中のファイルを ".crdownload" 拡張子で保存する。
         この拡張子のファイルが消えたらダウンロード完了と判断する。
+        DownloadDir 作成時点で既にあったファイルは対象外
+        （固定フォルダに前回のファイルが残っていても誤検出しない）。
 
         Args:
             timeout: タイムアウトまでの秒数（デフォルト: 30秒）。
 
         Returns:
-            ダウンロードされたファイルのパスリスト（更新日時順）。
+            新しくダウンロードされたファイルのパスリスト（更新日時順）。
 
         Raises:
             TimeoutError: timeout 秒以内にダウンロードが完了しなかった場合。
@@ -83,7 +98,9 @@ class DownloadDir:
             files = [
                 p
                 for p in self.path.iterdir()
-                if p.is_file() and p.suffix not in (".crdownload", ".tmp")
+                if p.is_file()
+                and p.suffix not in (".crdownload", ".tmp")
+                and p.name not in self._initial_files
             ]
             if files and not in_progress:
                 return sorted(files, key=lambda p: p.stat().st_mtime)
@@ -92,7 +109,10 @@ class DownloadDir:
         raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {self.path}")
 
     def remove(self) -> None:
-        """フォルダごと削除する。ファイルを残したい場合は呼ばなくてよい。"""
+        """フォルダごと削除する。ファイルを残したい場合は呼ばなくてよい。
+
+        既存フォルダを path で指定した場合も、そのフォルダごと削除されるので注意。
+        """
         shutil.rmtree(self.path, ignore_errors=True)
 
 
