@@ -124,6 +124,14 @@ with ExcelFile("data.xlsx") as f:
     f.save()
     f.save("output.xlsx") # 別名で保存
 
+# 大量データの読み取り（メモリ効率優先）
+with ExcelFile("data.xlsx") as f:
+    for row in f.iter_rows(SHEET):
+        print(row) # 1行ずつ処理。全行をメモリに乗せない
+
+# 複数ファイルを同時処理する場合（目安: 10ファイル以上）は
+# concurrent.futures.ThreadPoolExecutor を使うと高速化できる
+
 # VBA マクロの実行（常に win32com を使用）
 with ExcelFile("data.xlsm") as f:
     f.run_macro(MACRO_NAME)

@@ -113,6 +113,29 @@ class ExcelFile:
         headers = all_rows[0]
         return [dict(zip(headers, row)) for row in all_rows[1:]]
 
+    def iter_rows(self, sheet_name: str, min_row: int = 2):
+        """大量データ向け。行をジェネレータで1行ずつ返す（メモリ効率優先）。
+
+        read_rows はファイル全体をメモリに乗せるため、数万行以上のファイルでは
+        この メソッドを使って1行ずつ処理する。
+
+        複数ファイルを同時に処理する場合（目安: 10ファイル以上）は
+        concurrent.futures.ThreadPoolExecutor を使うとさらに高速化できる。
+
+        Args:
+            sheet_name: シート名。
+            min_row: 読み始める行番号（デフォルト: 2 でヘッダーをスキップ）。
+
+        Yields:
+            各行の値のタプル。
+        """
+        wb = load_workbook(self._path, data_only=True, read_only=True)
+        try:
+            for row in wb[sheet_name].iter_rows(min_row=min_row, values_only=True):
+                yield row
+        finally:
+            wb.close()
+
     def read_computed_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
         """数式の計算結果を含む行を読む。
 
