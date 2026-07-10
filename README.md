@@ -2,74 +2,16 @@
 
 業務自動化で使う Python 共通ライブラリ。
 
-- [Config（設定ファイル読み込み）](#config)
-- [CSV](#csv)
-- [Selenium（Edge）](#selenium)
-- [Excel（openpyxl）](#excel-openpyxl)
-- [Windows（pywin32）](#windows-pywin32)
-- [Salesforce](#salesforce)
+## モジュール一覧
 
----
-
-## Config
-
-`config.ini` を読み込み、`config.SECTION.KEY` の形式でアクセスする。
-
-```ini
-; config.ini
-[browser]
-driver_path  = C:\Users\Public\Documents\msedgedriver.exe
-wait_seconds = 10
-headless     = false
-
-[files]
-input_folder = C:\作業\input
-```
-
-```python
-from src.config import Config
-
-config = Config()                        # カレントディレクトリの config.ini
-config = Config("path/to/config.ini")   # パスを指定する場合
-
-config.BROWSER.DRIVER_PATH    # → "C:\Users\Public\Documents\msedgedriver.exe"
-config.BROWSER.WAIT_SECONDS   # → "10"
-config.FILES.INPUT_FOLDER     # → "C:\作業\input"
-```
-
-> **注意**: 値はすべて文字列で返る。数値が必要な場合は `int()` / `float()` で変換する。
-
----
-
-## CSV
-
-```python
-from src.csv.handler import CsvReader
-
-reader = CsvReader("data.csv")
-
-# 全行取得
-rows = reader.rows()
-# → [{"注文番号": "A001", "金額": "1000", ...}, ...]
-
-# 特定列のみ取得
-rows = reader.rows(columns=["注文番号", "金額"])
-
-# キーで1件検索
-row = reader.find("注文番号", "A001")
-# → {"注文番号": "A001", ...} または None
-
-# キーで複数行検索
-rows = reader.filter("ステータス", "完了")
-
-# 列の値一覧
-amounts = reader.column("金額")
-# → ["1000", "2000", "3000"]
-
-# キー列でインデックス化（辞書）
-lookup = reader.index("注文番号")
-# → {"A001": {...}, "A002": {...}}
-```
+| モジュール | 概要 |
+|---|---|
+| [Config](#config) | INI ファイルの読み込み |
+| [CSV](#csv) | CSV の読み込み・検索・抽出 |
+| [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
+| [Windows（pywin32）](#windows) | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
+| [Selenium（Edge）](#selenium) | Edge ブラウザ操作 |
+| [Salesforce](#salesforce) | レコード CRUD・レポート取得 |
 
 ---
 
@@ -81,88 +23,201 @@ pip install -r requirements.txt
 
 ---
 
+## Config
+
+`config.ini` を `config.SECTION.KEY` の形式で読み込む。
+
+```python
+from src.config import Config
+
+config = Config()                      # カレントディレクトリの config.ini
+config = Config("path/to/config.ini")  # パスを指定する場合
+```
+
+```ini
+; config.ini
+[browser]
+driver_path  = C:\Users\Public\Documents\msedgedriver.exe
+wait_seconds = 10
+headless     = false
+```
+
+```python
+config.BROWSER.DRIVER_PATH    # → str
+config.BROWSER.HEADLESS       # → False（bool に自動変換）
+config.BROWSER.WAIT_SECONDS   # → "10"（数値は呼び出し側で変換）
+int(config.BROWSER.WAIT_SECONDS)  # → 10
+```
+
+**プロジェクト固有の設定を追加する場合は Config を継承する:**
+
+```python
+class AppConfig(Config):
+    @property
+    def add_args(self) -> list[str]:
+        return self.parse_list(self.BROWSER_OPTIONS.ADD)
+
+config = AppConfig()
+```
+
+---
+
+## CSV
+
+```python
+from src.csv.handler import CsvReader
+
+reader = CsvReader("data.csv")
+# Shift-JIS の場合: CsvReader("data.csv", encoding="cp932")
+
+# 全行取得
+rows = reader.rows()
+# → [{"注文番号": "A001", "金額": "1000"}, ...]
+
+# 特定列のみ取得
+rows = reader.rows(columns=["注文番号", "金額"])
+
+# キーで1件検索（見つからなければ None）
+row = reader.find("注文番号", "A001")
+
+# キーで複数行検索
+rows = reader.filter("担当者", "山田")
+
+# 列の値一覧
+amounts = reader.column("金額")
+# → ["1000", "2000", "3000"]
+
+# キー列でインデックス化（突合用）
+lookup = reader.index("注文番号")
+# → {"A001": {...}, "A002": {...}}
+```
+
+---
+
+## Excel
+
+数式の計算結果や VBA マクロが必要な場合は自動で win32com にフォールバックする。
+
+```python
+from src.excel.handler import ExcelFile
+
+# 読み取り
+with ExcelFile("data.xlsx") as f:
+    rows = f.read_rows("Sheet1")             # タプルのリスト
+    rows = f.read_rows_as_dicts("Sheet1")    # 辞書のリスト（ヘッダーをキーに）
+
+# 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
+with ExcelFile("data.xlsx") as f:
+    rows = f.read_computed_rows("Sheet1")
+
+# 書き込み・保存
+with ExcelFile("data.xlsx") as f:
+    f.write_cell("Sheet1", row=2, col=1, value="値")
+    f.save()
+    f.save("output.xlsx")  # 別名で保存
+
+# VBA マクロの実行（常に win32com を使用）
+with ExcelFile("data.xlsm") as f:
+    f.run_macro("Module1.UpdateData")
+```
+
+---
+
+## Windows
+
+通常の Excel 読み書きは ExcelFile（openpyxl）を使うこと。
+ExcelComHandler は数式・マクロ・パスワード保存が必要な場合に限定して使う。
+
+### ExcelComHandler
+
+```python
+from src.windows.handler import ExcelComHandler
+
+with ExcelComHandler("data.xlsx") as h:
+    value    = h.read_cell("Sheet1", row=2, col=3)
+    rows     = h.read_rows("Sheet1")
+    rows     = h.read_rows_as_dicts("Sheet1")
+    last_row = h.used_last_row("Sheet1")
+
+    if h.count_a("Sheet1", row=5) == 0:
+        print("5行目は空行")
+
+    h.run_macro("Module1.UpdateData")
+    h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
+```
+
+### WindowHandler
+
+```python
+from src.windows.handler import WindowHandler
+
+w = WindowHandler("メモ帳")
+w.activate()     # ウィンドウを前面に表示
+w.get_title()    # タイトルを取得
+```
+
+### RegistryHandler
+
+```python
+import win32con
+from src.windows.handler import RegistryHandler
+
+with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
+    value = r.read("SettingName")
+```
+
+---
+
 ## Selenium
 
 ### EdgeDriver
 
 ```python
 from src.selenium.driver import EdgeDriver
+from src.selenium.options import BrowserOptions
 
 with EdgeDriver(driver_path=r"C:\Users\Public\Documents\msedgedriver.exe") as d:
     d.driver.get("https://example.com")
-    print(d.driver.title)
-# with を抜けると自動でブラウザが閉じる
 ```
 
-| 引数 | 型 | デフォルト | 説明 |
-|---|---|---|---|
-| `driver_path` | str | 必須 | msedgedriver.exe のパス |
-| `wait_seconds` | int | 10 | 暗黙的待機（秒） |
-| `headless` | bool | False | True でブラウザを非表示 |
+**ブラウザオプションのカスタマイズ:**
+
+デフォルト設定は `src/selenium/options.py` の `BrowserOptions` を参照。
+変更したい項目だけサブクラスで上書きする。
+
+```python
+# browser_options.py（プロジェクト側）
+from src.selenium.options import BrowserOptions
+
+class MyOptions(BrowserOptions):
+    INCOGNITO = False           # シークレットモードを無効
+    START_MAXIMIZED = False     # 最大化を無効（WINDOW_SIZE と併用不可）
+    WINDOW_SIZE = "1600,1024"
+```
+
+```python
+with EdgeDriver(
+    driver_path=config.BROWSER.DRIVER_PATH,
+    wait_seconds=int(config.BROWSER.WAIT_SECONDS),
+    browser_options=MyOptions(),
+) as d:
+    ...
+```
+
+デフォルト一覧の確認:
+
+```python
+print(BrowserOptions())      # デフォルト設定を表示
+print(MyOptions())           # デフォルトからの変更箇所に * が付く
+```
 
 ---
 
 ### BasePage
 
-画面ごとに `BasePage` を継承したクラスを作る。`By.ID` などは不要。
+画面ごとに `BasePage` を継承したクラスを作る。
 
 ```python
-from src.selenium.base_page import BasePage
-
-class LoginPage(BasePage):
-    def login(self, user: str, password: str) -> None:
-        self.input_id("username", user)
-        self.input_id("password", password)
-        self.click_id("login-btn")
-```
-
-```python
-with EdgeDriver(driver_path=r"C:\...\msedgedriver.exe") as d:
-    page = LoginPage(d.driver)
-    page.open("https://example.com/login")
-    page.login("yamada", "password123")
-```
-
-#### メソッド一覧
-
-| 操作 | ID | name属性 | CSSセレクター | XPath |
-|---|---|---|---|---|
-| クリック | `click_id` | `click_name` | `click_css` | `click_xpath` |
-| テキスト入力 | `input_id` | `input_name` | `input_css` | `input_xpath` |
-| テキスト取得 | `text_id` | `text_name` | `text_css` | `text_xpath` |
-
-```python
-# 使用例
-page.click_id("submit-btn")
-page.click_css(".btn-primary")
-page.click_xpath("//button[@type='submit']")
-
-page.input_id("search", "キーワード")
-page.input_css("#email", "test@example.com")
-
-title = page.text_id("page-title")
-```
-
-| メソッド | 説明 |
-|---|---|
-| `open(url)` | URL を開く |
-| `save_screenshot(prefix)` | スクリーンショットを `logs/` に保存 |
-
-#### サンプル実装
-
-`examples/sample_login/` に実際に動くサンプルがある。
-
-```
-examples/
-└── sample_login/
-    ├── pages/
-    │   ├── login_page.py   # ログイン画面
-    │   └── secure_page.py  # ログイン後の画面
-    └── run.py              # 実行スクリプト
-```
-
-```python
-# pages/login_page.py の例
 from src.selenium.base_page import BasePage
 
 class LoginPage(BasePage):
@@ -177,139 +232,36 @@ class LoginPage(BasePage):
         self.click_id("login-btn")
 ```
 
-```python
-# run.py の例
-from src.selenium.driver import EdgeDriver
-from pages.login_page import LoginPage
+| 操作 | ID | name属性 | CSSセレクター | XPath |
+|---|---|---|---|---|
+| クリック | `click_id` | `click_name` | `click_css` | `click_xpath` |
+| テキスト入力 | `input_id` | `input_name` | `input_css` | `input_xpath` |
+| テキスト取得 | `text_id` | `text_name` | `text_css` | `text_xpath` |
 
-with EdgeDriver(driver_path=r"C:\...\msedgedriver.exe") as d:
-    page = LoginPage(d.driver)
-    page.open()
-    page.login("yamada", "password123")
+セレクターの値は Edge の開発者ツール（F12）で確認する。
+
+---
+
+### サンプル実装
+
+`examples/sample_login/` に動作するサンプルがある。
+
+```
+examples/sample_login/
+├── pages/
+│   ├── login_page.py    # ログイン画面
+│   └── secure_page.py   # ログイン後の画面
+├── browser_options.py   # BrowserOptions のカスタマイズ
+├── config.ini.example   # 設定ファイルのテンプレート
+├── config.py            # AppConfig（Config のサブクラス）
+└── run.py               # 実行スクリプト
 ```
 
 実行:
+
 ```bash
 cd F:\dev\original_libs
 python -m examples.sample_login.run
-```
-
----
-
-## Excel（openpyxl）
-
-数式の計算結果は読めない。数式を読む場合は [ExcelComHandler](#excelcomhandler) を使う。
-
-```python
-from src.excel.handler import ExcelFile
-
-# 読み取り
-with ExcelFile("data.xlsx") as f:
-    rows = f.read_rows("Sheet1")  # [(値, 値, ...), ...]
-    print(rows)
-
-# 書き込み
-with ExcelFile("data.xlsx") as f:
-    f.write_cell("Sheet1", row=2, col=1, value="新しい値")
-    f.save()
-
-# 別名で保存
-with ExcelFile("template.xlsx") as f:
-    f.write_cell("Sheet1", 2, 1, "値")
-    f.save("output.xlsx")
-
-# 数式の計算結果を読む（キャッシュ値）
-with ExcelFile("data.xlsx", data_only=True) as f:
-    rows = f.read_rows("Sheet1")
-
-# 大きなファイルを読み取り専用で開く
-with ExcelFile("large.xlsx", read_only=True) as f:
-    rows = f.read_rows("Sheet1")
-```
-
-```python
-from src.excel.handler import ExcelFile
-
-with ExcelFile("data.xlsx") as f:
-    # タプルのリストで取得
-    rows = f.read_rows("Sheet1")
-
-    # ヘッダーをキーにした辞書のリストで取得
-    rows = f.read_rows_as_dicts("Sheet1")
-
-    # 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
-    rows = f.read_computed_rows("Sheet1")
-
-    # セルを書き込んで保存
-    f.write_cell("Sheet1", row=2, col=1, value="値")
-    f.save()
-
-    # マクロを実行（常に win32com を使用）
-    f.run_macro("Module1.UpdateData")
-```
-
-| メソッド | バックエンド | 説明 |
-|---|---|---|
-| `read_rows(sheet_name)` | openpyxl | タプルのリストで返す |
-| `read_rows_as_dicts(sheet_name)` | openpyxl | ヘッダーをキーにした辞書のリストで返す |
-| `read_computed_rows(sheet_name)` | openpyxl → win32com | 数式の計算結果を読む（自動フォールバック） |
-| `write_cell(sheet_name, row, col, value)` | openpyxl | セルに値を書く |
-| `save(path=None)` | openpyxl | 保存 |
-| `run_macro(macro_name)` | win32com | VBA マクロを実行する |
-
----
-
-## Windows（pywin32）
-
-### ExcelComHandler
-
-数式の計算結果を読む・パスワード付きで保存する場合に使う。
-
-```python
-from src.windows.handler import ExcelComHandler
-
-with ExcelComHandler("data.xlsx") as h:
-    # 数式の計算結果を取得
-    value = h.read_cell("T_data", row=2, col=17)
-
-    # データを書き込む
-    h.write_cell("T_data", row=2, col=1, value="書き込む値")
-
-    # 最終行を取得
-    last_row = h.used_last_row("T_data")
-
-    # 行全体が空かどうか確認
-    if h.count_a("T_data", row=3) == 0:
-        print("空行")
-
-    # パスワードをかけて保存
-    h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
-# with を抜けると自動で Excel が閉じる
-```
-
----
-
-### WindowHandler
-
-```python
-from src.windows.handler import WindowHandler
-
-w = WindowHandler("メモ帳")
-w.activate()  # ウィンドウを前面に表示
-print(w.get_title())
-```
-
----
-
-### RegistryHandler
-
-```python
-import win32con
-from src.windows.handler import RegistryHandler
-
-with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
-    value = r.read("Setting")
-    print(value)
 ```
 
 ---
@@ -324,65 +276,37 @@ from src.salesforce.simple_sf import SalesforceClient
 sf = SalesforceClient(
     username="user@example.com",
     password="password",
-    security_token="token",
+    security_token="セキュリティトークン",
+    # domain="test"  # Sandbox の場合
 )
 
-# レコード取得
 records = sf.query("SELECT Id, Name FROM Account WHERE IsDeleted = false")
-
-# レコード作成
-new_id = sf.insert("Account", {"Name": "新規取引先"})
-
-# レコード更新
+new_id  = sf.insert("Account", {"Name": "新規取引先"})
 sf.update("Account", record_id=new_id, data={"Name": "更新後の名前"})
-
-# Upsert（外部IDで更新 or 作成）
 sf.upsert("Account", external_id_field="ExternalId__c", data={"ExternalId__c": "001", "Name": "取引先"})
-
-# レコード削除
 sf.delete("Account", record_id=new_id)
 ```
 
----
-
-### SalesforceRestClient（REST API 直叩き）
+### SalesforceRestClient（REST API）
 
 ```python
 from src.salesforce.rest_api import SalesforceRestClient
 
-# パスワード認証でインスタンス生成
 sf = SalesforceRestClient.from_password(
     username="user@example.com",
     password="password",
-    security_token="token",
-    client_id="接続アプリケーションのClientId",
-    client_secret="接続アプリケーションのClientSecret",
+    security_token="トークン",
+    client_id="クライアントID",
+    client_secret="クライアントシークレット",
 )
 
-# または接続済みのトークンを直接渡す
-sf = SalesforceRestClient(
-    instance_url="https://xxx.salesforce.com",
-    access_token="アクセストークン",
-)
-
-# レコード取得（全ページ自動取得）
 records = sf.query("SELECT Id, Name FROM Account")
-
-# レコード作成
-new_id = sf.insert("Account", {"Name": "新規取引先"})
-
-# レコード更新
-sf.update("Account", record_id=new_id, data={"Name": "更新後の名前"})
-
-# レコード削除
+new_id  = sf.insert("Account", {"Name": "新規取引先"})
+sf.update("Account", record_id=new_id, data={"Name": "更新後"})
 sf.delete("Account", record_id=new_id)
 ```
 
----
-
 ### SalesforceReportClient（レポート取得）
-
-既存の Salesforce レポートを実行してデータを取得する。
 
 ```python
 from src.salesforce.report import SalesforceReportClient
@@ -392,27 +316,21 @@ sf = SalesforceReportClient(
     access_token="アクセストークン",
 )
 
-# 2000行以下：同期実行
+# 2000行以下（同期）
 rows = sf.run("00O000000000001")
 # → [{"取引先名": "株式会社A", "金額": "100,000"}, ...]
-# 列名はSalesforceの表示名（日本語）で返る
 
-# 2000行超え：非同期実行
+# 2000行超え（非同期）
 rows = sf.run_async("00O000000000001")
 
 # 絞り込みあり
 rows = sf.run("00O000000000001", filters=[
-    {"column": "CREATED_DATE", "operator": "greaterThan", "value": "2026-01-01"}
+    {"column": "CREATED_DATE", "operator": "greaterThan", "value": "2026-01-01"},
 ])
 ```
 
-> **注意**: レポート ID は Salesforce でレポートを開いたときの URL から確認できる。
-> `https://xxx.salesforce.com/00O000000000001`
-
-| メソッド | 上限 | 説明 |
-|---|---|---|
-| `run(report_id, filters)` | 2000行 | 同期実行。小〜中規模レポート向け |
-| `run_async(report_id, filters)` | 上限なし | 非同期実行。大規模レポート向け |
+レポート ID は Salesforce でレポートを開いたときの URL から確認できる:
+`https://xxx.salesforce.com/00O000000000001`
 
 ---
 
@@ -421,3 +339,4 @@ rows = sf.run("00O000000000001", filters=[
 | 日付 | 内容 |
 |---|---|
 | 2026-07-09 | 初版作成 |
+| 2026-07-10 | 全モジュールにドキュメント追加、README 整理 |

@@ -12,6 +12,10 @@ from examples.sample_login.config import config
 from examples.sample_login.pages.login_page import LoginPage
 from examples.sample_login.pages.secure_page import SecurePage
 
+# サンプルサイトの認証情報（https://the-internet.herokuapp.com/login）
+USERNAME = "tomsmith"
+PASSWORD = "SuperSecretPassword!"
+
 
 def main() -> None:
     with EdgeDriver(
@@ -22,7 +26,7 @@ def main() -> None:
 
         login = LoginPage(d.driver)
         login.open()
-        login.login(username="tomsmith", password="SuperSecretPassword!")
+        login.login(username=USERNAME, password=PASSWORD)
 
         secure = SecurePage(d.driver)
         print("画面見出し:", secure.get_heading())
