@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# ビルド生成物
+comken.egg-info/
+dist/
+build/
