@@ -42,6 +42,31 @@ class ExcelComHandler:
         ws = self._wb.Sheets(sheet_name)
         return ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
 
+    def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
+        """指定シートの行データをタプルのリストで返す。"""
+        ws = self._wb.Sheets(sheet_name)
+        last_row = self.used_last_row(sheet_name)
+        last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+        return [
+            tuple(ws.Cells(row, col).Value for col in range(1, last_col + 1))
+            for row in range(min_row, last_row + 1)
+        ]
+
+    def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
+        """ヘッダー行をキーとした辞書のリストで返す。"""
+        ws = self._wb.Sheets(sheet_name)
+        last_row = self.used_last_row(sheet_name)
+        last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+        headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
+        return [
+            dict(zip(headers, (ws.Cells(row, col).Value for col in range(1, last_col + 1))))
+            for row in range(header_row + 1, last_row + 1)
+        ]
+
+    def run_macro(self, macro_name: str) -> None:
+        """VBA マクロを実行する。"""
+        self._excel.Run(macro_name)
+
     def save_as(self, path: str, read_pw: str = "", write_pw: str = "") -> None:
         self._wb.SaveAs(path, Password=read_pw, WriteResPassword=write_pw)
 

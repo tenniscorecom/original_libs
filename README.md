@@ -3,6 +3,7 @@
 業務自動化で使う Python 共通ライブラリ。
 
 - [Config（設定ファイル読み込み）](#config)
+- [CSV](#csv)
 - [Selenium（Edge）](#selenium)
 - [Excel（openpyxl）](#excel-openpyxl)
 - [Windows（pywin32）](#windows-pywin32)
@@ -37,6 +38,38 @@ config.FILES.INPUT_FOLDER     # → "C:\作業\input"
 ```
 
 > **注意**: 値はすべて文字列で返る。数値が必要な場合は `int()` / `float()` で変換する。
+
+---
+
+## CSV
+
+```python
+from src.csv.handler import CsvReader
+
+reader = CsvReader("data.csv")
+
+# 全行取得
+rows = reader.rows()
+# → [{"注文番号": "A001", "金額": "1000", ...}, ...]
+
+# 特定列のみ取得
+rows = reader.rows(columns=["注文番号", "金額"])
+
+# キーで1件検索
+row = reader.find("注文番号", "A001")
+# → {"注文番号": "A001", ...} または None
+
+# キーで複数行検索
+rows = reader.filter("ステータス", "完了")
+
+# 列の値一覧
+amounts = reader.column("金額")
+# → ["1000", "2000", "3000"]
+
+# キー列でインデックス化（辞書）
+lookup = reader.index("注文番号")
+# → {"A001": {...}, "A002": {...}}
+```
 
 ---
 
@@ -194,12 +227,35 @@ with ExcelFile("large.xlsx", read_only=True) as f:
     rows = f.read_rows("Sheet1")
 ```
 
-| メソッド | 説明 |
-|---|---|
-| `sheet(name)` | Worksheet オブジェクトを返す |
-| `read_rows(sheet_name, min_row=2)` | 2行目以降を全行読む |
-| `write_cell(sheet_name, row, col, value)` | セルに値を書く |
-| `save(path=None)` | 保存（省略時は元のパス） |
+```python
+from src.excel.handler import ExcelFile
+
+with ExcelFile("data.xlsx") as f:
+    # タプルのリストで取得
+    rows = f.read_rows("Sheet1")
+
+    # ヘッダーをキーにした辞書のリストで取得
+    rows = f.read_rows_as_dicts("Sheet1")
+
+    # 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
+    rows = f.read_computed_rows("Sheet1")
+
+    # セルを書き込んで保存
+    f.write_cell("Sheet1", row=2, col=1, value="値")
+    f.save()
+
+    # マクロを実行（常に win32com を使用）
+    f.run_macro("Module1.UpdateData")
+```
+
+| メソッド | バックエンド | 説明 |
+|---|---|---|
+| `read_rows(sheet_name)` | openpyxl | タプルのリストで返す |
+| `read_rows_as_dicts(sheet_name)` | openpyxl | ヘッダーをキーにした辞書のリストで返す |
+| `read_computed_rows(sheet_name)` | openpyxl → win32com | 数式の計算結果を読む（自動フォールバック） |
+| `write_cell(sheet_name, row, col, value)` | openpyxl | セルに値を書く |
+| `save(path=None)` | openpyxl | 保存 |
+| `run_macro(macro_name)` | win32com | VBA マクロを実行する |
 
 ---
 
