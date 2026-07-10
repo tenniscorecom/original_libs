@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
+from openpyxl.styles import PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
 
@@ -213,6 +214,29 @@ class ExcelFile:
         save_path = Path(path) if path else self._path
         save_path.parent.mkdir(parents=True, exist_ok=True)
         self._wb.save(save_path)
+
+    def set_fill(self, sheet_name: str, row: int, col: int, color: str) -> None:
+        """セルの背景色を設定する。
+
+        よく使う色コード:
+            "FFFF00" → 黄色
+            "FF0000" → 赤
+            "00FF00" → 緑
+            "FFFFFF" → 白（色なし）
+
+        使い方:
+            with ExcelFile("data.xlsx") as f:
+                f.set_fill("Sheet1", row=2, col=1, color="FFFF00")
+                f.save()
+
+        Args:
+            sheet_name: シート名。
+            row: 行番号（1始まり）。
+            col: 列番号（1始まり）。
+            color: 16進数カラーコード（"RRGGBB" 形式、# なし）。
+        """
+        fill = PatternFill(fill_type="solid", fgColor=color)
+        self.sheet(sheet_name).cell(row=row, column=col).fill = fill
 
     def run_macro(self, macro_name: str) -> None:
         """VBA マクロを実行する。内部で win32com（pywin32）を使用する。

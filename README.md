@@ -97,6 +97,30 @@ lookup = reader.index("注文番号")
 
 ---
 
+## ファイル名・ファイル取得ユーティリティ
+
+```python
+from src.utils import dated_filename, find_today_file, find_latest_file
+
+FOLDER = r"\\nas-server\share"
+
+# 今日の日付付きファイル名を生成
+dated_filename("売上レポート")            # → "20260710_売上レポート.xlsx"
+dated_filename("売上レポート", pre=False) # → "売上レポート_20260710.xlsx"
+dated_filename("ログ", suffix=".csv")     # → "20260710_ログ.csv"
+
+# 今日の日付（YYYYMMDD）を含むファイルを取得
+path = find_today_file(FOLDER)
+if path is None:
+    raise FileNotFoundError("今日のファイルが見つかりません")
+
+# フォルダ内で最も新しいファイルを取得
+path = find_latest_file(FOLDER)
+path = find_latest_file(FOLDER, pattern="*.csv") # CSV に絞る場合
+```
+
+---
+
 ## ネットワーク・NAS ファイルの読み込み
 
 NAS やネットワークドライブ上のファイルは直接開くと遅い・不安定になる場合がある。
@@ -177,6 +201,15 @@ with ExcelFile("data.xlsx") as f:
 
 # 複数ファイルを同時処理する場合（目安: 10ファイル以上）は
 # concurrent.futures.ThreadPoolExecutor を使うと高速化できる
+
+# 背景色の設定
+YELLOW = "FFFF00"
+RED = "FF0000"
+
+with ExcelFile("data.xlsx") as f:
+    f.set_fill(SHEET, row=ROW, col=COL, color=YELLOW) # 黄色
+    f.set_fill(SHEET, row=ROW, col=COL, color=RED)    # 赤
+    f.save()
 
 # VBA マクロの実行（常に win32com を使用）
 with ExcelFile("data.xlsm") as f:
