@@ -99,26 +99,46 @@ lookup = reader.index("注文番号")
 
 ## ネットワーク・NAS ファイルの読み込み
 
-NAS やネットワークドライブ上のファイルを直接開くと遅い場合や、
-win32com が不安定な場合は `local_copy` でローカルにコピーしてから処理する。
+NAS やネットワークドライブ上のファイルは直接開くと遅い・不安定になる場合がある。
+
+### ExcelFile（openpyxl）
+
+`local_copy_threshold_mb` を超えるファイルは自動でローカルにコピーしてから開く。
 `with` ブロックを抜けるとテンポラリファイルは自動削除される。
 
 ```python
-from src.utils import local_copy
 from src.excel.handler import ExcelFile
+
+NAS_PATH = r"\\nas-server\share\data.xlsx"
+SHEET = "Sheet1"
+
+# 10MB 以上は自動でローカルコピー（デフォルト）
+with ExcelFile(NAS_PATH) as f:
+    rows = f.read_rows_as_dicts(SHEET)
+
+# 閾値を変える（50MB 以上でコピー）
+with ExcelFile(NAS_PATH, local_copy_threshold_mb=50) as f:
+    rows = f.read_rows_as_dicts(SHEET)
+
+# ローカルコピーを無効化（社内ルールで不可の場合）
+with ExcelFile(NAS_PATH, local_copy_threshold_mb=0) as f:
+    rows = f.read_rows_as_dicts(SHEET)
+```
+
+### ExcelComHandler（win32com）
+
+win32com は `ExcelFile` の自動コピー機能がないため、`local_copy` を使う。
+
+```python
+from src.utils import local_copy
 from src.windows.handler import ExcelComHandler
 
 NAS_PATH = r"\\nas-server\share\data.xlsx"
+SHEET = "Sheet1"
 
-# openpyxl で読む場合
-with local_copy(NAS_PATH) as local_path:
-    with ExcelFile(local_path) as f:
-        rows = f.read_rows_as_dicts("Sheet1")
-
-# win32com で読む場合
 with local_copy(NAS_PATH) as local_path:
     with ExcelComHandler(local_path) as h:
-        rows = h.read_rows_as_dicts("Sheet1")
+        rows = h.read_rows_as_dicts(SHEET)
 ```
 
 ---
