@@ -11,12 +11,19 @@ pywin32 を使った Windows 固有操作を提供する。
 ExcelComHandler は数式やマクロが必要な場面に限定して使う。
 """
 
+import logging
+from pathlib import Path
+
+import pywintypes
 import win32api
 import win32com.client
 import win32con
 import win32gui
-import pywintypes
-from pathlib import Path
+
+from ..exceptions import ExcelError
+from ..utils.data import col_to_num
+
+logger = logging.getLogger(__name__)
 
 
 class ExcelComHandler:
@@ -42,6 +49,10 @@ class ExcelComHandler:
             # 行全体が空かどうか確認
             if h.count_a("Sheet1", row=5) == 0:
                 print("5行目は空行")
+
+            # キー突合で転記（XLOOKUP 的転記）
+            matched = h.transfer_by_key("T_data", key_col="Q",
+                                        lookup=lookup, column_mapping={"A": "顧客名"})
 
             # マクロを実行
             h.run_macro("Module1.UpdateData")
@@ -162,6 +173,77 @@ class ExcelComHandler:
         """
         ws = self._wb.Sheets(sheet_name)
         return ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
+
+    def transfer_by_key(
+        self,
+        sheet_name: str,
+        key_col: int | str,
+        lookup: dict[str, dict],
+        column_mapping: dict[str, str],
+        start_row: int = 2,
+    ) -> int:
+        """キー列の値で lookup を引き、一致した行に値を転記する（XLOOKUP 的転記）。
+
+        Excel の各行についてキー列の値を lookup のキーと突合し、
+        一致したら column_mapping に従って値を書き込む。
+        空行・キーが空の行・lookup に存在しないキーの行はスキップする。
+
+        使い方:
+            lookup = {"A001": {"顧客名": "株式会社A", "金額": "1000"}, ...}
+            mapping = {"A": "顧客名", "B": "金額"}  # 列レター → lookup の列名
+
+            with ExcelComHandler("data.xlsx") as h:
+                matched = h.transfer_by_key("T_data", key_col="Q",
+                                            lookup=lookup, column_mapping=mapping)
+
+        Args:
+            sheet_name: シート名。
+            key_col: キー列。列レター（"Q"）または列番号（17）で指定する。
+            lookup: {キーの値: {列名: 値}} の辞書。CsvReader.index() 等で作る。
+            column_mapping: {列レター: lookup の列名} の辞書。
+            start_row: 転記を始める行番号（デフォルト: 2。1行目はヘッダー想定）。
+
+        Returns:
+            転記した行数。
+
+        Raises:
+            ExcelError: 行の処理に失敗した場合（メッセージに行番号を含む）。
+        """
+        key_col_num = col_to_num(key_col) if isinstance(key_col, str) else key_col
+        mapping = {col_to_num(letter): name for letter, name in column_mapping.items()}
+
+        ws = self._wb.Sheets(sheet_name)
+        last_row = self.used_last_row(sheet_name)
+        logger.info("シート「%s」: 最終行 %d行", sheet_name, last_row)
+
+        matched = 0
+        for row in range(start_row, last_row + 1):
+            try:
+                if self._excel.WorksheetFunction.CountA(ws.Rows(row)) == 0:
+                    continue
+
+                key_value = ws.Cells(row, key_col_num).Value
+                if not key_value or str(key_value).strip() == "":
+                    continue
+
+                lookup_row = lookup.get(str(key_value).strip())
+                if lookup_row is None:
+                    logger.debug("%d行目: キー「%s」が lookup に存在しません", row, key_value)
+                    continue
+
+                for col_num, name in mapping.items():
+                    ws.Cells(row, col_num).Value = lookup_row.get(name, "")
+                logger.debug("%d行目: 転記完了（キー: %s）", row, key_value)
+                matched += 1
+
+            except Exception as e:
+                raise ExcelError(
+                    f"Excel {row}行目の転記中にエラーが発生しました。"
+                    f"該当行を確認してください。（詳細: {e}）"
+                ) from e
+
+        logger.info("転記完了: %d件一致（シート: %s）", matched, sheet_name)
+        return matched
 
     def run_macro(self, macro_name: str) -> None:
         """VBA マクロを実行する。

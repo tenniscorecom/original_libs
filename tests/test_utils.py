@@ -82,10 +82,16 @@ class TestFileFinderToday:
 
         assert FileFinder(tmp_path).today() == target
 
-    def test_returns_none_when_not_found(self, tmp_path):
-        """今日の日付を含むファイルが存在しない場合は None を返す。"""
+    def test_raises_when_not_found(self, tmp_path):
+        """今日の日付を含むファイルが存在しない場合は FileNotFoundError になる。"""
         (tmp_path / "20200101_古いファイル.xlsx").touch()
-        assert FileFinder(tmp_path).today() is None
+
+        with pytest.raises(FileNotFoundError):
+            FileFinder(tmp_path).today()
+
+    def test_returns_none_when_not_required(self, tmp_path):
+        """required=False なら見つからなくても None を返す。"""
+        assert FileFinder(tmp_path).today(required=False) is None
 
     def test_yyyymm_format(self, tmp_path):
         """date_format="%Y%m" で年月のみのファイル名を検索できる。"""
@@ -131,9 +137,14 @@ class TestFileFinderLatest:
 
         assert FileFinder(tmp_path).latest() == new
 
-    def test_returns_none_when_empty(self, tmp_path):
-        """対象ファイルが存在しない場合は None を返す。"""
-        assert FileFinder(tmp_path).latest() is None
+    def test_raises_when_empty(self, tmp_path):
+        """対象ファイルが存在しない場合は FileNotFoundError になる。"""
+        with pytest.raises(FileNotFoundError):
+            FileFinder(tmp_path).latest()
+
+    def test_returns_none_when_not_required(self, tmp_path):
+        """required=False なら見つからなくても None を返す。"""
+        assert FileFinder(tmp_path).latest(required=False) is None
 
     def test_csv_pattern(self, tmp_path):
         """pattern="*.csv" で CSV のみ対象にできる。xlsx は無視される。"""

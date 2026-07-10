@@ -173,12 +173,18 @@ class FileNameBuilder:
 class FileFinder:
     """フォルダからファイルを探して取得する。
 
+    見つからない場合はデフォルトで FileNotFoundError を投げる
+    （業務スクリプトでは「ファイルがない＝処理を止める」がほとんどのため）。
+    「なければ None で続行したい」場合は required=False を指定する。
+
     使い方:
         path = FileFinder(r"\\\\nas\\share").today()          # 今日の日付を含むファイル
         path = FileFinder(r"\\\\nas\\share").latest("*.csv")  # 最新の CSV
 
+        # 見つからなくても処理を続けたい場合
+        path = FileFinder(r"\\\\nas\\share").today(required=False)
         if path is None:
-            raise FileNotFoundError("ファイルが見つかりません")
+            ...  # スキップ処理など
     """
 
     def __init__(self, folder: str | Path) -> None:
@@ -188,29 +194,52 @@ class FileFinder:
         """
         self._folder = Path(folder)
 
-    def today(self, pattern: str = "*.xlsx", date_format: str = "%Y%m%d") -> Path | None:
+    def today(
+        self,
+        pattern: str = "*.xlsx",
+        date_format: str = "%Y%m%d",
+        required: bool = True,
+    ) -> Path | None:
         """ファイル名に今日の日付を含むファイルを返す。
 
         該当ファイルが複数ある場合は更新日時が最も新しいものを返す。
-        見つからない場合は None を返す。
 
         Args:
             pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
             date_format: 日付フォーマット（デフォルト: "%Y%m%d"。年月で探すなら "%Y%m"）。
+            required: True（デフォルト）なら見つからないとき FileNotFoundError。
+                      False なら None を返す。
+
+        Raises:
+            FileNotFoundError: required=True で該当ファイルがない場合。
         """
         today = datetime.date.today().strftime(date_format)
         matched = [p for p in self._folder.glob(pattern) if today in p.name]
         if not matched:
+            if required:
+                raise FileNotFoundError(
+                    f"今日の日付（{today}）を含むファイルが見つかりません: "
+                    f"{self._folder}\\{pattern}"
+                )
             return None
         return max(matched, key=lambda p: p.stat().st_mtime)
 
-    def latest(self, pattern: str = "*.xlsx") -> Path | None:
-        """更新日時が最も新しいファイルを返す。見つからない場合は None を返す。
+    def latest(self, pattern: str = "*.xlsx", required: bool = True) -> Path | None:
+        """更新日時が最も新しいファイルを返す。
 
         Args:
             pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
+            required: True（デフォルト）なら見つからないとき FileNotFoundError。
+                      False なら None を返す。
+
+        Raises:
+            FileNotFoundError: required=True で該当ファイルがない場合。
         """
         files = list(self._folder.glob(pattern))
         if not files:
+            if required:
+                raise FileNotFoundError(
+                    f"ファイルが見つかりません: {self._folder}\\{pattern}"
+                )
             return None
         return max(files, key=lambda p: p.stat().st_mtime)

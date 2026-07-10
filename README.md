@@ -280,15 +280,18 @@ FileNameBuilder("売上レポート").suffix()               # → "売上レポ
 FileNameBuilder("ログ", ext=".csv").prefix()           # → "20260711_ログ.csv"
 FileNameBuilder("月次レポート").prefix(date_format="%Y%m") # → "202607_月次レポート.xlsx"
 
-# 今日の日付を含むファイルを取得
+# 今日の日付を含むファイルを取得（見つからなければ FileNotFoundError）
 path = FileFinder(FOLDER).today()                      # YYYYMMDD で探す
 path = FileFinder(FOLDER).today(date_format="%Y%m")    # YYYYMM で探す
-if path is None:
-    raise FileNotFoundError("今日のファイルが見つかりません")
 
-# フォルダ内で最も新しいファイルを取得
+# フォルダ内で最も新しいファイルを取得（見つからなければ FileNotFoundError）
 path = FileFinder(FOLDER).latest()
 path = FileFinder(FOLDER).latest(pattern="*.csv") # CSV に絞る場合
+
+# 見つからなくても処理を続けたい場合は required=False（None が返る）
+path = FileFinder(FOLDER).today(required=False)
+if path is None:
+    ...  # スキップ処理など
 ```
 
 ### ブラウザダウンロード用の一時フォルダ（DownloadDir）
@@ -437,6 +440,24 @@ with ExcelComHandler("data.xlsx") as h:
 
     h.run_macro(MACRO_NAME)
     h.save_as("output.xlsx", read_pw=READ_PW, write_pw=WRITE_PW)
+```
+
+**キー突合で転記する（XLOOKUP 的転記）:**
+
+キー列の値で lookup を引き、一致した行に列マッピングに従って値を書き込む。
+空行・キーが空の行・lookup にないキーの行は自動でスキップされる。
+
+```python
+lookup = CsvReader("data.csv").index("注文番号")
+# → {"A001": {"注文番号": "A001", "顧客名": "株式会社A", ...}, ...}
+
+MAPPING = {"A": "顧客名", "B": "金額"}  # Excel の列レター → lookup の列名
+
+with ExcelComHandler("data.xlsx") as h:
+    matched = h.transfer_by_key(SHEET, key_col="Q", lookup=lookup, column_mapping=MAPPING)
+    h.save_as("output.xlsx")
+
+print(f"{matched}件転記した")
 ```
 
 ### WindowHandler
