@@ -76,6 +76,40 @@ class BrowserOptions:
     WINDOW_SIZE:     str | None = None
     WINDOW_POSITION: str | None = None
 
+    # ============================================================== __repr__
+    def __repr__(self) -> str:
+        """print() でデフォルト値一覧を表示する。サブクラスではデフォルトからの差分も表示。"""
+        base = BrowserOptions()
+        lines = [f"{self.__class__.__name__}:"]
+
+        enabled, disabled = [], []
+        for attr, arg in self._BOOL_ARGS.items():
+            current = getattr(self, attr, False)
+            default = getattr(base, attr, False)
+            diff = " *" if current != default else ""
+            if current:
+                enabled.append(f"    {attr:<35} → {arg}{diff}")
+            else:
+                disabled.append(f"    {attr:<35}{diff}")
+
+        lines.append("  ── 有効 ──")
+        lines.extend(enabled or ["    (なし)"])
+        lines.append("  ── 無効 ──")
+        lines.extend(disabled or ["    (なし)"])
+
+        lines.append("  ── 値付き ──")
+        for attr, template in self._VALUE_ARGS.items():
+            value = getattr(self, attr, None)
+            default = getattr(base, attr, None)
+            diff = " *" if value != default else ""
+            display = template.format(value) if value else "None"
+            lines.append(f"    {attr:<35} = {display}{diff}")
+
+        if self.__class__ is not BrowserOptions:
+            lines.append("  (* = デフォルトから変更)")
+
+        return "\n".join(lines)
+
     # ================================================================ build
     def build(self) -> list[str]:
         """有効なオプションを Chrome 引数リストに変換する。"""
