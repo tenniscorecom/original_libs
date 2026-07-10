@@ -42,20 +42,18 @@ class Config:
         - int / float → プロジェクト側で変換する（例: int(config.BROWSER.WAIT_SECONDS)）
         - それ以外 → str のまま返す
 
-    config.ini の例:
-        [browser]
-        driver_path = C:\\Users\\Public\\Documents\\msedgedriver.exe
-        wait_seconds = 10
-        headless = false
+    config.ini の例（セクション名・キー名は大文字で書く）:
+        [BROWSER]
+        WAIT_SECONDS = 10
+        HEADLESS = false
 
-        [files]
-        input_folder = C:\\作業\\input
+        [FILES]
+        INPUT_FOLDER = C:\\作業\\input
 
     使い方:
         config = Config() # カレントディレクトリの config.ini を読む
         config = Config("path/to/config.ini") # パスを指定する場合
 
-        config.BROWSER.DRIVER_PATH # → "C:\\Users\\Public\\Documents\\msedgedriver.exe"
         config.BROWSER.HEADLESS # → False（bool に自動変換）
         config.BROWSER.WAIT_SECONDS # → "10"（str のまま）
         int(config.BROWSER.WAIT_SECONDS) # → 10（必要なら呼び出し側で変換）
@@ -81,8 +79,8 @@ class Config:
         config.ini でカンマ区切りや複数行の値を扱う場合に使う。
 
         config.ini の例:
-            [browser_options]
-            add = --disable-gpu, --disable-extensions
+            [BROWSER_OPTIONS]
+            ADD = --disable-gpu, --disable-extensions
 
         使い方:
             config.parse_list(config.BROWSER_OPTIONS.ADD)

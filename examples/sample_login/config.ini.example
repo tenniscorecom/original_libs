@@ -1,15 +1,8 @@
 ; =====================================================
 ; このファイルを config.ini にコピーして値を書き換えてください。
+; セクション名・キー名は大文字で書く（Python 側の config.SECTION.KEY と一致する）
+; 認証情報・個人情報はここに書かず python -m comken.credentials で登録する
 ; =====================================================
 
-[browser]
-driver_path  = C:\Users\Public\Documents\msedgedriver.exe
-wait_seconds = 10
-headless     = false
-
-[browser_options]
-; デフォルト（--no-sandbox, --disable-dev-shm-usage）に追加する引数（カンマ区切り）
-add    = --disable-gpu
-
-; デフォルトから除外する引数（カンマ区切り）
-remove =
+[REPORT]
+OUTPUT_FOLDER = C:\Users\Public\Downloads

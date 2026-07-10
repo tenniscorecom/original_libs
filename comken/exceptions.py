@@ -67,3 +67,27 @@ class ConfigError(OriginalLibsError):
 
     発生箇所: Config クラスで必須キーが存在しない場合など。
     """
+
+
+class CredentialError(OriginalLibsError):
+    """認証情報の保存・取得に関する例外の基底クラス。"""
+
+
+class CredentialNotFoundError(CredentialError):
+    """指定したサービス名の認証情報が登録されていない場合。
+
+    発生箇所: credentials.load_credential()
+
+    非エンジニアにも分かるよう、登録コマンド（python -m comken.credentials)
+    を案内するメッセージを含めている。
+    """
+
+
+class InvalidServiceNameError(CredentialError):
+    """サービス名に使えない文字が含まれている場合。
+
+    発生箇所: credentials.save_credential()
+
+    サービス名に使えるのは半角英数字とアンダースコアのみ。
+    漢字・スペース・記号を含む名前はコードや config.ini に書きにくいため弾く。
+    """

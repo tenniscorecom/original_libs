@@ -2,11 +2,15 @@
 
 業務自動化で使う Python 共通ライブラリ。
 
+- コーディング規約: [CONVENTIONS.md](CONVENTIONS.md)
+- エラーが出たときの対応: [ERRORS.md](ERRORS.md)（プロジェクトに配る雛形）
+
 ## モジュール一覧
 
 | モジュール | 概要 |
 |---|---|
 | [Config](#config) | INI ファイルの読み込み |
+| [認証情報（credentials）](#認証情報credentials) | パスワード等の暗号化保存（Windows DPAPI） |
 | [CSV](#csv) | CSV の読み込み・検索・抽出 |
 | [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | [Windows（pywin32）](#windows) | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
@@ -35,18 +39,19 @@ config = Config("path/to/config.ini") # パスを指定する場合
 ```
 
 ```ini
-; config.ini（プロジェクト固有の設定を書く）
-[salesforce]
-username = user@example.com
-security_token = xxxxxxxxxxxx
+; config.ini（プロジェクト固有の非機密設定を書く）
+; パスワード等の機密情報は書かない → 認証情報（credentials）を使う
+; セクション名・キー名は大文字で書く（固定値と分かる + Python 側と表記が一致する）
+[CREDENTIALS]
+SALESFORCE = salesforce
 
-[report]
-output_folder = \\nas-server\reports
-template_path = \\nas-server\templates\template.xlsx
+[REPORT]
+OUTPUT_FOLDER = \\nas-server\reports
+TEMPLATE_PATH = \\nas-server\templates\template.xlsx
 ```
 
 ```python
-config.SALESFORCE.USERNAME # → str
+config.CREDENTIALS.SALESFORCE # → str
 config.REPORT.OUTPUT_FOLDER # → str
 config.REPORT.TEMPLATE_PATH # → str
 ```
@@ -60,6 +65,82 @@ class AppConfig(Config):
         return self.parse_list(self.BROWSER_OPTIONS.ADD)
 
 config = AppConfig()
+```
+
+---
+
+## 認証情報（credentials）
+
+パスワード・トークン・ユーザー名などの機密情報・個人情報を Windows DPAPI で暗号化して保存する。
+config.ini には機密情報を書かず、このモジュールを使う。
+
+**仕組み:**
+
+- 保存先は `%USERPROFILE%\.comken\credentials.dat`（プロジェクト内には置かない）
+- Windows がログオン中のアカウントに紐付けて暗号化する。鍵の管理は不要
+- 同じ「ユーザー × PC」でないと復号できない。ファイルをコピーされても読まれない
+- 逆に言うと、**実行する PC ごとに登録が必要**（別の PC やサーバーで実行する場合はそこでも登録する）
+- 1ユーザーにつき1ファイルで、サービス名をキーに何件でも登録できる
+
+### 登録・削除（対話式ツール）
+
+非エンジニアでも使える。起動してメニューを選ぶだけ。
+
+```
+> python -m comken.credentials
+=== comken 認証情報の管理 ===
+
+登録済みのサービス: oju_sys, salesforce
+
+1: 登録（新規追加・上書き）
+2: 削除
+q: 終了
+選択: 1
+
+サービス名（例: salesforce）: salesforce
+salesforce は登録済みのため、上書きになります。
+ユーザー名: user@example.com
+パスワード（入力しても画面には表示されません）:
+トークン等（不要なら Enter）:
+保存しました: C:\Users\xxx\.comken\credentials.dat
+```
+
+- 一覧にない名前を入力すれば「追加」、同じ名前なら「上書き（＝変更）」になる
+- パスワードを変えたいときも同じ名前で登録し直せばよい
+
+### コードからの利用
+
+```python
+from comken.credentials import load_credential
+
+cred = load_credential("salesforce")
+cred.username # → "user@example.com"
+cred.password # → パスワード
+cred.token    # → トークン（未登録なら空文字）
+```
+
+未登録のサービス名を指定すると `CredentialNotFoundError` になる（登録コマンドを案内するメッセージ付き）。
+
+### サービス名の付け方
+
+| 状況 | 付け方 | 例 |
+|---|---|---|
+| サイト・システムごと | システム名をローマ字で | `salesforce`, `oju_sys` |
+| 同じサイトでアカウントを使い分ける | システム名 + 用途 | `salesforce_honban`, `salesforce_test` |
+
+サービス名に使えるのは**半角英数字とアンダースコアのみ**。
+それ以外（漢字・スペース・記号）は `InvalidServiceNameError` で弾かれる。
+
+どのサービス名を使うかはプロジェクトの config.ini の `[CREDENTIALS]` セクションに書く（キー名は機密ではない）:
+
+```ini
+[CREDENTIALS]
+SALESFORCE = salesforce
+OJU_SYS = oju_sys
+```
+
+```python
+cred = load_credential(config.CREDENTIALS.SALESFORCE)
 ```
 
 ---
@@ -407,12 +488,14 @@ python -m examples.sample_login.run
 ### SalesforceClient（simple-salesforce）
 
 ```python
+from comken.credentials import load_credential
 from comken.salesforce.simple_sf import SalesforceClient
 
+cred = load_credential("salesforce") # 事前に python -m comken.credentials で登録しておく
 sf = SalesforceClient(
-    username="user@example.com",
-    password="password",
-    security_token="セキュリティトークン",
+    username=cred.username,
+    password=cred.password,
+    security_token=cred.token,
     # domain="test" # Sandbox の場合
 )
 
@@ -485,6 +568,7 @@ rows = sf.run(REPORT_ID, filters=[
 ```mermaid
 graph LR
     comken --> config["Config\n設定ファイル"]
+    comken --> credentials["credentials\n認証情報の暗号化"]
     comken --> utils["utils\nファイル操作・比較"]
     comken --> excel["excel\nExcel"]
     comken --> csv["csv\nCSV"]
@@ -543,3 +627,4 @@ flowchart LR
 |---|---|
 | 2026-07-09 | 初版作成 |
 | 2026-07-10 | 全モジュールにドキュメント追加、README 整理 |
+| 2026-07-11 | credentials モジュール追加（認証情報の暗号化保存・管理ツール） |

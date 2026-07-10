@@ -2,8 +2,11 @@ from .config import Config
 from .exceptions import (
     ColumnNotFoundError,
     ConfigError,
+    CredentialError,
+    CredentialNotFoundError,
     CsvError,
     ExcelError,
+    InvalidServiceNameError,
     MacroError,
     OriginalLibsError,
     SheetNotFoundError,
@@ -18,4 +21,7 @@ __all__ = [
     "ColumnNotFoundError",
     "CsvError",
     "ConfigError",
+    "CredentialError",
+    "CredentialNotFoundError",
+    "InvalidServiceNameError",
 ]
