@@ -2,38 +2,28 @@ from selenium import webdriver
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.edge.service import Service
 
-from .options import DEFAULT_ARGS
+from .options import BrowserOptions
 
 
 class EdgeDriver:
     """Edge WebDriver のラッパー。with 文で確実に終了できる。
 
     Args:
-        driver_path:   msedgedriver.exe のパス
-        wait_seconds:  暗黙的待機（秒）
-        headless:      True でブラウザを非表示
-        add_args:      デフォルトに追加する起動引数
-        remove_args:   デフォルトから除外する起動引数
+        driver_path:      msedgedriver.exe のパス
+        wait_seconds:     暗黙的待機（秒）
+        browser_options:  BrowserOptions のインスタンス。省略時はデフォルト設定で起動。
     """
 
     def __init__(
         self,
         driver_path: str,
         wait_seconds: int = 10,
-        headless: bool = False,
-        add_args: list[str] | None = None,
-        remove_args: list[str] | None = None,
+        browser_options: BrowserOptions | None = None,
     ) -> None:
-        active = set(DEFAULT_ARGS)
-        if headless:
-            active.add("--headless=new")
-        if remove_args:
-            active -= set(remove_args)
-        if add_args:
-            active |= set(add_args)
+        opts_builder = browser_options or BrowserOptions()
 
         options = Options()
-        for arg in active:
+        for arg in opts_builder.build():
             options.add_argument(arg)
 
         service = Service(executable_path=driver_path)

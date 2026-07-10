@@ -7,6 +7,7 @@
 """
 
 from src.selenium.driver import EdgeDriver
+from examples.sample_login.browser_options import SampleBrowserOptions
 from examples.sample_login.config import config
 from examples.sample_login.pages.login_page import LoginPage
 from examples.sample_login.pages.secure_page import SecurePage
@@ -16,9 +17,7 @@ def main() -> None:
     with EdgeDriver(
         driver_path=config.BROWSER.DRIVER_PATH,
         wait_seconds=int(config.BROWSER.WAIT_SECONDS),
-        headless=config.BROWSER.HEADLESS,
-        add_args=config.add_args,
-        remove_args=config.remove_args,
+        browser_options=SampleBrowserOptions(),
     ) as d:
 
         login = LoginPage(d.driver)
