@@ -1,5 +1,6 @@
 from .store import (
     CREDENTIALS_PATH,
+    Credentials,
     delete_credential,
     list_names,
     load_credential,
@@ -8,6 +9,7 @@ from .store import (
 
 __all__ = [
     "CREDENTIALS_PATH",
+    "Credentials",
     "load_credential",
     "save_credential",
     "delete_credential",

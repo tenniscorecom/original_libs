@@ -257,16 +257,17 @@ SF_PREFIX: str = _cfg.get("CREDENTIALS", "SALESFORCE")
 ```
 
 認証情報は config.ini ではなく `comken.credentials` から取得する。
-キー名1つに値1つの形式なので、必要な項目だけ登録すればよい。
+キー名の直書き（マジックナンバー化）を避けるため、`Credentials` にプレフィックスを渡して属性で取り出す。
 
 ```python
-from comken.credentials import load_credential
+from comken.credentials import Credentials
 
 # 事前に python -m comken.credentials で登録しておく
+cred = Credentials(SF_PREFIX)  # プレフィックスは config.ini から
 sf = SalesforceClient(
-    username=load_credential(f"{SF_PREFIX}_username"),
-    password=load_credential(f"{SF_PREFIX}_password"),
-    security_token=load_credential(f"{SF_PREFIX}_token"),
+    username=cred.username,     # → salesforce_username の値
+    password=cred.password,     # → salesforce_password の値
+    security_token=cred.token,  # → salesforce_token の値
 )
 ```
 
@@ -294,8 +295,8 @@ credentials.dat（1ユーザーにつき1ファイル、中身はキーと値の
 > それ以外（漢字・スペース・記号）はライブラリ側で弾かれる（`InvalidCredentialNameError`）。
 
 **どのシステム名（プレフィックス）を使うかは config.ini の `[CREDENTIALS]` セクションに書く。**
-アカウントを切り替えたいときはコードを触らず config.ini の1行を変えるだけで済む
-（例: `SALESFORCE = salesforce_test` にすると `salesforce_test_password` が使われる）。
+`SALESFORCE = salesforce_test` に変えるだけで、`Credentials` 経由の username / password / token が
+すべてテスト用に切り替わる。コードは1文字も触らない。
 
 ---
 

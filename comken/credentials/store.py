@@ -19,10 +19,15 @@ Windows ログオンユーザーに紐付けて暗号化し、ユーザープロ
     python -m comken.credentials
 
 使い方（コード側）:
-    from comken.credentials import load_credential
+    from comken.credentials import Credentials
 
-    username = load_credential("salesforce_username")
-    password = load_credential("salesforce_password")
+    sf = Credentials("salesforce")
+    sf.username   # → salesforce_username の値
+    sf.password   # → salesforce_password の値
+
+    # 1件だけ取り出す場合
+    from comken.credentials import load_credential
+    password = load_credential("oju_sys_password")
 """
 
 from __future__ import annotations
@@ -43,6 +48,48 @@ CREDENTIAL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 
 # 復号失敗時に DPAPI が返す説明文字列（デバッグ用。動作には影響しない）
 _FILE_DESCRIPTION = "comken credentials"
+
+
+class Credentials:
+    """プレフィックス配下の認証情報に属性アクセスでまとめてアクセスする。
+
+    キー名「システム名_項目名」のシステム名部分だけを指定し、項目名は属性で取り出す。
+    プレフィックスを config.ini から渡せば、本番用・テスト用アカウントの切り替えが
+    config.ini の1行だけで済む（コード側にキー名の直書きが残らない）。
+
+    使い方:
+        sf = Credentials("salesforce")
+        sf.username   # → load_credential("salesforce_username") と同じ
+        sf.password   # → load_credential("salesforce_password") と同じ
+
+        # config.ini で本番・テストを切り替える場合
+        # [CREDENTIALS]
+        # SALESFORCE = salesforce      ← salesforce_test にすると全項目が切り替わる
+        sf = Credentials(config.CREDENTIALS.SALESFORCE)
+
+    Raises:
+        InvalidCredentialNameError: プレフィックスに使えない文字が含まれている場合。
+        CredentialNotFoundError: 属性に対応するキーが未登録の場合。
+    """
+
+    def __init__(self, prefix: str, path: Path | None = None) -> None:
+        """
+        Args:
+            prefix: キー名のシステム名部分（例: "salesforce", "salesforce_test"）。
+            path: 保存先ファイル。省略時は CREDENTIALS_PATH（通常は省略する）。
+        """
+        if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
+            raise InvalidCredentialNameError(
+                f"プレフィックスに使えるのは半角英数字とアンダースコアだけです: {prefix}"
+            )
+        self._prefix = prefix
+        self._path = path
+
+    def __getattr__(self, item: str) -> str:
+        # _ 始まりは Python 内部の属性探索（copy 等）なので通常の AttributeError にする
+        if item.startswith("_"):
+            raise AttributeError(item)
+        return load_credential(f"{self._prefix}_{item}", self._path)
 
 
 def save_credential(name: str, value: str, path: Path | None = None) -> None:

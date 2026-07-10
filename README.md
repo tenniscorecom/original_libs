@@ -112,11 +112,22 @@ q: 終了
 
 ### コードからの利用
 
+まとめて使う場合は `Credentials` にプレフィックスを渡して属性で取り出す（キー名の直書きを避けられる）。
+
+```python
+from comken.credentials import Credentials
+
+sf = Credentials("salesforce")
+sf.username # → salesforce_username の値
+sf.password # → salesforce_password の値
+```
+
+1件だけなら `load_credential` を使う。
+
 ```python
 from comken.credentials import load_credential
 
-username = load_credential("salesforce_username") # → "user@example.com"
-password = load_credential("salesforce_password")
+password = load_credential("oju_sys_password")
 ```
 
 未登録のキー名を指定すると `CredentialNotFoundError` になる（登録コマンドを案内するメッセージ付き）。
@@ -139,9 +150,9 @@ SALESFORCE = salesforce
 ```
 
 ```python
-prefix = config.CREDENTIALS.SALESFORCE
-password = load_credential(f"{prefix}_password")
-# SALESFORCE = salesforce_test に変えるだけでテスト用アカウントに切り替わる
+sf = Credentials(config.CREDENTIALS.SALESFORCE)
+sf.username, sf.password, sf.token
+# SALESFORCE = salesforce_test に変えるだけで全項目がテスト用に切り替わる
 ```
 
 ---
@@ -489,14 +500,15 @@ python -m examples.sample_login.run
 ### SalesforceClient（simple-salesforce）
 
 ```python
-from comken.credentials import load_credential
+from comken.credentials import Credentials
 from comken.salesforce.simple_sf import SalesforceClient
 
 # 事前に python -m comken.credentials で登録しておく
+cred = Credentials("salesforce") # 本番・テストの切り替えは config.ini のプレフィックスで
 sf = SalesforceClient(
-    username=load_credential("salesforce_username"),
-    password=load_credential("salesforce_password"),
-    security_token=load_credential("salesforce_token"),
+    username=cred.username,
+    password=cred.password,
+    security_token=cred.token,
     # domain="test" # Sandbox の場合
 )
 
