@@ -2,20 +2,20 @@
 utils/file.py — ファイル操作ユーティリティ
 
 使い方:
-    from comken.utils import local_copy, dated_filename, find_today_file, find_latest_file
+    from comken.utils import FileFinder, FileNameBuilder, local_copy
 
     # NAS ファイルのローカルコピー
     with local_copy(r"\\\\nas-server\\share\\data.xlsx") as path:
         with ExcelFile(path) as f:
             rows = f.read_rows_as_dicts("Sheet1")
 
-    # 日付ファイル名
-    dated_filename("売上レポート")            # → "20260710_売上レポート.xlsx"
-    dated_filename("売上レポート", pre=False) # → "売上レポート_20260710.xlsx"
+    # 日付付きファイル名の組み立て
+    FileNameBuilder("売上レポート").prefix()   # → "20260711_売上レポート.xlsx"
+    FileNameBuilder("売上レポート").suffix()   # → "売上レポート_20260711.xlsx"
 
-    # 今日・最新のファイルを取得
-    find_today_file(r"\\\\nas\\share")           # → Path("20260710_売上レポート.xlsx")
-    find_latest_file(r"\\\\nas\\share")          # → 最も新しい .xlsx ファイル
+    # フォルダからファイルを取得
+    FileFinder(r"\\\\nas\\share").today()      # → 今日の日付を含むファイル
+    FileFinder(r"\\\\nas\\share").latest()     # → 最も新しい .xlsx ファイル
 """
 
 import datetime
@@ -124,85 +124,87 @@ def wait_for_download(download_dir: str | Path, timeout: int = 30) -> list[Path]
     raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {download_dir}")
 
 
-def dated_filename(
-    name: str,
-    suffix: str = ".xlsx",
-    pre: bool = True,
-    date_format: str = "%Y%m%d",
-) -> str:
-    """今日の日付を付けたファイル名を返す。
+class FileNameBuilder:
+    """今日の日付を付けたファイル名を組み立てる。
+
+    日付はファイル名の属性ではなく「付け方」なので、コンストラクタではなく
+    prefix() / suffix() の呼び出し時に決める。
 
     使い方:
-        dated_filename("売上レポート")                        # → "20260710_売上レポート.xlsx"
-        dated_filename("売上レポート", pre=False)             # → "売上レポート_20260710.xlsx"
-        dated_filename("月次レポート", date_format="%Y%m")    # → "202607_月次レポート.xlsx"
-        dated_filename("ログ", suffix=".csv")                 # → "20260710_ログ.csv"
-
-    Args:
-        name: ファイル名（拡張子なし）。
-        suffix: 拡張子（デフォルト: ".xlsx"）。
-        pre: True でプレフィックス、False でサフィックス。
-        date_format: 日付フォーマット（デフォルト: "%Y%m%d"）。
-
-    Returns:
-        日付付きのファイル名文字列。
+        FileNameBuilder("売上レポート").plain()                 # → "売上レポート.xlsx"
+        FileNameBuilder("売上レポート").prefix()                # → "20260711_売上レポート.xlsx"
+        FileNameBuilder("売上レポート").suffix()                # → "売上レポート_20260711.xlsx"
+        FileNameBuilder("ログ", ext=".csv").prefix()            # → "20260711_ログ.csv"
+        FileNameBuilder("月次").prefix(date_format="%Y%m")      # → "202607_月次.xlsx"
     """
-    date = datetime.date.today().strftime(date_format)
-    return f"{date}_{name}{suffix}" if pre else f"{name}_{date}{suffix}"
+
+    def __init__(self, name: str, ext: str = ".xlsx") -> None:
+        """
+        Args:
+            name: ファイル名（拡張子なし）。
+            ext: 拡張子（デフォルト: ".xlsx"）。
+        """
+        self._name = name
+        self._ext = ext
+
+    def plain(self) -> str:
+        """日付なしのファイル名を返す。"""
+        return f"{self._name}{self._ext}"
+
+    def prefix(self, date_format: str = "%Y%m%d") -> str:
+        """今日の日付を前に付けたファイル名を返す（例: 20260711_売上レポート.xlsx）。"""
+        return f"{self._today(date_format)}_{self._name}{self._ext}"
+
+    def suffix(self, date_format: str = "%Y%m%d") -> str:
+        """今日の日付を後ろに付けたファイル名を返す（例: 売上レポート_20260711.xlsx）。"""
+        return f"{self._name}_{self._today(date_format)}{self._ext}"
+
+    @staticmethod
+    def _today(date_format: str) -> str:
+        return datetime.date.today().strftime(date_format)
 
 
-def find_today_file(
-    folder: str | Path,
-    pattern: str = "*.xlsx",
-    date_format: str = "%Y%m%d",
-) -> Path | None:
-    """フォルダ内から今日の日付を含むファイルを返す。
-
-    該当ファイルが複数ある場合は更新日時が最も新しいものを返す。
-    見つからない場合は None を返す。
-
-    使い方:
-        path = find_today_file(r"\\\\nas\\share")
-        path = find_today_file(r"\\\\nas\\share", date_format="%Y%m") # 年月で探す
-
-        if path is None:
-            raise FileNotFoundError("今日のファイルが見つかりません")
-
-    Args:
-        folder: 検索するフォルダのパス。
-        pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
-        date_format: 日付フォーマット（デフォルト: "%Y%m%d"）。
-
-    Returns:
-        見つかったファイルの Path。見つからない場合は None。
-    """
-    today = datetime.date.today().strftime(date_format)
-    matched = [p for p in Path(folder).glob(pattern) if today in p.name]
-    if not matched:
-        return None
-    return max(matched, key=lambda p: p.stat().st_mtime)
-
-
-def find_latest_file(folder: str | Path, pattern: str = "*.xlsx") -> Path | None:
-    """フォルダ内から更新日時が最も新しいファイルを返す。
-
-    見つからない場合は None を返す。
+class FileFinder:
+    """フォルダからファイルを探して取得する。
 
     使い方:
-        path = find_latest_file(r"\\\\nas\\share")
+        path = FileFinder(r"\\\\nas\\share").today()          # 今日の日付を含むファイル
+        path = FileFinder(r"\\\\nas\\share").latest("*.csv")  # 最新の CSV
+
         if path is None:
             raise FileNotFoundError("ファイルが見つかりません")
-        with ExcelFile(path) as f:
-            rows = f.read_rows_as_dicts("Sheet1")
-
-    Args:
-        folder: 検索するフォルダのパス。
-        pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
-
-    Returns:
-        最も新しいファイルの Path。見つからない場合は None。
     """
-    files = list(Path(folder).glob(pattern))
-    if not files:
-        return None
-    return max(files, key=lambda p: p.stat().st_mtime)
+
+    def __init__(self, folder: str | Path) -> None:
+        """
+        Args:
+            folder: 検索するフォルダのパス。
+        """
+        self._folder = Path(folder)
+
+    def today(self, pattern: str = "*.xlsx", date_format: str = "%Y%m%d") -> Path | None:
+        """ファイル名に今日の日付を含むファイルを返す。
+
+        該当ファイルが複数ある場合は更新日時が最も新しいものを返す。
+        見つからない場合は None を返す。
+
+        Args:
+            pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
+            date_format: 日付フォーマット（デフォルト: "%Y%m%d"。年月で探すなら "%Y%m"）。
+        """
+        today = datetime.date.today().strftime(date_format)
+        matched = [p for p in self._folder.glob(pattern) if today in p.name]
+        if not matched:
+            return None
+        return max(matched, key=lambda p: p.stat().st_mtime)
+
+    def latest(self, pattern: str = "*.xlsx") -> Path | None:
+        """更新日時が最も新しいファイルを返す。見つからない場合は None を返す。
+
+        Args:
+            pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
+        """
+        files = list(self._folder.glob(pattern))
+        if not files:
+            return None
+        return max(files, key=lambda p: p.stat().st_mtime)

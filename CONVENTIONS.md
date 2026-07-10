@@ -46,7 +46,7 @@ Python の作法（PEP 8）に従う。
 |---|---|---|
 | クラス名 | PascalCase | `ExcelFile`, `LoginPage`, `CsvMerger` |
 | 定数・固定値 | UPPER_SNAKE_CASE | `COL_Q`, `SHEET_NAME`, `WAIT_SECONDS` |
-| 関数・メソッド | snake_case | `read_rows()`, `find_today_file()` |
+| 関数・メソッド | snake_case | `read_rows()`, `wait_for_download()` |
 | 変数 | snake_case | `csv_lookup`, `matched_rows` |
 | モジュール・ファイル名 | snake_case | `handler.py`, `base_page.py` |
 | フォルダ名 | snake_case | `excel/`, `browser/` |
@@ -59,7 +59,7 @@ Python の作法（PEP 8）に従う。
 
 | ルール | 良い例 | 悪い例 |
 |---|---|---|
-| 役割が分かる名前にする | `find_today_file` | `get_file`, `f` |
+| 役割が分かる名前にする | `wait_for_download` | `wait`, `w` |
 | 略しすぎない | `sheet_name` | `sn`, `s` |
 | bool は is / has / can で始める | `is_empty`, `has_header` | `empty`, `header` |
 | 返り値が複数なら複数形 | `rows`, `records` | `row`, `record` |
@@ -160,11 +160,11 @@ class ExcelFile:
 
 ```python
 # 悪い（型が分からない）
-def find_today_file(folder, pattern="*.xlsx"):
+def find_latest(folder, pattern="*.xlsx"):
     ...
 
 # 良い
-def find_today_file(folder: str | Path, pattern: str = "*.xlsx") -> Path | None:
+def find_latest(folder: str | Path, pattern: str = "*.xlsx") -> Path | None:
     ...
 ```
 
