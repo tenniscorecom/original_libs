@@ -2,11 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.edge.service import Service
 
-# デフォルトで常に付与する引数
-_DEFAULT_ARGS = [
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-]
+from .options import DEFAULT_ARGS
 
 
 class EdgeDriver:
@@ -28,7 +24,7 @@ class EdgeDriver:
         add_args: list[str] | None = None,
         remove_args: list[str] | None = None,
     ) -> None:
-        active = set(_DEFAULT_ARGS)
+        active = set(DEFAULT_ARGS)
         if headless:
             active.add("--headless=new")
         if remove_args:
