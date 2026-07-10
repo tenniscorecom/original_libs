@@ -7,12 +7,10 @@
 """
 
 from comken.browser.driver import EdgeDriver
-from examples.sample_login.browser_options import SampleBrowserOptions
-from examples.sample_login.config import config
-from examples.sample_login.pages.login_page import LoginPage
-from examples.sample_login.pages.secure_page import SecurePage
 
-# サンプルサイトの認証情報（https://the-internet.herokuapp.com/login）
+from examples.sample_login.browser_options import SampleBrowserOptions
+from examples.sample_login.pages.login_page import LoginPage
+
 USERNAME = "tomsmith"
 PASSWORD = "SuperSecretPassword!"
 
@@ -20,15 +18,17 @@ PASSWORD = "SuperSecretPassword!"
 def main() -> None:
     with EdgeDriver(browser_options=SampleBrowserOptions()) as d:
 
+        # LoginPage を作って開く
         login = LoginPage(d.driver)
         login.open()
-        login.login(username=USERNAME, password=PASSWORD)
 
-        secure = SecurePage(d.driver)
+        # login() は SecurePage を返す → そのまま次の画面の操作が書ける
+        secure = login.login(username=USERNAME, password=PASSWORD)
         print("画面見出し:", secure.get_heading())
         print("メッセージ:", secure.get_flash_message())
 
-        secure.logout()
+        # logout() は LoginPage を返す
+        login = secure.logout()
         print("ログアウト完了")
 
 

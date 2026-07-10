@@ -1,0 +1,53 @@
+"""
+app_page.py — このサンプルサイト共通の SitePage
+
+【使い方ガイド】
+---------------------------------------------------------------------------
+プロジェクトでは必ずこのような「サイト共通ベースクラス」を1つ作る。
+  - BASE_URL: サイトのルート URL を書く
+  - サイト全体で共通の操作（ヘッダーメニュー、ログアウト等）をここに書く
+  - 各画面クラス（LoginPage, DashboardPage 等）はこのクラスを継承する
+
+継承の構造（コピーして使う）:
+    BasePage   ← comken が提供（click / input / select / alert 等の操作）
+      └── SitePage   ← comken が提供（BASE_URL / go() を追加）
+            └── AppPage   ← このファイル（サイト共通処理を追加）
+                  └── LoginPage / SecurePage / ...   ← 各画面
+---------------------------------------------------------------------------
+
+【画面遷移の書き方】
+---------------------------------------------------------------------------
+「次の画面に移動するメソッド」は、遷移先のページクラスを返すことで
+  どの画面に移ったかをコードで追えるようにする:
+
+    class LoginPage(AppPage):
+        def login(self, username, password) -> "SecurePage":   # 戻り値の型を書く
+            self.input_id("username", username)
+            self.input_id("password", password)
+            self.click_id("login-btn")
+            return SecurePage(self._driver)   # 遷移先クラスのインスタンスを返す
+
+    # 呼び出し側
+    login_page = LoginPage(d.driver)
+    secure_page = login_page.login("user", "pass")   # SecurePage が返ってくる
+    print(secure_page.get_heading())                 # そのまま次の画面の操作が書ける
+---------------------------------------------------------------------------
+"""
+
+from comken.browser.site_page import SitePage
+
+
+class AppPage(SitePage):
+    """このサンプルサイト（the-internet.herokuapp.com）共通の基底クラス。
+
+    全画面クラスはこのクラスを継承する。
+    サイト固有の共通処理（ヘッダー操作・共通エラーメッセージ取得等）をここに書く。
+    """
+
+    BASE_URL = "https://the-internet.herokuapp.com"
+
+    def get_flash_message(self) -> str:
+        """ページ上部に表示されるフラッシュメッセージを取得する。
+        ログイン成功・失敗の通知など、サイト全体で共通の要素。
+        """
+        return self.text_css("#flash")

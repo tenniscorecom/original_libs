@@ -25,6 +25,28 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+def make_download_dir(prefix: str = "comken_dl_") -> Path:
+    """ブラウザダウンロード用の一時フォルダを作成して返す。
+
+    EdgeDriver の download_dir 引数に渡して使う。
+    フォルダの削除は呼び出し側で行う（残したい場合は削除しなくてよい）:
+
+        dl_dir = make_download_dir()
+        with EdgeDriver(download_dir=dl_dir) as d:
+            ...  # ダウンロード操作
+        files = list(dl_dir.glob("*.xlsx"))
+        shutil.move(files[0], "output/")
+        shutil.rmtree(dl_dir)  # 不要なら削除
+
+    Args:
+        prefix: フォルダ名のプレフィックス。
+
+    Returns:
+        作成した一時フォルダのパス。
+    """
+    return Path(tempfile.mkdtemp(prefix=prefix))
+
+
 @contextmanager
 def local_copy(path: str | Path):
     """ネットワーク上のファイルをローカルにコピーし、処理後に自動削除する。
