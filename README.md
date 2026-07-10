@@ -403,11 +403,33 @@ class LoginPage(BasePage):
         self.click_id(self.LOGIN_BTN_ID)
 ```
 
+**セレクター別メソッド一覧:**
+
 | 操作 | ID | name属性 | CSSセレクター | XPath |
 |---|---|---|---|---|
 | クリック | `click_id` | `click_name` | `click_css` | `click_xpath` |
 | テキスト入力 | `input_id` | `input_name` | `input_css` | `input_xpath` |
 | テキスト取得 | `text_id` | `text_name` | `text_css` | `text_xpath` |
+| プルダウン（テキスト） | `select_text_id` | `select_text_name` | `select_text_css` | `select_text_xpath` |
+| プルダウン（value） | `select_value_id` | `select_value_name` | `select_value_css` | `select_value_xpath` |
+| プルダウン（番号） | `select_index_id` | `select_index_name` | `select_index_css` | `select_index_xpath` |
+| 要素が出るまで待つ | `wait_visible_id` | — | `wait_visible_css` | `wait_visible_xpath` |
+| 要素が消えるまで待つ | — | — | `wait_invisible_css` | `wait_invisible_xpath` |
+| 要素の存在チェック | `has_id` | — | `has_css` | `has_xpath` |
+| スクロール（要素まで） | `scroll_to_id` | — | `scroll_to_css` | — |
+
+**セレクター不要のメソッド:**
+
+| メソッド | 用途 |
+|---|---|
+| `select_radio_name(name, value)` | ラジオボタンを name + value で選択 |
+| `alert_accept()` | アラートを OK する |
+| `alert_dismiss()` | アラートをキャンセルする |
+| `alert_text()` | アラートのテキストを取得 |
+| `scroll_bottom()` | ページ最下部へスクロール |
+| `drag_drop_css(source, target)` | ドラッグ＆ドロップ |
+| `js(script, *args)` | JavaScript を実行 |
+| `save_screenshot(prefix)` | スクリーンショットを保存 |
 
 セレクターの値は Edge の開発者ツール（F12）で確認する。
 
