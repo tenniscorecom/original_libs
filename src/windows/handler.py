@@ -8,11 +8,12 @@ import pywintypes
 class ExcelComHandler:
     """win32com を使った Excel 操作クラス。数式の計算結果を読む場合に使用する。"""
 
-    def __init__(self, path: str, password: str = "") -> None:
+    def __init__(self, path: str | Path, password: str = "") -> None:
+        from pathlib import Path as _Path
         self._excel = win32com.client.Dispatch("Excel.Application")
         self._excel.Visible = False
         self._excel.DisplayAlerts = False
-        kwargs = {"Filename": path}
+        kwargs = {"Filename": str(_Path(path).resolve())}
         if password:
             kwargs["Password"] = password
         self._wb = self._excel.Workbooks.Open(**kwargs)

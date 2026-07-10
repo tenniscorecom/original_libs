@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 
 
 class CsvReader:
@@ -6,6 +7,7 @@ class CsvReader:
 
     Usage:
         reader = CsvReader("data.csv")
+        reader = CsvReader(Path("data.csv"))
 
         reader.rows()                          # 全行
         reader.rows(columns=["名前", "金額"]) # 特定列のみ
@@ -15,8 +17,8 @@ class CsvReader:
         reader.index("注文番号")               # キー列でインデックス化
     """
 
-    def __init__(self, path: str, encoding: str = "utf-8-sig") -> None:
-        self._path = path
+    def __init__(self, path: str | Path, encoding: str = "utf-8-sig") -> None:
+        self._path = Path(path)
         self._encoding = encoding
 
     def _load(self) -> list[dict[str, str]]:

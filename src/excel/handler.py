@@ -13,9 +13,9 @@ class ExcelFile:
     マクロを実行する場合は run_macro() を使う（常に win32com を使用）。
     """
 
-    def __init__(self, path: str, data_only: bool = False, read_only: bool = False) -> None:
-        self._path = path
-        self._wb: Workbook = load_workbook(path, data_only=data_only, read_only=read_only)
+    def __init__(self, path: str | Path, data_only: bool = False, read_only: bool = False) -> None:
+        self._path = Path(path)
+        self._wb: Workbook = load_workbook(self._path, data_only=data_only, read_only=read_only)
 
     def __enter__(self) -> "ExcelFile":
         return self
@@ -60,7 +60,6 @@ class ExcelFile:
         except Exception:
             pass
 
-        # win32com にフォールバック
         from ..windows.handler import ExcelComHandler
         with ExcelComHandler(self._path) as com:
             return com.read_rows(sheet_name, min_row)
@@ -68,9 +67,9 @@ class ExcelFile:
     def write_cell(self, sheet_name: str, row: int, col: int, value) -> None:
         self.sheet(sheet_name).cell(row=row, column=col).value = value
 
-    def save(self, path: str | None = None) -> None:
-        save_path = path or self._path
-        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    def save(self, path: str | Path | None = None) -> None:
+        save_path = Path(path) if path else self._path
+        save_path.parent.mkdir(parents=True, exist_ok=True)
         self._wb.save(save_path)
 
     def run_macro(self, macro_name: str) -> None:
