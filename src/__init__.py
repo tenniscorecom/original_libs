@@ -8,3 +8,14 @@ from .exceptions import (
     OriginalLibsError,
     SheetNotFoundError,
 )
+
+__all__ = [
+    "Config",
+    "OriginalLibsError",
+    "ExcelError",
+    "SheetNotFoundError",
+    "MacroError",
+    "ColumnNotFoundError",
+    "CsvError",
+    "ConfigError",
+]

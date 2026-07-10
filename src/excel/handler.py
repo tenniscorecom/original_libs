@@ -100,7 +100,7 @@ class ExcelFile:
     def __exit__(self, *args) -> None:
         self.close()
 
-    def sheet(self, name: str) -> Worksheet:
+    def _sheet(self, name: str) -> Worksheet:
         """シートオブジェクトを返す。
 
         Args:
@@ -123,7 +123,7 @@ class ExcelFile:
         Returns:
             各行を値のタプルにしたリスト。
         """
-        return list(self.sheet(sheet_name).iter_rows(min_row=min_row, values_only=True))
+        return list(self._sheet(sheet_name).iter_rows(min_row=min_row, values_only=True))
 
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
         """ヘッダー行をキーとした辞書のリストで返す。
@@ -135,7 +135,7 @@ class ExcelFile:
         Returns:
             [{"列名": 値, ...}, ...] の形式のリスト。
         """
-        ws = self.sheet(sheet_name)
+        ws = self._sheet(sheet_name)
         all_rows = list(ws.iter_rows(min_row=header_row, values_only=True))
         if not all_rows:
             return []
@@ -205,7 +205,7 @@ class ExcelFile:
             col: 列番号（1始まり。A列=1、B列=2、…）。
             value: 書き込む値。
         """
-        self.sheet(sheet_name).cell(row=row, column=col).value = value
+        self._sheet(sheet_name).cell(row=row, column=col).value = value
 
     def save(self, path: str | Path | None = None) -> None:
         """ファイルを保存する。
@@ -238,7 +238,7 @@ class ExcelFile:
             color: 16進数カラーコード（"RRGGBB" 形式、# なし）。
         """
         fill = PatternFill(fill_type="solid", fgColor=color)
-        self.sheet(sheet_name).cell(row=row, column=col).fill = fill
+        self._sheet(sheet_name).cell(row=row, column=col).fill = fill
 
     def run_macro(self, macro_name: str) -> None:
         """VBA マクロを実行する。内部で win32com（pywin32）を使用する。

@@ -71,7 +71,7 @@ class ExcelComHandler:
     def __exit__(self, *args) -> None:
         self.close()
 
-    def sheet(self, name: str):
+    def _sheet(self, name: str):
         """シートオブジェクトを返す。"""
         return self._wb.Sheets(name)
 
