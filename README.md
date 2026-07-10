@@ -10,6 +10,7 @@
 | モジュール | 概要 |
 |---|---|
 | [Config](#config) | INI ファイルの読み込み |
+| [Logger](#logger) | ロガーの初期化（日別ファイル + コンソール） |
 | [認証情報（credentials）](#認証情報credentials) | パスワード等の暗号化保存（Windows DPAPI） |
 | [CSV](#csv) | CSV の読み込み・検索・抽出 |
 | [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
@@ -65,6 +66,32 @@ class AppConfig(Config):
         return self.parse_list(self.BROWSER_OPTIONS.ADD)
 
 config = AppConfig()
+```
+
+---
+
+## Logger
+
+main.py で1回だけ呼ぶ。以降サブモジュールは `logging.getLogger(__name__)` でそのまま出力される。
+
+- `logs/main_YYYYMMDD.log` に DEBUG 以上を出力（日別ファイル）
+- コンソールには INFO 以上を出力
+- 2回呼んでもハンドラは重複しない
+
+```python
+# main.py
+from comken import setup_logger
+
+logger = setup_logger("main")
+logger.info("処理開始")
+```
+
+```python
+# src/ 以下のモジュール
+import logging
+
+logger = logging.getLogger(__name__)
+logger.info("CSV読み込み完了: %d件", len(rows))
 ```
 
 ---
