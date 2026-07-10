@@ -26,10 +26,13 @@ utils/file.py — ファイル操作ユーティリティ
 """
 
 import datetime
+import logging
 import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class DownloadDir:
@@ -64,8 +67,10 @@ class DownloadDir:
         if path:
             self.path = Path(path)
             self.path.mkdir(parents=True, exist_ok=True)
+            self._is_temp = False
         else:
             self.path = Path(tempfile.mkdtemp(prefix=prefix))
+            self._is_temp = True
         # 既存フォルダを指定した場合、前回のファイルを wait() の完了対象にしないための記録
         self._initial_files = {p.name for p in self.path.iterdir() if p.is_file()}
 
@@ -108,11 +113,22 @@ class DownloadDir:
 
         raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {self.path}")
 
-    def remove(self) -> None:
+    def remove(self, force: bool = False) -> None:
         """フォルダごと削除する。ファイルを残したい場合は呼ばなくてよい。
 
-        既存フォルダを path で指定した場合も、そのフォルダごと削除されるので注意。
+        誤削除防止のため、path で指定した固定フォルダは削除せず警告を出す
+        （自動作成した一時フォルダだけを削除する）。
+        固定フォルダも本当に削除したい場合は force=True を指定する。
+
+        Args:
+            force: True にすると path 指定した固定フォルダも削除する。
         """
+        if not self._is_temp and not force:
+            logger.warning(
+                "path 指定されたフォルダのため削除しません（削除するには remove(force=True)）: %s",
+                self.path,
+            )
+            return
         shutil.rmtree(self.path, ignore_errors=True)
 
 

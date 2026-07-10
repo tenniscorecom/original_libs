@@ -236,3 +236,22 @@ class TestDownloadDir:
 
         with pytest.raises(TimeoutError):
             dl.wait(timeout=1)
+
+    def test_remove_skips_specified_path_with_warning(self, tmp_path, caplog):
+        """path 指定した固定フォルダは remove() で削除されず、警告が出ることを確認する。"""
+        target = tmp_path / "downloads"
+        dl = DownloadDir(path=target)
+
+        dl.remove()
+
+        assert target.exists()
+        assert "削除しません" in caplog.text
+
+    def test_remove_force_deletes_specified_path(self, tmp_path):
+        """force=True なら path 指定した固定フォルダも削除されることを確認する。"""
+        target = tmp_path / "downloads"
+        dl = DownloadDir(path=target)
+
+        dl.remove(force=True)
+
+        assert not target.exists()
