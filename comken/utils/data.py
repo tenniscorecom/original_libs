@@ -1,17 +1,36 @@
 """
-utils/data.py — データ比較ユーティリティ
+utils/data.py — データ変換・比較ユーティリティ
 
 使い方:
-    from comken.utils import diff_rows
+    from comken.utils import col_to_num, diff_rows
 
-    rows_a = reader_a.read_rows_as_dicts("Sheet1")
-    rows_b = reader_b.read_rows_as_dicts("Sheet1")
+    # Excel の列レターを列番号に変換
+    col_to_num("Q")   # → 17
 
+    # 2つのデータセットの差分
     result = diff_rows(rows_a, rows_b, key="社員番号")
     # result["added"]   → B にあって A にない行
     # result["removed"] → A にあって B にない行
     # result["changed"] → キーが一致するが値が異なる行
 """
+
+
+def col_to_num(letter: str) -> int:
+    """Excel の列レターを列番号に変換する（A→1, B→2, AA→27）。
+
+    config.ini に「Q列」のように列レターで書かれた設定を、
+    ExcelComHandler.read_cell() 等の col 引数（数値）に変換するときに使う。
+
+    Args:
+        letter: 列レター（大文字・小文字どちらでも可）。
+
+    Returns:
+        1始まりの列番号。
+    """
+    result = 0
+    for char in letter.upper():
+        result = result * 26 + (ord(char) - ord("A") + 1)
+    return result
 
 
 def diff_rows(

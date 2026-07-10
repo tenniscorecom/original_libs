@@ -11,7 +11,23 @@ import os
 
 import pytest
 
-from comken.utils import DownloadDir, FileFinder, FileNameBuilder
+from comken.utils import DownloadDir, FileFinder, FileNameBuilder, col_to_num
+
+
+class TestColToNum:
+    """col_to_num のテスト。Excel の列レターを列番号に変換する。"""
+
+    @pytest.mark.parametrize(
+        ("letter", "expected"),
+        [("A", 1), ("B", 2), ("Q", 17), ("Z", 26), ("AA", 27), ("AZ", 52)],
+    )
+    def test_converts_letter_to_number(self, letter, expected):
+        """列レターが正しい列番号に変換されることを確認する。"""
+        assert col_to_num(letter) == expected
+
+    def test_lowercase_is_allowed(self):
+        """小文字でも変換できることを確認する。"""
+        assert col_to_num("q") == 17
 
 
 class TestFileNameBuilder:

@@ -1,4 +1,4 @@
-from .data import diff_rows
+from .data import col_to_num, diff_rows
 from .file import (
     DownloadDir,
     FileFinder,
@@ -11,5 +11,6 @@ __all__ = [
     "FileFinder",
     "DownloadDir",
     "local_copy",
+    "col_to_num",
     "diff_rows",
 ]
