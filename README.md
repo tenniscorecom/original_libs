@@ -15,63 +15,6 @@
 
 ---
 
-## パッケージ構成
-
-```mermaid
-graph LR
-    comken --> config["Config\n設定ファイル"]
-    comken --> utils["utils\nファイル操作"]
-    comken --> excel["excel\nExcel"]
-    comken --> csv["csv\nCSV"]
-    comken --> windows["windows\nCOM / Window"]
-    comken --> browser["browser\nブラウザ"]
-    comken --> salesforce["salesforce\nSalesforce"]
-```
-
----
-
-## 主なユースケース
-
-### NAS の Excel を読んで加工・出力する
-
-```mermaid
-flowchart LR
-    A["NAS\nExcel"] -->|find_today_file| B["ファイルパス取得"]
-    B -->|ExcelFile| C["データ読み込み"]
-    C --> D["データ加工"]
-    D -->|write_cell + save| E["Excel出力"]
-```
-
-### CSV を読んで Excel レポートを作る
-
-```mermaid
-flowchart LR
-    A["CSVファイル"] -->|CsvReader| B["データ読み込み"]
-    B -->|filter / index| C["絞り込み・突合"]
-    C -->|ExcelFile| D["Excel書き込み"]
-    D --> E["レポート完成"]
-```
-
-### Salesforce のデータを Excel に出力する
-
-```mermaid
-flowchart LR
-    A["Salesforce"] -->|SalesforceReportClient| B["レポート取得"]
-    B --> C["データ加工"]
-    C -->|ExcelFile| D["Excel出力"]
-```
-
-### ブラウザを自動操作する
-
-```mermaid
-flowchart LR
-    A["config.ini"] -->|Config| B["設定読み込み"]
-    B -->|EdgeDriver| C["ブラウザ起動"]
-    C -->|BasePage| D["画面操作"]
-```
-
----
-
 ## セットアップ
 
 ```bash
@@ -534,6 +477,63 @@ rows = sf.run(REPORT_ID, filters=[
 
 レポート ID は Salesforce でレポートを開いたときの URL から確認できる:
 `https://xxx.salesforce.com/00O000000000001`
+
+---
+
+## パッケージ構成
+
+```mermaid
+graph LR
+    comken --> config["Config\n設定ファイル"]
+    comken --> utils["utils\nファイル操作・比較"]
+    comken --> excel["excel\nExcel"]
+    comken --> csv["csv\nCSV"]
+    comken --> windows["windows\nCOM / Window"]
+    comken --> browser["browser\nブラウザ"]
+    comken --> salesforce["salesforce\nSalesforce"]
+```
+
+---
+
+## 主なユースケース
+
+### NAS の Excel を読んで加工・出力する
+
+```mermaid
+flowchart LR
+    A["NAS\nExcel"] -->|find_today_file| B["ファイルパス取得"]
+    B -->|ExcelFile| C["データ読み込み"]
+    C --> D["データ加工"]
+    D -->|write_cell + save| E["Excel出力"]
+```
+
+### CSV を読んで Excel レポートを作る
+
+```mermaid
+flowchart LR
+    A["CSVファイル"] -->|CsvReader| B["データ読み込み"]
+    B -->|filter / index| C["絞り込み・突合"]
+    C -->|ExcelFile| D["Excel書き込み"]
+    D --> E["レポート完成"]
+```
+
+### Salesforce のデータを Excel に出力する
+
+```mermaid
+flowchart LR
+    A["Salesforce"] -->|SalesforceReportClient| B["レポート取得"]
+    B --> C["データ加工"]
+    C -->|ExcelFile| D["Excel出力"]
+```
+
+### ブラウザを自動操作する
+
+```mermaid
+flowchart LR
+    A["config.ini"] -->|Config| B["設定読み込み"]
+    B -->|EdgeDriver| C["ブラウザ起動"]
+    C -->|SitePage| D["画面操作"]
+```
 
 ---
 
