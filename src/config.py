@@ -39,3 +39,17 @@ class Config:
                 **{k.upper(): _parse_value(cfg, section, k) for k in cfg.options(section)}
             )
             setattr(self, section.upper(), ns)
+
+    def parse_list(self, value: str) -> list[str]:
+        """カンマまたは改行区切りの文字列をリストに変換する。空文字は除外する。
+
+        Usage:
+            # config.ini
+            # [browser_options]
+            # add = --disable-gpu, --disable-extensions
+
+            config.parse_list(config.BROWSER_OPTIONS.ADD)
+            # → ["--disable-gpu", "--disable-extensions"]
+        """
+        items = value.replace("\n", ",").split(",")
+        return [s.strip() for s in items if s.strip()]

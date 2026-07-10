@@ -1,0 +1,15 @@
+; =====================================================
+; このファイルを config.ini にコピーして値を書き換えてください。
+; =====================================================
+
+[browser]
+driver_path  = C:\Users\Public\Documents\msedgedriver.exe
+wait_seconds = 10
+headless     = false
+
+[browser_options]
+; デフォルト（--no-sandbox, --disable-dev-shm-usage）に追加する引数（カンマ区切り）
+add    = --disable-gpu
+
+; デフォルトから除外する引数（カンマ区切り）
+remove =
