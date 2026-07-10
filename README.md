@@ -2,10 +2,41 @@
 
 業務自動化で使う Python 共通ライブラリ。
 
+- [Config（設定ファイル読み込み）](#config)
 - [Selenium（Edge）](#selenium)
 - [Excel（openpyxl）](#excel-openpyxl)
 - [Windows（pywin32）](#windows-pywin32)
 - [Salesforce](#salesforce)
+
+---
+
+## Config
+
+`config.ini` を読み込み、`config.SECTION.KEY` の形式でアクセスする。
+
+```ini
+; config.ini
+[browser]
+driver_path  = C:\Users\Public\Documents\msedgedriver.exe
+wait_seconds = 10
+headless     = false
+
+[files]
+input_folder = C:\作業\input
+```
+
+```python
+from src.config import Config
+
+config = Config()                        # カレントディレクトリの config.ini
+config = Config("path/to/config.ini")   # パスを指定する場合
+
+config.BROWSER.DRIVER_PATH    # → "C:\Users\Public\Documents\msedgedriver.exe"
+config.BROWSER.WAIT_SECONDS   # → "10"
+config.FILES.INPUT_FOLDER     # → "C:\作業\input"
+```
+
+> **注意**: 値はすべて文字列で返る。数値が必要な場合は `int()` / `float()` で変換する。
 
 ---
 
