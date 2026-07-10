@@ -2,7 +2,7 @@
 utils/file.py — ファイル操作ユーティリティ
 
 使い方:
-    from comken.utils import FileFinder, FileNameBuilder, local_copy
+    from comken.utils import DownloadDir, FileFinder, FileNameBuilder, local_copy
 
     # NAS ファイルのローカルコピー
     with local_copy(r"\\\\nas-server\\share\\data.xlsx") as path:
@@ -16,6 +16,13 @@ utils/file.py — ファイル操作ユーティリティ
     # フォルダからファイルを取得
     FileFinder(r"\\\\nas\\share").today()      # → 今日の日付を含むファイル
     FileFinder(r"\\\\nas\\share").latest()     # → 最も新しい .xlsx ファイル
+
+    # ブラウザダウンロード用の一時フォルダ
+    dl = DownloadDir()
+    with EdgeDriver(download_dir=dl) as d:
+        ...
+        files = dl.wait()
+    dl.remove()
 """
 
 import datetime
@@ -25,26 +32,68 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
-def make_download_dir(prefix: str = "comken_dl_") -> Path:
-    """ブラウザダウンロード用の一時フォルダを作成して返す。
+class DownloadDir:
+    """ブラウザダウンロード用の一時フォルダ。作成・完了待ち・削除をまとめて扱う。
 
-    EdgeDriver の download_dir 引数に渡して使う。
-    フォルダの削除は呼び出し側で行う（残したい場合は削除しなくてよい）:
+    使い方:
+        import shutil
+        from comken.utils import DownloadDir
 
-        dl_dir = make_download_dir()
-        with EdgeDriver(download_dir=dl_dir) as d:
+        dl = DownloadDir()                        # 一時フォルダを作成
+        with EdgeDriver(download_dir=dl) as d:    # そのまま渡せる
+            d.driver.get("https://example.com/download")
             ...  # ダウンロード操作
-        files = list(dl_dir.glob("*.xlsx"))
-        shutil.move(files[0], "output/")
-        shutil.rmtree(dl_dir)  # 不要なら削除
+            files = dl.wait()                     # 完了まで待機
 
-    Args:
-        prefix: フォルダ名のプレフィックス。
-
-    Returns:
-        作成した一時フォルダのパス。
+        shutil.move(str(files[0]), "output/report.xlsx")
+        dl.remove()  # 不要なら削除（残したい場合は呼ばない）
     """
-    return Path(tempfile.mkdtemp(prefix=prefix))
+
+    def __init__(self, prefix: str = "comken_dl_") -> None:
+        """
+        Args:
+            prefix: フォルダ名のプレフィックス。
+        """
+        self.path = Path(tempfile.mkdtemp(prefix=prefix))
+
+    def __fspath__(self) -> str:
+        # os.PathLike 対応。EdgeDriver(download_dir=dl) のように直接渡せるようにする
+        return str(self.path)
+
+    def wait(self, timeout: int = 30) -> list[Path]:
+        """ダウンロードが完了するまで待機し、完了したファイルの一覧を返す。
+
+        Edge/Chrome はダウンロード中のファイルを ".crdownload" 拡張子で保存する。
+        この拡張子のファイルが消えたらダウンロード完了と判断する。
+
+        Args:
+            timeout: タイムアウトまでの秒数（デフォルト: 30秒）。
+
+        Returns:
+            ダウンロードされたファイルのパスリスト（更新日時順）。
+
+        Raises:
+            TimeoutError: timeout 秒以内にダウンロードが完了しなかった場合。
+        """
+        import time
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            in_progress = list(self.path.glob("*.crdownload")) + list(self.path.glob("*.tmp"))
+            files = [
+                p
+                for p in self.path.iterdir()
+                if p.is_file() and p.suffix not in (".crdownload", ".tmp")
+            ]
+            if files and not in_progress:
+                return sorted(files, key=lambda p: p.stat().st_mtime)
+            time.sleep(0.5)
+
+        raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {self.path}")
+
+    def remove(self) -> None:
+        """フォルダごと削除する。ファイルを残したい場合は呼ばなくてよい。"""
+        shutil.rmtree(self.path, ignore_errors=True)
 
 
 @contextmanager
@@ -79,49 +128,6 @@ def local_copy(path: str | Path):
         tmp_path.unlink(missing_ok=True)
 
 
-def wait_for_download(download_dir: str | Path, timeout: int = 30) -> list[Path]:
-    """ダウンロードが完了するまで待機し、完了したファイルの一覧を返す。
-
-    Edge/Chrome はダウンロード中のファイルを ".crdownload" 拡張子で保存する。
-    この拡張子のファイルが消えたらダウンロード完了と判断する。
-
-    使い方:
-        import shutil
-        from comken.utils import make_download_dir, wait_for_download
-
-        dl_dir = make_download_dir()
-        with EdgeDriver(download_dir=dl_dir) as d:
-            d.driver.get("https://example.com/download")
-            d.driver.find_element(By.ID, "download-btn").click()
-
-            files = wait_for_download(dl_dir)  # 完了まで待機
-            shutil.move(str(files[0]), "output/report.xlsx")
-
-        shutil.rmtree(dl_dir)  # 不要なら削除
-
-    Args:
-        download_dir: ダウンロード先フォルダのパス。
-        timeout: タイムアウトまでの秒数（デフォルト: 30秒）。
-
-    Returns:
-        ダウンロードされたファイルのパスリスト。
-
-    Raises:
-        TimeoutError: timeout 秒以内にダウンロードが完了しなかった場合。
-    """
-    import time
-
-    dl_path = Path(download_dir)
-    deadline = time.monotonic() + timeout
-
-    while time.monotonic() < deadline:
-        in_progress = list(dl_path.glob("*.crdownload")) + list(dl_path.glob("*.tmp"))
-        files = [p for p in dl_path.iterdir() if p.is_file() and p.suffix not in (".crdownload", ".tmp")]
-        if files and not in_progress:
-            return sorted(files, key=lambda p: p.stat().st_mtime)
-        time.sleep(0.5)
-
-    raise TimeoutError(f"ダウンロードが {timeout} 秒以内に完了しませんでした: {download_dir}")
 
 
 class FileNameBuilder:

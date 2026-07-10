@@ -9,7 +9,9 @@ utils モジュールのテスト。
 import datetime
 import os
 
-from comken.utils import FileFinder, FileNameBuilder
+import pytest
+
+from comken.utils import DownloadDir, FileFinder, FileNameBuilder
 
 
 class TestFileNameBuilder:
@@ -124,3 +126,57 @@ class TestFileFinderLatest:
         target.touch()
 
         assert FileFinder(tmp_path).latest(pattern="*.csv") == target
+
+
+class TestDownloadDir:
+    """DownloadDir のテスト。
+
+    ブラウザダウンロード用の一時フォルダの作成・完了待ち・削除を確認する。
+    """
+
+    def test_creates_temp_dir(self):
+        """インスタンス化すると一時フォルダが作成される。"""
+        dl = DownloadDir()
+        try:
+            assert dl.path.is_dir()
+        finally:
+            dl.remove()
+
+    def test_fspath_allows_path_conversion(self):
+        """os.PathLike として Path() にそのまま渡せる。"""
+        from pathlib import Path
+
+        dl = DownloadDir()
+        try:
+            assert Path(dl) == dl.path
+        finally:
+            dl.remove()
+
+    def test_wait_returns_completed_files(self):
+        """ダウンロード中ファイルがなければ、完了ファイルの一覧を返す。"""
+        dl = DownloadDir()
+        try:
+            target = dl.path / "report.xlsx"
+            target.touch()
+
+            assert dl.wait(timeout=3) == [target]
+        finally:
+            dl.remove()
+
+    def test_wait_times_out_when_in_progress(self):
+        """.crdownload が残っている間は完了とみなさず、タイムアウトする。"""
+        dl = DownloadDir()
+        try:
+            (dl.path / "report.xlsx.crdownload").touch()
+
+            with pytest.raises(TimeoutError):
+                dl.wait(timeout=1)
+        finally:
+            dl.remove()
+
+    def test_remove_deletes_dir(self):
+        """remove() でフォルダごと削除される。"""
+        dl = DownloadDir()
+        dl.remove()
+
+        assert not dl.path.exists()

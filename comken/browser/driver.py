@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from selenium import webdriver
@@ -14,27 +15,27 @@ class EdgeDriver:
         browser_options: BrowserOptions のインスタンス。省略時はデフォルト設定で起動。
                          DRIVER_PATH / WAIT_SECONDS もここで設定する。
         download_dir: ダウンロード先フォルダのパス。
-                      make_download_dir() で作成した一時フォルダを渡すことを推奨。
+                      DownloadDir の一時フォルダを渡すことを推奨。
                       フォルダの削除は呼び出し側で行う（残したい場合はそのままでよい）。
 
     使い方（ダウンロードあり）:
         import shutil
-        from comken.utils import make_download_dir
+        from comken.utils import DownloadDir
 
-        dl_dir = make_download_dir()
-        with EdgeDriver(download_dir=dl_dir) as d:
+        dl = DownloadDir()
+        with EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com")
             # ... ダウンロード操作 ...
+            files = dl.wait()  # 完了まで待機
 
-        files = list(dl_dir.glob("*.xlsx"))
         shutil.move(str(files[0]), "output/report.xlsx")
-        shutil.rmtree(dl_dir)  # 不要なら削除
+        dl.remove()  # 不要なら削除
     """
 
     def __init__(
         self,
         browser_options: BrowserOptions | None = None,
-        download_dir: Path | str | None = None,
+        download_dir: str | os.PathLike | None = None,
     ) -> None:
         opts = browser_options or BrowserOptions()
 

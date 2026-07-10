@@ -264,6 +264,24 @@ path = FileFinder(FOLDER).latest()
 path = FileFinder(FOLDER).latest(pattern="*.csv") # CSV に絞る場合
 ```
 
+### ブラウザダウンロード用の一時フォルダ（DownloadDir）
+
+作成・完了待ち・削除を1つのオブジェクトで扱う。
+
+```python
+import shutil
+from comken.utils import DownloadDir
+
+dl = DownloadDir()                        # 一時フォルダを作成
+with EdgeDriver(download_dir=dl) as d:    # そのまま渡せる
+    d.driver.get("https://example.com/download")
+    # ... ダウンロード操作 ...
+    files = dl.wait()                     # 完了まで待機（.crdownload が消えるまで）
+
+shutil.move(str(files[0]), "output/report.xlsx")
+dl.remove()  # 不要なら削除（残したい場合は呼ばない）
+```
+
 ---
 
 ## ネットワーク・NAS ファイルの読み込み
