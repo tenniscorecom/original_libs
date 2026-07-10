@@ -197,8 +197,8 @@ class WindowHandler:
 
     使い方:
         w = WindowHandler("メモ帳")
-        w.activate()        # ウィンドウを前面に表示
-        w.get_title()       # ウィンドウタイトルを取得
+        w.activate() # ウィンドウを前面に表示
+        w.get_title() # ウィンドウタイトルを取得
     """
 
     def __init__(self, title: str) -> None:

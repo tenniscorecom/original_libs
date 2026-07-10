@@ -11,8 +11,8 @@ class SalesforceReportClient:
     """
 
     _API_VERSION = "v59.0"
-    _ASYNC_POLL_INTERVAL = 3   # 非同期結果ポーリング間隔（秒）
-    _ASYNC_TIMEOUT = 120        # 非同期タイムアウト（秒）
+    _ASYNC_POLL_INTERVAL = 3 # 非同期結果ポーリング間隔（秒）
+    _ASYNC_TIMEOUT = 120 # 非同期タイムアウト（秒）
 
     def __init__(self, instance_url: str, access_token: str) -> None:
         self._base = f"{instance_url}/services/data/{self._API_VERSION}/analytics/reports"

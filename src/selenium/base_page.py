@@ -15,12 +15,12 @@ selenium/base_page.py — Page Object の基底クラス
                 self._driver.get(self.URL)
 
             def login(self, username: str, password: str) -> None:
-                self.input_id("username", username)   # id="username" に入力
+                self.input_id("username", username) # id="username" に入力
                 self.input_id("password", password)
-                self.click_id("login-btn")            # id="login-btn" をクリック
+                self.click_id("login-btn") # id="login-btn" をクリック
 
             def get_error(self) -> str:
-                return self.text_css(".error-message")  # CSS セレクターでテキスト取得
+                return self.text_css(".error-message") # CSS セレクターでテキスト取得
 
     2. EdgeDriver と組み合わせて使う
         from src.selenium.driver import EdgeDriver

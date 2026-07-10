@@ -44,21 +44,21 @@ class Config:
 
     config.ini の例:
         [browser]
-        driver_path  = C:\\Users\\Public\\Documents\\msedgedriver.exe
+        driver_path = C:\\Users\\Public\\Documents\\msedgedriver.exe
         wait_seconds = 10
-        headless     = false
+        headless = false
 
         [files]
         input_folder = C:\\作業\\input
 
     使い方:
-        config = Config()                      # カレントディレクトリの config.ini を読む
-        config = Config("path/to/config.ini")  # パスを指定する場合
+        config = Config() # カレントディレクトリの config.ini を読む
+        config = Config("path/to/config.ini") # パスを指定する場合
 
-        config.BROWSER.DRIVER_PATH    # → "C:\\Users\\Public\\Documents\\msedgedriver.exe"
-        config.BROWSER.HEADLESS       # → False（bool に自動変換）
-        config.BROWSER.WAIT_SECONDS   # → "10"（str のまま）
-        int(config.BROWSER.WAIT_SECONDS)  # → 10（必要なら呼び出し側で変換）
+        config.BROWSER.DRIVER_PATH # → "C:\\Users\\Public\\Documents\\msedgedriver.exe"
+        config.BROWSER.HEADLESS # → False（bool に自動変換）
+        config.BROWSER.WAIT_SECONDS # → "10"（str のまま）
+        int(config.BROWSER.WAIT_SECONDS) # → 10（必要なら呼び出し側で変換）
     """
 
     def __init__(self, path: str | Path = "config.ini") -> None:
