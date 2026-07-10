@@ -1,0 +1,69 @@
+"""
+exceptions.py — ライブラリ共通の例外クラス
+
+すべての例外は OriginalLibsError を継承しているため、
+まとめて補足したい場合は except OriginalLibsError で受けられる。
+
+使い方:
+    from src.exceptions import SheetNotFoundError, ColumnNotFoundError
+
+    try:
+        with ExcelFile("data.xlsx") as f:
+            rows = f.read_rows_as_dicts("存在しないシート")
+    except SheetNotFoundError as e:
+        print(e)  # → "シートが見つかりません: 存在しないシート ..."
+"""
+
+
+class OriginalLibsError(Exception):
+    """ライブラリ共通の基底例外。"""
+
+
+class ExcelError(OriginalLibsError):
+    """Excel 操作に関する例外の基底クラス。"""
+
+
+class SheetNotFoundError(ExcelError):
+    """指定したシートが存在しない場合。
+
+    発生箇所: ExcelFile.sheet() / ExcelComHandler.sheet()
+    """
+
+
+class MacroError(ExcelError):
+    """VBA マクロの実行に失敗した場合。
+
+    発生箇所: ExcelFile.run_macro() / ExcelComHandler.run_macro()
+    """
+
+
+class ColumnNotFoundError(OriginalLibsError):
+    """期待するカラムが見つからない場合（Excel・CSV 共通）。
+
+    非エンジニアが列名を変更したときに分かりやすいメッセージを出すために使う。
+
+    使い方:
+        from src.exceptions import ColumnNotFoundError
+
+        REQUIRED_COLUMNS = ["日付", "担当者", "金額"]
+
+        def validate_columns(rows: list[dict], required: list[str]) -> None:
+            missing = set(required) - set(rows[0].keys())
+            if missing:
+                raise ColumnNotFoundError(
+                    f"Excelのヘッダーが正しくありません。\\n"
+                    f"見つからない列: {', '.join(missing)}\\n"
+                    f"Excelの1行目を確認してください。"
+                )
+    """
+
+
+class CsvError(OriginalLibsError):
+    """CSV 操作に関する例外の基底クラス。"""
+
+
+class ConfigError(OriginalLibsError):
+    """設定ファイルに関する例外。
+
+    発生箇所: Config クラスで必須キーが存在しない場合など。
+    """

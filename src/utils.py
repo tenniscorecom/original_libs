@@ -5,7 +5,7 @@ utils.py — 汎用ユーティリティ
     from src.utils import local_copy, dated_filename, find_today_file, find_latest_file
 
     # NAS ファイルのローカルコピー
-    with local_copy(r"\\nas-server\share\data.xlsx") as path:
+    with local_copy(r"\\\\nas-server\\share\\data.xlsx") as path:
         with ExcelFile(path) as f:
             rows = f.read_rows_as_dicts("Sheet1")
 
@@ -14,8 +14,8 @@ utils.py — 汎用ユーティリティ
     dated_filename("売上レポート", pre=False) # → "売上レポート_20260710.xlsx"
 
     # 今日・最新のファイルを取得
-    find_today_file(r"\\nas\share")           # → Path("20260710_売上レポート.xlsx")
-    find_latest_file(r"\\nas\share")          # → 最も新しい .xlsx ファイル
+    find_today_file(r"\\\\nas\\share")           # → Path("20260710_売上レポート.xlsx")
+    find_latest_file(r"\\\\nas\\share")          # → 最も新しい .xlsx ファイル
 """
 
 import datetime
@@ -95,8 +95,8 @@ def find_today_file(
     見つからない場合は None を返す。
 
     使い方:
-        path = find_today_file(r"\\nas\share")
-        path = find_today_file(r"\\nas\share", date_format="%Y%m") # 年月で探す
+        path = find_today_file(r"\\\\nas\\share")
+        path = find_today_file(r"\\\\nas\\share", date_format="%Y%m") # 年月で探す
 
         if path is None:
             raise FileNotFoundError("今日のファイルが見つかりません")
@@ -122,7 +122,7 @@ def find_latest_file(folder: str | Path, pattern: str = "*.xlsx") -> Path | None
     見つからない場合は None を返す。
 
     使い方:
-        path = find_latest_file(r"\\nas\share")
+        path = find_latest_file(r"\\\\nas\\share")
         if path is None:
             raise FileNotFoundError("ファイルが見つかりません")
         with ExcelFile(path) as f:

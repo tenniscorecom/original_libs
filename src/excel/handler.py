@@ -22,6 +22,8 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
+from ..exceptions import SheetNotFoundError
+
 
 class ExcelFile:
     """openpyxl ワークブックのラッパー。with 文で確実に閉じられる。
@@ -108,7 +110,7 @@ class ExcelFile:
             ValueError: 指定したシートが存在しない場合。
         """
         if name not in self._wb.sheetnames:
-            raise ValueError(f"シートが見つかりません: {name}  存在するシート: {self._wb.sheetnames}")
+            raise SheetNotFoundError(f"シートが見つかりません: {name}  存在するシート: {self._wb.sheetnames}")
         return self._wb[name]
 
     def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
