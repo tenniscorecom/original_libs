@@ -298,6 +298,26 @@ credentials.dat（1ユーザーにつき1ファイル、中身はキーと値の
 `SALESFORCE = salesforce_test` に変えるだけで、`Credentials` 経由の username / password / token が
 すべてテスト用に切り替わる。コードは1文字も触らない。
 
+### 使う認証情報はコード側で宣言する
+
+プロジェクトが使う認証情報は `src/config.py` に `REQUIRED_CREDENTIALS` として宣言する。
+登録ツール（`python -m comken.credentials`）がこの宣言を読み取り、
+未登録の項目だけを順に聞く「まとめて登録」が使えるようになる（キー名を手入力しないのでスペルミスが起きない）。
+
+```python
+# src/config.py
+REQUIRED_CREDENTIALS = {
+    "SALESFORCE": ["username", "password", "token"],  # キーは config.ini [CREDENTIALS] のキー名
+    "OJU_SYS": ["password"],
+}
+```
+
+| ルール | 理由 |
+|---|---|
+| 宣言は config.ini ではなくコード側に置く | 「コードが何を使うか」はコードの事実。設定ファイルに書くと二重管理になる |
+| 辞書のキーは config.ini `[CREDENTIALS]` のキー名 | プレフィックス切り替え（本番⇔テスト）が宣言側に波及する |
+| コードで使う項目を増やしたら宣言も更新する | 宣言が実態とズレると「まとめて登録」で項目が漏れる |
+
 ---
 
 ## リソース管理（with 文）

@@ -130,6 +130,61 @@ class TestListNames:
         assert list_names(cred_path) == []
 
 
+class TestReadDeclaredCredentials:
+    """コード内の REQUIRED_CREDENTIALS 宣言の読み取りテスト。"""
+
+    def test_reads_declaration(self, tmp_path):
+        """宣言からキー名の一覧を組み立てることを確認する。"""
+        from comken.credentials.__main__ import _read_declared_credentials
+
+        (tmp_path / "main.py").write_text(
+            "REQUIRED_CREDENTIALS = {\n"
+            '    "SALESFORCE": ["username", "password"],\n'
+            '    "OJU_SYS": ["password"],\n'
+            "}\n",
+            encoding="utf-8",
+        )
+
+        assert _read_declared_credentials(tmp_path) == [
+            "oju_sys_password",
+            "salesforce_password",
+            "salesforce_username",
+        ]
+
+    def test_resolves_prefix_from_config(self, tmp_path):
+        """config.ini の [CREDENTIALS] でプレフィックスが切り替わることを確認する。"""
+        from comken.credentials.__main__ import _read_declared_credentials
+
+        (tmp_path / "config.ini").write_text(
+            "[CREDENTIALS]\nSALESFORCE = salesforce_test\n", encoding="utf-8"
+        )
+        (tmp_path / "main.py").write_text(
+            'REQUIRED_CREDENTIALS = {"SALESFORCE": ["token"]}\n', encoding="utf-8"
+        )
+
+        assert _read_declared_credentials(tmp_path) == ["salesforce_test_token"]
+
+    def test_reads_declaration_in_src_folder(self, tmp_path):
+        """src/ 以下のファイルの宣言も読み取ることを確認する。"""
+        from comken.credentials.__main__ import _read_declared_credentials
+
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "config.py").write_text(
+            'REQUIRED_CREDENTIALS = {"OJU_SYS": ["password"]}\n', encoding="utf-8"
+        )
+
+        assert _read_declared_credentials(tmp_path) == ["oju_sys_password"]
+
+    def test_returns_empty_when_no_declaration(self, tmp_path):
+        """宣言がない場合は空リストを返すことを確認する。"""
+        from comken.credentials.__main__ import _read_declared_credentials
+
+        (tmp_path / "main.py").write_text("print('no declaration')\n", encoding="utf-8")
+
+        assert _read_declared_credentials(tmp_path) == []
+
+
 class TestEncryption:
     def test_file_does_not_contain_plaintext(self, cred_path):
         """保存ファイルに値が平文で含まれていないことを確認する。"""

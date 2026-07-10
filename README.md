@@ -165,6 +165,43 @@ sf.username, sf.password, sf.token
 # SALESFORCE = salesforce_test に変えるだけで全項目がテスト用に切り替わる
 ```
 
+### 必要な項目の宣言（まとめて登録）
+
+プロジェクトのコード側で「使う認証情報」を宣言しておくと、
+CLI をプロジェクトのフォルダで起動したときに「3: まとめて登録」メニューが出る。
+
+```python
+# src/config.py（プロジェクト側で宣言する）
+REQUIRED_CREDENTIALS = {
+    "SALESFORCE": ["username", "password", "token"],  # キーは config.ini [CREDENTIALS] のキー名
+    "OJU_SYS": ["password"],
+}
+```
+
+```
+選択: 3
+
+このプロジェクトが使う認証情報（コード内の REQUIRED_CREDENTIALS 宣言）:
+  oju_sys_password: 登録済み
+  salesforce_password: 未登録
+  salesforce_token: 未登録
+  salesforce_username: 未登録
+
+未登録の 3 件を順番に登録します（中断は Ctrl+C）。
+
+--- salesforce_username ---
+値（入力しても画面には表示されません）:
+値（確認のためもう一度）:
+保存しました: salesforce_username
+...
+```
+
+- **キー名を1文字も打たずに登録できる**ので、スペルミスの余地がない
+- プレフィックスは config.ini の `[CREDENTIALS]` から解決される
+  （`SALESFORCE = salesforce_test` にすると要求されるキーもテスト用に変わる）
+- 宣言はコードの一部としてエンジニアが管理する。宣言にない項目もメニュー1で自由に登録できる
+- CLI は宣言を AST で読み取るだけで、プロジェクトのコードを実行しない
+
 ---
 
 ## CSV

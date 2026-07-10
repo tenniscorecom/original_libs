@@ -8,9 +8,22 @@ credentials/__main__.py — 認証情報の管理ツール（対話式）
 
 起動方法:
     python -m comken.credentials
+
+プロジェクトのフォルダ（main.py がある場所）で起動すると、
+コード内の REQUIRED_CREDENTIALS 宣言を読み取り、
+「まとめて登録」メニューで未登録の分だけ順に入力できる。
+
+    # src/config.py（プロジェクト側で宣言しておく）
+    REQUIRED_CREDENTIALS = {
+        "SALESFORCE": ["username", "password", "token"],
+        "OJU_SYS": ["password"],
+    }
 """
 
+import ast
+import configparser
 import getpass
+from pathlib import Path
 
 from ..exceptions import CredentialNotFoundError
 from .store import (
@@ -24,12 +37,15 @@ from .store import (
 
 def main() -> None:
     print("=== comken 認証情報の管理 ===")
+    required = _read_declared_credentials()
     while True:
         print()
         _show_names()
         print()
         print("1: 登録（新規追加・上書き）")
         print("2: 削除")
+        if required:
+            print("3: このプロジェクトに必要な項目をまとめて登録")
         print("q: 終了")
         choice = input("選択: ").strip().lower()
         print()
@@ -38,10 +54,12 @@ def main() -> None:
             _register()
         elif choice == "2":
             _delete()
+        elif choice == "3" and required:
+            _setup_project(required)
         elif choice == "q":
             return
         else:
-            print("1, 2, q のいずれかを入力してください。")
+            print("メニューにある番号か q を入力してください。")
 
 
 def _show_names() -> None:
@@ -100,6 +118,102 @@ def _register() -> None:
         save_credential(name, value)
         print(f"保存しました: {name}")
 
+    print(f"保存先: {CREDENTIALS_PATH}")
+
+
+def _read_declared_credentials(project_root: str | Path = ".") -> list[str]:
+    """コード内の REQUIRED_CREDENTIALS 宣言を読み取り、必要なキー名の一覧を返す。
+
+    プロジェクト側は使う認証情報を src/config.py 等でこう宣言しておく:
+
+        REQUIRED_CREDENTIALS = {
+            "SALESFORCE": ["username", "password", "token"],
+            "OJU_SYS": ["password"],
+        }
+
+    - 辞書のキーは config.ini [CREDENTIALS] のキー名。実際のプレフィックスは
+      config.ini から解決する（SALESFORCE = salesforce_test ならテスト用に切り替わる）
+    - config.ini に該当キーがない場合はキー名を小文字にしたものをプレフィックスにする
+    - 対象はカレントディレクトリ直下の .py と src/ 以下の .py
+    - ファイルは import せず AST で読むだけなので、コードは実行されない
+    """
+    root = Path(project_root)
+    files = sorted(root.glob("*.py")) + sorted(root.glob("src/**/*.py"))
+
+    cfg = configparser.ConfigParser()
+    cfg.read(root / "config.ini", encoding="utf-8")
+
+    def resolve_prefix(key: str) -> str:
+        """宣言のキー名を config.ini の [CREDENTIALS] からプレフィックスに解決する。"""
+        if cfg.has_section("CREDENTIALS") and cfg.has_option("CREDENTIALS", key):
+            return cfg.get("CREDENTIALS", key).strip()
+        return key.lower()
+
+    declared: dict[str, list[str]] = {}
+    for file in files:
+        try:
+            tree = ast.parse(file.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)):
+                continue
+            is_target = any(
+                isinstance(t, ast.Name) and t.id == "REQUIRED_CREDENTIALS" for t in node.targets
+            )
+            if not is_target:
+                continue
+            try:
+                value = ast.literal_eval(node.value)
+            except ValueError:
+                continue
+            if isinstance(value, dict):
+                declared.update(value)
+
+    names = set()
+    for key, items in declared.items():
+        prefix = resolve_prefix(str(key))
+        for item in items:
+            name = f"{prefix}_{item}"
+            if CREDENTIAL_NAME_PATTERN.fullmatch(name):
+                names.add(name)
+    return sorted(names)
+
+
+def _setup_project(required: list[str]) -> None:
+    """REQUIRED_CREDENTIALS 宣言のうち、未登録のものだけを順に登録する。"""
+    registered = set(list_names())
+
+    print("このプロジェクトが使う認証情報（コード内の REQUIRED_CREDENTIALS 宣言）:")
+    missing = []
+    for name in required:
+        if name in registered:
+            print(f"  {name}: 登録済み")
+        else:
+            print(f"  {name}: 未登録")
+            missing.append(name)
+
+    if not missing:
+        print("すべて登録済みです。値を変更したい場合は「1: 登録」で上書きしてください。")
+        return
+
+    print()
+    print(f"未登録の {len(missing)} 件を順番に登録します（中断は Ctrl+C）。")
+    for name in missing:
+        print()
+        print(f"--- {name} ---")
+        value = getpass.getpass("値（入力しても画面には表示されません）: ")
+        confirm_value = getpass.getpass("値（確認のためもう一度）: ")
+        if value != confirm_value:
+            print("2回の入力が一致しなかったため、この項目はスキップしました。")
+            continue
+        if not value:
+            print("値が空だったため、この項目はスキップしました。")
+            continue
+        save_credential(name, value)
+        print(f"保存しました: {name}")
+
+    print()
     print(f"保存先: {CREDENTIALS_PATH}")
 
 
