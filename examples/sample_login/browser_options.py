@@ -1,12 +1,14 @@
-from comken.selenium.options import BrowserOptions
+from comken.browser.options import BrowserOptions
 
 
 class SampleBrowserOptions(BrowserOptions):
     """sample_login 用のブラウザオプション。
 
     デフォルト（BrowserOptions）から変更したいものだけ上書きする。
-    全オプションのデフォルト値は src/selenium/options.py を参照。
+    全オプションのデフォルト値は comken/browser/options.py を参照。
     """
+
+    DRIVER_PATH = r"C:\Users\Public\Documents\msedgedriver.exe"
 
     # このサンプルではシークレットモードを使わない
     INCOGNITO = False

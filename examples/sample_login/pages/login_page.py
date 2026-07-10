@@ -1,4 +1,4 @@
-from comken.selenium.base_page import BasePage
+from comken.browser.base_page import BasePage
 
 
 class LoginPage(BasePage):

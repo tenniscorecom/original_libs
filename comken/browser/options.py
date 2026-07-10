@@ -16,6 +16,10 @@ BrowserOptions: Edge/Chrome 起動オプションの定義クラス。
 
 class BrowserOptions:
 
+    # ── ドライバー設定 ──
+    DRIVER_PATH: str = r"C:\Users\Public\Documents\msedgedriver.exe"
+    WAIT_SECONDS: int = 10
+
     # 属性名 → 実際の Chrome 引数
     _BOOL_ARGS: dict[str, str] = {
         "DISABLE_AUTOMATION_CONTROLLED": "--disable-blink-features=AutomationControlled",
@@ -101,6 +105,13 @@ class BrowserOptions:
             diff = " *" if value != default else ""
             display = template.format(value) if value else "None"
             lines.append(f"    {attr:<35} = {display}{diff}")
+
+        lines.append("  ── ドライバー設定 ──")
+        for attr in ("DRIVER_PATH", "WAIT_SECONDS"):
+            current = getattr(self, attr)
+            default = getattr(base, attr)
+            diff = " *" if current != default else ""
+            lines.append(f"    {attr:<35} = {current}{diff}")
 
         if self.__class__ is not BrowserOptions:
             lines.append("  (* = デフォルトから変更)")

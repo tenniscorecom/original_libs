@@ -6,7 +6,7 @@
     python -m examples.sample_login.run
 """
 
-from comken.selenium.driver import EdgeDriver
+from comken.browser.driver import EdgeDriver
 from examples.sample_login.browser_options import SampleBrowserOptions
 from examples.sample_login.config import config
 from examples.sample_login.pages.login_page import LoginPage
@@ -18,11 +18,7 @@ PASSWORD = "SuperSecretPassword!"
 
 
 def main() -> None:
-    with EdgeDriver(
-        driver_path=config.BROWSER.DRIVER_PATH,
-        wait_seconds=int(config.BROWSER.WAIT_SECONDS),
-        browser_options=SampleBrowserOptions(),
-    ) as d:
+    with EdgeDriver(browser_options=SampleBrowserOptions()) as d:
 
         login = LoginPage(d.driver)
         login.open()

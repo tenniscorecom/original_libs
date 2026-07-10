@@ -1,8 +1,8 @@
 """
-utils.py — 汎用ユーティリティ
+utils/file.py — ファイル操作ユーティリティ
 
 使い方:
-    from src.utils import local_copy, dated_filename, find_today_file, find_latest_file
+    from comken.utils import local_copy, dated_filename, find_today_file, find_latest_file
 
     # NAS ファイルのローカルコピー
     with local_copy(r"\\\\nas-server\\share\\data.xlsx") as path:

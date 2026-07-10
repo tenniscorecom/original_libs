@@ -10,7 +10,7 @@
 | [CSV](#csv) | CSV の読み込み・検索・抽出 |
 | [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | [Windows（pywin32）](#windows) | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
-| [Selenium（Edge）](#selenium) | Edge ブラウザ操作 |
+| [Browser（Edge）](#browser) | Edge ブラウザ操作 |
 | [Salesforce](#salesforce) | レコード CRUD・レポート取得 |
 
 ---
@@ -24,7 +24,7 @@ graph LR
     comken --> excel["excel\nExcel"]
     comken --> csv["csv\nCSV"]
     comken --> windows["windows\nCOM / Window"]
-    comken --> selenium["selenium\nブラウザ"]
+    comken --> browser["browser\nブラウザ"]
     comken --> salesforce["salesforce\nSalesforce"]
 ```
 
@@ -92,18 +92,20 @@ config = Config("path/to/config.ini") # パスを指定する場合
 ```
 
 ```ini
-; config.ini
-[browser]
-driver_path = C:\Users\Public\Documents\msedgedriver.exe
-wait_seconds = 10
-headless = false
+; config.ini（プロジェクト固有の設定を書く）
+[salesforce]
+username = user@example.com
+security_token = xxxxxxxxxxxx
+
+[report]
+output_folder = \\nas-server\reports
+template_path = \\nas-server\templates\template.xlsx
 ```
 
 ```python
-config.BROWSER.DRIVER_PATH # → str
-config.BROWSER.HEADLESS # → False（bool に自動変換）
-config.BROWSER.WAIT_SECONDS # → "10"（数値は呼び出し側で変換）
-int(config.BROWSER.WAIT_SECONDS) # → 10
+config.SALESFORCE.USERNAME # → str
+config.REPORT.OUTPUT_FOLDER # → str
+config.REPORT.TEMPLATE_PATH # → str
 ```
 
 **プロジェクト固有の設定を追加する場合は Config を継承する:**
@@ -334,42 +336,39 @@ with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
 
 ---
 
-## Selenium
+## Browser
 
 ### EdgeDriver
 
 ```python
-from comken.selenium.driver import EdgeDriver
-from comken.selenium.options import BrowserOptions
+from comken.browser.driver import EdgeDriver
 
-DRIVER_PATH = r"C:\Users\Public\Documents\msedgedriver.exe"
 URL = "https://example.com"
 
-with EdgeDriver(driver_path=DRIVER_PATH) as d:
+# デフォルト設定のまま起動
+with EdgeDriver() as d:
     d.driver.get(URL)
 ```
 
 **ブラウザオプションのカスタマイズ:**
 
-デフォルト設定は `comken/selenium/options.py` の `BrowserOptions` を参照。
-変更したい項目だけサブクラスで上書きする。
+デフォルト設定は `comken/browser/options.py` の `BrowserOptions` を参照。
+変更したい項目だけサブクラスで上書きする。`DRIVER_PATH` と `WAIT_SECONDS` もここで変更する。
 
 ```python
 # browser_options.py（プロジェクト側）
-from comken.selenium.options import BrowserOptions
+from comken.browser.options import BrowserOptions
 
 class MyOptions(BrowserOptions):
+    DRIVER_PATH = r"C:\tools\msedgedriver.exe" # ドライバーパスを変更する場合
+    WAIT_SECONDS = 15 # 待機秒数を変更する場合
     INCOGNITO = False # シークレットモードを無効
     START_MAXIMIZED = False # 最大化を無効（WINDOW_SIZE と併用不可）
     WINDOW_SIZE = "1600,1024"
 ```
 
 ```python
-with EdgeDriver(
-    driver_path=config.BROWSER.DRIVER_PATH,
-    wait_seconds=int(config.BROWSER.WAIT_SECONDS),
-    browser_options=MyOptions(),
-) as d:
+with EdgeDriver(browser_options=MyOptions()) as d:
     ...
 ```
 
@@ -387,7 +386,7 @@ print(MyOptions()) # デフォルトからの変更箇所に * が付く
 画面ごとに `BasePage` を継承したクラスを作る。
 
 ```python
-from comken.selenium.base_page import BasePage
+from comken.browser.base_page import BasePage
 
 class LoginPage(BasePage):
     URL = "https://example.com/login"
