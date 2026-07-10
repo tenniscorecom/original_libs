@@ -9,9 +9,9 @@ class EdgeDriver:
     """Edge WebDriver のラッパー。with 文で確実に終了できる。
 
     Args:
-        driver_path:      msedgedriver.exe のパス
-        wait_seconds:     暗黙的待機（秒）
-        browser_options:  BrowserOptions のインスタンス。省略時はデフォルト設定で起動。
+        driver_path: msedgedriver.exe のパス
+        wait_seconds: 暗黙的待機（秒）
+        browser_options: BrowserOptions のインスタンス。省略時はデフォルト設定で起動。
     """
 
     def __init__(

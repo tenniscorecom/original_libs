@@ -17,11 +17,11 @@ class SalesforceRestClient:
         """ユーザー名・パスワードで認証してインスタンスを返す。"""
         url = f"https://{domain}.salesforce.com/services/oauth2/token"
         response = requests.post(url, data={
-            "grant_type":    "password",
-            "client_id":     client_id,
+            "grant_type": "password",
+            "client_id": client_id,
             "client_secret": client_secret,
-            "username":      username,
-            "password":      password + security_token,
+            "username": username,
+            "password": password + security_token,
         })
         response.raise_for_status()
         data = response.json()
