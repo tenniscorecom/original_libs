@@ -19,14 +19,13 @@ class EdgeDriver:
                       フォルダの削除は呼び出し側で行う（残したい場合はそのままでよい）。
 
     使い方（ダウンロードあり）:
-        import shutil
-        from comken.utils import DownloadDir
+        from comken.utils import DownloadDir, move_file
 
         with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com")
             # ... ダウンロード操作 ...
             files = dl.wait()  # 完了まで待機
-            shutil.move(str(files[0]), "output/report.xlsx")  # with 内で移動する
+            move_file(files[0], r"C:\作業\output")  # with 内で移動する
         # ← with を抜けると一時フォルダは自動削除される（path 指定の固定フォルダは残る）
     """
 

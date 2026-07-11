@@ -11,7 +11,82 @@ import os
 
 import pytest
 
-from comken.utils import DownloadDir, FileFinder, FileNameBuilder, SortBy, col_to_num
+from comken.utils import (
+    DownloadDir,
+    FileFinder,
+    FileNameBuilder,
+    SortBy,
+    col_to_num,
+    copy_file,
+    move_file,
+)
+
+
+class TestMoveFile:
+    """move_file のテスト。"""
+
+    def test_moves_into_existing_folder(self, tmp_path):
+        """dst が既存フォルダなら、その中に同名で移動する。"""
+        src = tmp_path / "report.xlsx"
+        src.write_text("data", encoding="utf-8")
+        folder = tmp_path / "output"
+        folder.mkdir()
+
+        result = move_file(src, folder)
+
+        assert result == folder / "report.xlsx"
+        assert result.read_text(encoding="utf-8") == "data"
+        assert not src.exists()
+
+    def test_moves_to_file_path_with_auto_mkdir(self, tmp_path):
+        """ファイルパス指定なら親フォルダを自動作成して移動する。"""
+        src = tmp_path / "report.xlsx"
+        src.write_text("data", encoding="utf-8")
+        target = tmp_path / "out" / "sub" / "売上.xlsx"
+
+        result = move_file(src, target)
+
+        assert result == target
+        assert target.exists()
+
+    def test_overwrites_existing_file(self, tmp_path):
+        """移動先に同名ファイルがあれば上書きする。"""
+        src = tmp_path / "report.xlsx"
+        src.write_text("new", encoding="utf-8")
+        target = tmp_path / "out" / "report.xlsx"
+        target.parent.mkdir()
+        target.write_text("old", encoding="utf-8")
+
+        move_file(src, target)
+
+        assert target.read_text(encoding="utf-8") == "new"
+
+
+class TestCopyFile:
+    """copy_file のテスト。"""
+
+    def test_copies_into_existing_folder(self, tmp_path):
+        """dst が既存フォルダなら、その中に同名でコピーする（元は残る）。"""
+        src = tmp_path / "report.xlsx"
+        src.write_text("data", encoding="utf-8")
+        folder = tmp_path / "output"
+        folder.mkdir()
+
+        result = copy_file(src, folder)
+
+        assert result == folder / "report.xlsx"
+        assert src.exists()  # 元ファイルは残る
+
+    def test_copies_to_file_path_with_auto_mkdir(self, tmp_path):
+        """ファイルパス指定なら親フォルダを自動作成してコピーする。"""
+        src = tmp_path / "report.xlsx"
+        src.write_text("data", encoding="utf-8")
+        target = tmp_path / "out" / "backup.xlsx"
+
+        result = copy_file(src, target)
+
+        assert result == target
+        assert target.read_text(encoding="utf-8") == "data"
 
 
 class TestColToNum:

@@ -21,7 +21,7 @@ utils/file.py — ファイル操作ユーティリティ
     with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
         ...
         files = dl.wait()
-        shutil.move(str(files[0]), "output/")  # 必要なファイルは with 内で移動
+        move_file(files[0], r"C:\作業\output")  # 必要なファイルは with 内で移動
 """
 
 import datetime
@@ -41,14 +41,13 @@ class DownloadDir:
     必要なファイルは with 内で移動しておくこと。
 
     使い方:
-        import shutil
-        from comken.utils import DownloadDir
+        from comken.utils import DownloadDir, move_file
 
         with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com/download")
             ...  # ダウンロード操作
-            files = dl.wait()                              # 完了まで待機
-            shutil.move(str(files[0]), "output/report.xlsx")  # with 内で移動する
+            files = dl.wait()                        # 完了まで待機
+            move_file(files[0], r"C:\作業\output")  # with 内で移動する
         # ← ここで一時フォルダは自動削除される
 
     ダウンロードしたものを残したい場合は path で固定フォルダを指定する
@@ -176,6 +175,58 @@ def local_copy(path: str | Path):
         tmp_path.unlink(missing_ok=True)
 
 
+
+
+def move_file(src: str | Path, dst: str | Path) -> Path:
+    """ファイルを移動する。
+
+    shutil.move の分かりにくい点をなくしたラッパー:
+        - dst が既存フォルダなら、その中に同名で移動する
+        - それ以外はファイルパスとして扱う（親フォルダがなければ自動作成する）
+        - 移動先に同名ファイルがあれば上書きする
+
+    使い方:
+        move_file("report.xlsx", r"C:\\作業\\output")               # フォルダの中へ
+        move_file("report.xlsx", r"C:\\作業\\output\\売上.xlsx")     # 名前を変えて移動
+
+    Args:
+        src: 移動するファイルのパス。
+        dst: 移動先（フォルダ、またはファイルパス）。
+
+    Returns:
+        移動後のファイルパス。
+    """
+    src = Path(src)
+    dst = Path(dst)
+    target = dst / src.name if dst.is_dir() else dst
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        target.unlink()
+    shutil.move(str(src), str(target))
+    return target
+
+
+def copy_file(src: str | Path, dst: str | Path) -> Path:
+    """ファイルをコピーする（更新日時などの属性も保持する）。
+
+    ルールは move_file と同じ:
+        - dst が既存フォルダなら、その中に同名でコピーする
+        - それ以外はファイルパスとして扱う（親フォルダがなければ自動作成する）
+        - コピー先に同名ファイルがあれば上書きする
+
+    Args:
+        src: コピーするファイルのパス。
+        dst: コピー先（フォルダ、またはファイルパス）。
+
+    Returns:
+        コピー後のファイルパス。
+    """
+    src = Path(src)
+    dst = Path(dst)
+    target = dst / src.name if dst.is_dir() else dst
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, target)
+    return target
 
 
 class FileNameBuilder:
