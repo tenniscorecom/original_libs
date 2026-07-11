@@ -98,7 +98,8 @@ OUTPUT_FOLDER = C:\work\out  ; ← 値は自由
 
 ```
 my_project/
-  main.py ← エントリポイント（python main.py で実行）
+  実行.bat ← 起動用（comken をローカルに差分同期してから main.py を実行）
+  main.py ← エントリポイント
   config.ini ← 非機密の設定（.gitignore に追加）
   config.ini.example ← 設定のテンプレート（git に含める）
   使い方.md ← 操作マニュアル（非エンジニア向け）
@@ -114,6 +115,7 @@ my_project/
 
 | ファイル | 場所 | 役割 |
 |---|---|---|
+| `実行.bat` | ルート | 非エンジニアはこれをダブルクリック。comken を共有フォルダから差分同期（自動更新）してから main.py を実行する。雛形は csv-excel-workflow を参照 |
 | `main.py` | ルート | `python main.py` で直接実行できる |
 | `config.ini` | ルート | URL・フォルダパス・フラグ等の**非機密設定**のみ |
 | `config.ini.example` | ルート | 設定テンプレート。git に含めてチームで共有する |
