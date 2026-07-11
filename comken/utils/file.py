@@ -17,12 +17,11 @@ utils/file.py — ファイル操作ユーティリティ
     FileFinder(r"\\\\nas\\share").today()      # → 今日の日付を含むファイル
     FileFinder(r"\\\\nas\\share").latest()     # → 最も新しい .xlsx ファイル
 
-    # ブラウザダウンロード用の一時フォルダ
-    dl = DownloadDir()
-    with EdgeDriver(download_dir=dl) as d:
+    # ブラウザダウンロード用の一時フォルダ（with を抜けると自動削除）
+    with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
         ...
         files = dl.wait()
-    dl.remove()
+        shutil.move(str(files[0]), "output/")  # 必要なファイルは with 内で移動
 """
 
 import datetime
@@ -36,23 +35,28 @@ logger = logging.getLogger(__name__)
 
 
 class DownloadDir:
-    """ブラウザダウンロード用のフォルダ。作成・完了待ち・削除をまとめて扱う。
+    """ブラウザダウンロード用のフォルダ。作成・完了待ち・後片付けをまとめて扱う。
+
+    with 文で使うと、一時フォルダは with を抜けた時点で自動削除される（消し忘れ防止）。
+    必要なファイルは with 内で移動しておくこと。
 
     使い方:
         import shutil
         from comken.utils import DownloadDir
 
-        dl = DownloadDir()                        # 一時フォルダを作成
-        with EdgeDriver(download_dir=dl) as d:    # そのまま渡せる
+        with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com/download")
             ...  # ダウンロード操作
-            files = dl.wait()                     # 完了まで待機
+            files = dl.wait()                              # 完了まで待機
+            shutil.move(str(files[0]), "output/report.xlsx")  # with 内で移動する
+        # ← ここで一時フォルダは自動削除される
 
-        shutil.move(str(files[0]), "output/report.xlsx")
-        dl.remove()  # 不要なら削除（残したい場合は呼ばない）
-
-    固定のフォルダに落としたい場合は path を指定する:
-        dl = DownloadDir(path=r"C:\\作業\\downloads")  # なければ作成される
+    ダウンロードしたものを残したい場合は path で固定フォルダを指定する
+    （固定フォルダは with を抜けても削除されない）:
+        with DownloadDir(path=r"C:\\作業\\downloads") as dl, EdgeDriver(download_dir=dl) as d:
+            ...
+            files = dl.wait()
+        # ← C:\\作業\\downloads とファイルはそのまま残る
         # wait() は作成時点で既にあったファイルを無視し、
         # 新しく増えたファイルだけを完了対象にする
     """
@@ -77,6 +81,14 @@ class DownloadDir:
     def __fspath__(self) -> str:
         # os.PathLike 対応。EdgeDriver(download_dir=dl) のように直接渡せるようにする
         return str(self.path)
+
+    def __enter__(self) -> "DownloadDir":
+        return self
+
+    def __exit__(self, *args) -> None:
+        # 一時フォルダは自動削除（消し忘れ防止）。path 指定の固定フォルダは残す
+        if self._is_temp:
+            shutil.rmtree(self.path, ignore_errors=True)
 
     def wait(self, timeout: int = 30) -> list[Path]:
         """ダウンロードが完了するまで待機し、完了したファイルの一覧を返す。

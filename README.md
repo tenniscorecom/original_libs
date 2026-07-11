@@ -356,41 +356,38 @@ if path is None:
     ...  # スキップ処理など
 ```
 
-### ブラウザダウンロード用の一時フォルダ（DownloadDir）
+### ブラウザダウンロード用フォルダ（DownloadDir）
 
-作成・完了待ち・削除を1つのオブジェクトで扱う。
+作成・完了待ち・後片付けを1つのオブジェクトで扱う。**with 文で使う**。
+
+**使い分け（ファイルを残したいかどうかで選ぶ）:**
+
+| やりたいこと | 書き方 | with を抜けたとき |
+|---|---|---|
+| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` — 一時フォルダ | **自動削除される**（消し忘れゼロ） |
+| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` — 固定フォルダ | 残る |
 
 ```python
 import shutil
 from comken.utils import DownloadDir
 
-dl = DownloadDir()                        # 一時フォルダを作成
-with EdgeDriver(download_dir=dl) as d:    # そのまま渡せる
+# 使い捨て（一時フォルダ）: with を抜けると自動削除されるので、必要なファイルは with 内で移動する
+with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
     d.driver.get("https://example.com/download")
     # ... ダウンロード操作 ...
-    files = dl.wait()                     # 完了まで待機（.crdownload が消えるまで）
+    files = dl.wait()                                   # 完了まで待機（.crdownload が消えるまで）
+    shutil.move(str(files[0]), "output/report.xlsx")    # with 内で移動する
+# ← ここで一時フォルダは自動削除
 
-shutil.move(str(files[0]), "output/report.xlsx")
-dl.remove()  # 不要なら削除（残したい場合は呼ばない）
+# 残す（固定フォルダ）: with を抜けてもフォルダとファイルはそのまま
+with DownloadDir(path=r"C:\作業\downloads") as dl, EdgeDriver(download_dir=dl) as d:
+    ...
+    files = dl.wait()
 ```
 
-**使い分け（ファイルを残したいかどうかで選ぶ）:**
-
-| やりたいこと | 書き方 |
-|---|---|
-| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` で一時フォルダ → 最後に `dl.remove()` |
-| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` で固定フォルダ → `remove()` を呼ばない |
-
-固定のフォルダに落としたい場合は `path` を指定する（なければ作成される）。
-
-```python
-dl = DownloadDir(path=r"C:\作業\downloads")
-# wait() は作成時点で既にあったファイルを無視し、新しく増えたファイルだけを返す
-# （前回のダウンロードが残っていても誤検出しない）
-
-# path 指定した固定フォルダは remove() では削除されない（警告が出るだけ）
-# → うっかり呼んでもファイルは残る。本当に削除したい場合だけ remove(force=True)
-```
+- 固定フォルダの `wait()` は、作成時点で既にあったファイルを無視して新しく増えた分だけを返す
+  （前回のダウンロードが残っていても誤検出しない）
+- 固定フォルダは `remove()` を呼んでも警告だけで削除されない。本当に消すなら `remove(force=True)`
 
 ---
 

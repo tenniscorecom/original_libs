@@ -22,14 +22,12 @@ class EdgeDriver:
         import shutil
         from comken.utils import DownloadDir
 
-        dl = DownloadDir()
-        with EdgeDriver(download_dir=dl) as d:
+        with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com")
             # ... ダウンロード操作 ...
             files = dl.wait()  # 完了まで待機
-
-        shutil.move(str(files[0]), "output/report.xlsx")
-        dl.remove()  # 不要なら削除
+            shutil.move(str(files[0]), "output/report.xlsx")  # with 内で移動する
+        # ← with を抜けると一時フォルダは自動削除される（path 指定の固定フォルダは残る）
     """
 
     def __init__(

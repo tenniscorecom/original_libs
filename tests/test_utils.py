@@ -223,6 +223,22 @@ class TestDownloadDir:
 
         assert not dl.path.exists()
 
+    def test_with_block_auto_removes_temp_dir(self):
+        """with を抜けると一時フォルダは自動削除される（消し忘れ防止）。"""
+        with DownloadDir() as dl:
+            assert dl.path.is_dir()
+
+        assert not dl.path.exists()
+
+    def test_with_block_keeps_specified_path(self, tmp_path):
+        """path 指定した固定フォルダは with を抜けても削除されない。"""
+        target = tmp_path / "downloads"
+        with DownloadDir(path=target) as dl:
+            (dl.path / "report.xlsx").touch()
+
+        assert target.exists()
+        assert (target / "report.xlsx").exists()
+
     def test_uses_specified_path(self, tmp_path):
         """path 指定で既存フォルダをそのまま使えることを確認する。"""
         target = tmp_path / "downloads"
