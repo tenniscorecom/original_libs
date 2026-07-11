@@ -115,7 +115,7 @@ my_project/
 
 | ファイル | 場所 | 役割 |
 |---|---|---|
-| `実行.bat` | ルート | 非エンジニアはこれをダブルクリック。comken を共有フォルダから差分同期（自動更新）してから main.py を実行する。雛形は csv-excel-workflow を参照 |
+| `実行.bat` | ルート | 非エンジニアはこれをダブルクリック。comken を共有フォルダから差分同期（自動更新）してから main.py を実行する。雛形は comken の `templates\実行.bat` |
 | `main.py` | ルート | `python main.py` で直接実行できる |
 | `config.ini` | ルート | URL・フォルダパス・フラグ等の**非機密設定**のみ |
 | `config.ini.example` | ルート | 設定テンプレート。git に含めてチームで共有する |
