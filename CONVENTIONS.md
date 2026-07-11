@@ -82,6 +82,13 @@ SHEET_NAME = "T_data"
 
 config.ini のセクション名・キー名も同じ理由で大文字にする。
 Python 側のアクセス（`config.BROWSER.HEADLESS`）と表記が完全に一致するので対応が追いやすい。
+**大文字にするのはセクション名とキー名だけ。`=` の右側の値は自由**（小文字・日本語・パスなんでも可）。
+
+```ini
+[FILES]
+CSV_EAST = 東日本.csv        ; ← 値は自由
+OUTPUT_FOLDER = C:\work\out  ; ← 値は自由
+```
 
 ---
 
@@ -312,7 +319,7 @@ credentials.dat（1ユーザーにつき1ファイル、中身はキーと値の
 未登録の項目だけを順に聞く「まとめて登録」が使えるようになる（キー名を手入力しないのでスペルミスが起きない）。
 
 ```python
-# src/config.py
+# src/credentials.py
 REQUIRED_CREDENTIALS = {
     "SALESFORCE": ["username", "password", "token"],  # キーは config.ini [CREDENTIALS] のキー名
     "OJU_SYS": ["password"],
@@ -622,11 +629,13 @@ class LoginPage(AppPage):
     USERNAME_ID = "username"  # セレクターは定数（大文字）でクラス上部にまとめる
     LOGIN_BTN_CSS = ".radius"
 
-    def open(self) -> None:
+    def open(self) -> LoginPage:
+        """自分の画面を開くメソッドは self を返す（チェーンできる）。"""
         self.go(self.PATH)
+        return self
 
     def login(self, username: str, password: str) -> DashboardPage:
-        """ログインして DashboardPage を返す。"""
+        """クリックで別画面に遷移するメソッドは、遷移先のページクラスを返す。"""
         from .dashboard_page import DashboardPage  # 循環インポート対策
 
         self.input_id(self.USERNAME_ID, username)
@@ -634,10 +643,34 @@ class LoginPage(AppPage):
         return DashboardPage(self._driver)
 ```
 
-| ルール | 理由 |
-|---|---|
-| セレクターは定数（大文字）でクラス上部にまとめる | 変更箇所が1か所になる |
-| 遷移メソッドは遷移先クラスを返す | 呼び出し側がコードの流れを追いやすくなる |
+```python
+# 呼び出し側: 開く→操作→遷移が1つの流れで読める
+dashboard = LoginPage(d.driver).open().login("user", "pass")
+```
+
+### メソッドの返り値のルール
+
+| メソッドの種類 | 返すもの | 例 |
+|---|---|---|
+| 自分の画面を開く（URL 遷移） | `self` | `open()` |
+| クリック等で**別画面に遷移する** | 遷移先のページクラス | `login() -> DashboardPage` |
+| 同じ画面内の操作・取得 | `None` または取得した値 | `input_id(...)`, `get_error()` |
+
+クリックによる画面遷移も URL 遷移も扱いは同じ:
+「操作の結果どの画面にいるか」をメソッドの返り値で表現する。
+1つのボタンが条件によって遷移先が変わる場合は、遷移先ごとにメソッドを分ける
+（例: `search_and_found() -> ResultPage` / `search_and_not_found() -> ErrorPage`）。
+
+### 要素が複数一致する場合
+
+| 優先順位 | 方法 | 例 |
+|---|---|---|
+| 1. セレクターで一意に絞り込む（原則） | `:nth-child` や親要素を含める | `"table tr:nth-child(2) .edit-btn"` |
+| 2. 全件をリストで取得して選ぶ | `texts_css` / `count_css` | `page.texts_css(".row-name")` |
+| 3. index 引数で何番目かを指定（最終手段） | `click_css(sel, index=1)` | 2番目の「編集」ボタンをクリック |
+
+同じ id が複数ある画面は HTML として不正だが実在する。その場合 `click_id` は最初の1件に
+作用するので、2件目以降を操作したいときは CSS（`"[id='dup'] ..."`）に切り替えて上の方針で扱う。
 
 ---
 

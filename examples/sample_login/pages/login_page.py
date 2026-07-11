@@ -33,9 +33,14 @@ class LoginPage(AppPage):
     LOGIN_BTN_CSS = ".radius"
     ERROR_CSS = "#flash.error"
 
-    def open(self) -> None:
-        """ログイン画面を開く。"""
+    def open(self) -> LoginPage:
+        """ログイン画面を開き、自分自身を返す（メソッドチェーンできる）。
+
+        使い方:
+            secure = LoginPage(d.driver).open().login("user", "pass")
+        """
         self.go(self.PATH)
+        return self
 
     def login(self, username: str, password: str) -> SecurePage:
         """ログインして SecurePage を返す。

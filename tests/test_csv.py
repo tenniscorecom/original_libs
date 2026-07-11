@@ -9,6 +9,7 @@ CsvReader クラスのテスト。
 import pytest
 
 from comken.csv.handler import CsvReader
+from comken.exceptions import CsvError
 
 
 @pytest.fixture
@@ -99,8 +100,33 @@ class TestCsvReaderEncoding:
     """文字コードのテスト。"""
 
     def test_reads_cp932(self, tmp_path):
-        """Shift-JIS（cp932）のファイルを読み込めることを確認する。"""
+        """Shift-JIS（cp932）のファイルを明示指定で読み込めることを確認する。"""
         path = tmp_path / "sjis.csv"
         path.write_bytes("番号,名前\n1,山田\n".encode("cp932"))
         rows = CsvReader(path, encoding="cp932").rows()
         assert rows[0]["名前"] == "山田"
+
+    def test_auto_detects_utf8_sig(self, tmp_path):
+        """自動判定（デフォルト）で BOM 付き UTF-8 を読めることを確認する。"""
+        path = tmp_path / "utf8.csv"
+        path.write_text("番号,名前\n1,山田\n", encoding="utf-8-sig")
+
+        rows = CsvReader(path).rows()
+        assert rows[0]["名前"] == "山田"
+        assert "番号" in rows[0]  # BOM がキーに混入していない
+
+    def test_auto_detects_cp932(self, tmp_path):
+        """自動判定（デフォルト）で Shift-JIS を読めることを確認する。"""
+        path = tmp_path / "sjis.csv"
+        path.write_bytes("番号,名前\n1,鈴木\n".encode("cp932"))
+
+        rows = CsvReader(path).rows()
+        assert rows[0]["名前"] == "鈴木"
+
+    def test_auto_raises_when_unknown_encoding(self, tmp_path):
+        """UTF-8 でも CP932 でも読めないファイルは CsvError になることを確認する。"""
+        path = tmp_path / "unknown.csv"
+        path.write_bytes(b"\x81\x20\x81\x20")  # どちらの文字コードでも不正なバイト列
+
+        with pytest.raises(CsvError):
+            CsvReader(path).rows()

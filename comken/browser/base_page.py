@@ -63,9 +63,10 @@ class BasePage:
         self._driver = driver
         self._wait = WebDriverWait(driver, wait_seconds)
 
-    def open(self, url: str) -> None:
-        """指定した URL を開く。"""
+    def open(self, url: str) -> "BasePage":
+        """指定した URL を開き、自分自身を返す（メソッドチェーンできる）。"""
         self._driver.get(url)
+        return self
 
     def save_screenshot(self, prefix: str = "error") -> Path:
         """スクリーンショットを logs/ フォルダに保存する。
@@ -94,13 +95,32 @@ class BasePage:
         """name 属性でクリックする。"""
         self._click(By.NAME, value)
 
-    def click_css(self, value: str) -> None:
-        """CSS セレクターでクリックする。"""
-        self._click(By.CSS_SELECTOR, value)
+    def click_css(self, value: str, index: int = 0) -> None:
+        """CSS セレクターでクリックする。
 
-    def click_xpath(self, value: str) -> None:
-        """XPath でクリックする。"""
-        self._click(By.XPATH, value)
+        Args:
+            value: CSS セレクター。
+            index: 同じセレクターに複数の要素が一致する場合、何番目をクリックするか（0始まり）。
+                   基本はセレクター側で一意に絞り込み、index は最終手段として使う。
+        """
+        if index == 0:
+            self._click(By.CSS_SELECTOR, value)
+            return
+        elements = self._wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, value)))
+        elements[index].click()
+
+    def click_xpath(self, value: str, index: int = 0) -> None:
+        """XPath でクリックする。
+
+        Args:
+            value: XPath。
+            index: 複数一致する場合に何番目をクリックするか（0始まり）。
+        """
+        if index == 0:
+            self._click(By.XPATH, value)
+            return
+        elements = self._wait.until(EC.presence_of_all_elements_located((By.XPATH, value)))
+        elements[index].click()
 
     # ------------------------------------------------------------------ input
     def input_id(self, value: str, text: str) -> None:
@@ -240,6 +260,30 @@ class BasePage:
     def has_xpath(self, value: str) -> bool:
         """XPath の要素が DOM 上に存在するか返す。"""
         return self._has(By.XPATH, value)
+
+    # ----------------------------------------------------------- 複数要素の扱い
+    # 同じセレクターに複数の要素が一致する場合に使う。
+    # 第一選択はセレクター側で一意に絞り込むこと（例: "table tr:nth-child(2) .name"）。
+    def count_css(self, value: str) -> int:
+        """CSS セレクターに一致する要素の数を返す（0件なら 0。待機しない）。"""
+        return len(self._driver.find_elements(By.CSS_SELECTOR, value))
+
+    def count_xpath(self, value: str) -> int:
+        """XPath に一致する要素の数を返す（0件なら 0。待機しない）。"""
+        return len(self._driver.find_elements(By.XPATH, value))
+
+    def texts_css(self, value: str) -> list[str]:
+        """CSS セレクターに一致する全要素のテキストをリストで返す。
+
+        一覧テーブルの全行のテキストを取る場合などに使う。
+        """
+        elements = self._wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, value)))
+        return [el.text for el in elements]
+
+    def texts_xpath(self, value: str) -> list[str]:
+        """XPath に一致する全要素のテキストをリストで返す。"""
+        elements = self._wait.until(EC.presence_of_all_elements_located((By.XPATH, value)))
+        return [el.text for el in elements]
 
     # ----------------------------------------------------------------- scroll
     def scroll_to_css(self, value: str) -> None:

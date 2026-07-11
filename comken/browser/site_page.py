@@ -21,8 +21,9 @@ BasePage（ブラウザ操作の道具箱）を継承し、BASE_URL と共通ナ
 
     # 各画面は AppPage を継承する
     class LoginPage(AppPage):
-        def open(self) -> None:
+        def open(self) -> "LoginPage":
             self.go("/login")
+            return self  # 自画面を開くメソッドは self を返す（チェーンできる）
 
         def login(self, username: str, password: str) -> "DashboardPage":
             self.input_id("username", username)

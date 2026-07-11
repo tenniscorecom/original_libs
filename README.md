@@ -199,7 +199,7 @@ sf.username, sf.password, sf.token
 CLI をプロジェクトのフォルダで起動したときに「3: まとめて登録」メニューが出る。
 
 ```python
-# src/config.py（プロジェクト側で宣言する）
+# src/credentials.py（プロジェクト側で宣言する）
 REQUIRED_CREDENTIALS = {
     "SALESFORCE": ["username", "password", "token"],  # キーは config.ini [CREDENTIALS] のキー名
     "OJU_SYS": ["password"],
@@ -241,7 +241,8 @@ ORDER_ID = "A001"
 STAFF_NAME = "山田"
 
 reader = CsvReader("data.csv")
-# Shift-JIS の場合: CsvReader("data.csv", encoding="cp932")
+# 文字コードは自動判定（UTF-8 → CP932 の順に試す）。明示する場合:
+# CsvReader("data.csv", encoding="cp932")
 
 # 全行取得
 rows = reader.rows()
@@ -421,6 +422,15 @@ with ExcelFile("data.xlsm") as f:
     f.run_macro(MACRO_NAME)
 ```
 
+**数万行クラスの大きいファイルを扱うときのベストプラクティス:**
+
+| やりたいこと | 方法 |
+|---|---|
+| 大量行を読む | `iter_rows()` で1行ずつ処理する（全行をメモリに乗せない） |
+| NAS 上の大きいファイル | `local_copy_threshold_mb` の自動ローカルコピーに任せる（デフォルト10MB） |
+| 大量行への書き込み | openpyxl（`ExcelFile.write_cell`）を使う。COM のセル単位書き込みは1呼び出しごとにプロセス間通信が発生して桁違いに遅い |
+| COM でしかできない処理が大量行 | `transfer_by_key` 等はセル単位アクセスのため数万行では時間がかかる。可能なら openpyxl 側で処理してから COM は最後の保存・マクロだけに使う |
+
 ---
 
 ## Windows
@@ -452,6 +462,8 @@ with ExcelComHandler("data.xlsx") as h:
 
     h.run_macro(MACRO_NAME)
     h.save_as("output.xlsx", read_pw=READ_PW, write_pw=WRITE_PW)
+    # パスワードはそれぞれ省略可。読み取りPWだけ・書き込みPWだけの保護もできる
+    # h.save_as("output.xlsx", read_pw=READ_PW)  # 読み取り保護のみ
 ```
 
 **キー突合で転記する（XLOOKUP 的転記）:**
@@ -578,7 +590,13 @@ class LoginPage(BasePage):
 | 要素が出るまで待つ | `wait_visible_id` | — | `wait_visible_css` | `wait_visible_xpath` |
 | 要素が消えるまで待つ | — | — | `wait_invisible_css` | `wait_invisible_xpath` |
 | 要素の存在チェック | `has_id` | — | `has_css` | `has_xpath` |
+| 要素の数を数える | — | — | `count_css` | `count_xpath` |
+| 全要素のテキスト取得 | — | — | `texts_css` | `texts_xpath` |
 | スクロール（要素まで） | `scroll_to_id` | — | `scroll_to_css` | — |
+
+同じセレクターに複数の要素が一致する場合は、まずセレクター側で一意に絞り込む
+（例: `"table tr:nth-child(2) .edit-btn"`）。リストで扱いたいときは `texts_css` / `count_css`、
+何番目かを直接指定したいときは `click_css(selector, index=1)`（0始まり）。
 
 **セレクター不要のメソッド:**
 

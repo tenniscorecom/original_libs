@@ -13,7 +13,7 @@ credentials/__main__.py — 認証情報の管理ツール（対話式）
 コード内の REQUIRED_CREDENTIALS 宣言を読み取り、
 「まとめて登録」メニューで未登録の分だけ順に入力できる。
 
-    # src/config.py（プロジェクト側で宣言しておく）
+    # src/credentials.py（プロジェクト側で宣言しておく）
     REQUIRED_CREDENTIALS = {
         "SALESFORCE": ["username", "password", "token"],
         "OJU_SYS": ["password"],
@@ -124,7 +124,7 @@ def _register() -> None:
 def _read_declared_credentials(project_root: str | Path = ".") -> list[str]:
     """コード内の REQUIRED_CREDENTIALS 宣言を読み取り、必要なキー名の一覧を返す。
 
-    プロジェクト側は使う認証情報を src/config.py 等でこう宣言しておく:
+    プロジェクト側は使う認証情報を src/credentials.py 等でこう宣言しておく:
 
         REQUIRED_CREDENTIALS = {
             "SALESFORCE": ["username", "password", "token"],
