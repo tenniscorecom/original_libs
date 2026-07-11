@@ -4,7 +4,7 @@ csv/handler.py — CSV 読み込みユーティリティ
 CsvReader クラスを通じて CSV ファイルの読み込み・検索・抽出を行う。
 
 使い方:
-    from src.csv.handler import CsvReader
+    from comken.csv import CsvReader
 
     reader = CsvReader("data.csv")
     reader.rows() # 全行を辞書のリストで取得
@@ -18,7 +18,7 @@ import csv
 import io
 from pathlib import Path
 
-from ..exceptions import CsvError
+from ..exceptions import ColumnNotFoundError, CsvError
 
 
 class Encoding:
@@ -91,6 +91,26 @@ class CsvReader:
         # headers 指定時は1行目をヘッダーではなくデータとして扱う
         return list(csv.DictReader(io.StringIO(self._read_text()), fieldnames=self._headers))
 
+    @staticmethod
+    def _validate_columns(rows: list[dict[str, str]], columns: list[str]) -> None:
+        """指定した列名が CSV に存在するか確認する。
+
+        非エンジニアがヘッダーを変更したとき「黙って0件」ではなく
+        明確なエラーで気づけるようにする。
+
+        Raises:
+            ColumnNotFoundError: 存在しない列名が含まれる場合。
+        """
+        if not rows:
+            return  # データがなければ検証できない（空の結果を返す側に任せる）
+        missing = [col for col in columns if col not in rows[0]]
+        if missing:
+            raise ColumnNotFoundError(
+                f"CSVに列が見つかりません: {', '.join(missing)}\n"
+                f"存在する列: {', '.join(rows[0].keys())}\n"
+                f"CSVのヘッダー（1行目）が変更されていないか確認してください。"
+            )
+
     def _read_text(self) -> str:
         """ファイルを読み、文字コードを判定してテキストとして返す。
 
@@ -107,7 +127,8 @@ class CsvReader:
             except UnicodeDecodeError:
                 continue
         raise CsvError(
-            f"文字コードを判定できませんでした（UTF-8 / CP932 のどちらでも読めません）: {self._path}\n"
+            f"文字コードを判定できませんでした（UTF-8 / CP932 のどちらでも読めません）: "
+            f"{self._path}\n"
             f"CsvReader(path, encoding='文字コード名') で明示してください。"
         )
 
@@ -123,7 +144,8 @@ class CsvReader:
         data = self._load()
         if columns is None:
             return data
-        return [{col: row[col] for col in columns if col in row} for row in data]
+        self._validate_columns(data, columns)
+        return [{col: row[col] for col in columns} for row in data]
 
     def find(self, key_col: str, value: str) -> dict[str, str] | None:
         """key_col が value に一致する最初の行を返す。
@@ -135,7 +157,9 @@ class CsvReader:
         Returns:
             一致した行の辞書。見つからない場合は None。
         """
-        for row in self._load():
+        data = self._load()
+        self._validate_columns(data, [key_col])
+        for row in data:
             if row.get(key_col) == value:
                 return row
         return None
@@ -150,7 +174,9 @@ class CsvReader:
         Returns:
             一致した行の辞書のリスト。一致しない場合は空リスト。
         """
-        return [row for row in self._load() if row.get(key_col) == value]
+        data = self._load()
+        self._validate_columns(data, [key_col])
+        return [row for row in data if row.get(key_col) == value]
 
     def column(self, col_name: str) -> list[str]:
         """指定列の値一覧を返す。
@@ -161,7 +187,9 @@ class CsvReader:
         Returns:
             列の値のリスト（ヘッダー行を除く）。
         """
-        return [row[col_name] for row in self._load() if col_name in row]
+        data = self._load()
+        self._validate_columns(data, [col_name])
+        return [row[col_name] for row in data]
 
     def index(self, key_col: str) -> dict[str, dict[str, str]]:
         """key_col をキーにした辞書を返す。
@@ -175,4 +203,6 @@ class CsvReader:
         Returns:
             {キー値: 行の辞書} の形式の辞書。
         """
-        return {row[key_col]: row for row in self._load() if key_col in row}
+        data = self._load()
+        self._validate_columns(data, [key_col])
+        return {row[key_col]: row for row in data}

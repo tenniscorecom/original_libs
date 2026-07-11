@@ -58,7 +58,9 @@ class TestSaveAndLoad:
         with pytest.raises(CredentialNotFoundError):
             load_credential("salesforce_password", cred_path)
 
-    @pytest.mark.parametrize("bad_name", ["応需sys_password", "sales force", "sf-test", "sf.test", ""])
+    @pytest.mark.parametrize(
+        "bad_name", ["応需sys_password", "sales force", "sf-test", "sf.test", ""]
+    )
     def test_rejects_invalid_name(self, cred_path, bad_name):
         """半角英数字とアンダースコア以外を含むキー名は登録できないことを確認する。"""
         with pytest.raises(InvalidCredentialNameError):

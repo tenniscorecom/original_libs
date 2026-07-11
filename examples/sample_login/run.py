@@ -6,7 +6,6 @@
 """
 
 from comken.browser.driver import EdgeDriver
-
 from examples.sample_login.browser_options import SampleBrowserOptions
 from examples.sample_login.pages.login_page import LoginPage
 
@@ -16,15 +15,14 @@ PASSWORD = "SuperSecretPassword!"
 
 def main() -> None:
     with EdgeDriver(browser_options=SampleBrowserOptions()) as d:
-
         # open() は自分自身を返すので、開いてそのままログインまでチェーンできる
         # login() は SecurePage を返す → そのまま次の画面の操作が書ける
         secure = LoginPage(d.driver).open().login(username=USERNAME, password=PASSWORD)
         print("画面見出し:", secure.get_heading())
         print("メッセージ:", secure.get_flash_message())
 
-        # logout() は LoginPage を返す
-        login = secure.logout()
+        # logout() は LoginPage を返す（続けてログイン画面を操作する場合に使う）
+        secure.logout()
         print("ログアウト完了")
 
 

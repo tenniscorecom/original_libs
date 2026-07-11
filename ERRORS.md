@@ -63,8 +63,8 @@
 
 | エラー名 | 意味 | 自分でできる対処 |
 |---|---|---|
-| `SalesforceAuthenticationFailed` | ログインに失敗した | パスワードまたはセキュリティトークンが変わっている。`python -m comken.credentials` で登録し直す |
-| `SalesforceExpiredSession` | ログインの有効期限切れ | もう一度実行する |
+| `SalesforceError`（ログイン失敗） | ユーザー名・パスワード・トークンのいずれかが違う | パスワードを変更した場合はトークンも新しくなっている。`python -m comken.credentials` で登録し直す |
+| `SalesforceError`（それ以外） | API の呼び出しに失敗した | メッセージに詳細が出る。もう一度実行して続くなら管理者へ |
 
 **Salesforce のパスワードを変更するとセキュリティトークンも新しくなります**（メールで届く）。
 両方を登録し直してください。

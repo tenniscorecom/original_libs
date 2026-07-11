@@ -130,6 +130,10 @@ class TestFileNameBuilder:
         today = datetime.date.today().strftime("%Y%m%d")
         assert FileNameBuilder("ログ", ext=".csv").prefix() == f"{today}_ログ.csv"
 
+    def test_ext_without_dot_is_normalized(self):
+        """ext をドットなしで渡しても補完されることを確認する。"""
+        assert FileNameBuilder("ログ", ext="csv").plain() == "ログ.csv"
+
     def test_yyyymm_format(self):
         """date_format="%Y%m" にすると年月のみになる。月次ファイルに使う。"""
         ym = datetime.date.today().strftime("%Y%m")
@@ -138,7 +142,10 @@ class TestFileNameBuilder:
     def test_custom_date_format(self):
         """任意の strftime フォーマットを指定できる。"""
         formatted = datetime.date.today().strftime("%Y-%m-%d")
-        assert FileNameBuilder("レポート").prefix(date_format="%Y-%m-%d") == f"{formatted}_レポート.xlsx"
+        assert (
+            FileNameBuilder("レポート").prefix(date_format="%Y-%m-%d")
+            == f"{formatted}_レポート.xlsx"
+        )
 
 
 class TestFileFinderToday:

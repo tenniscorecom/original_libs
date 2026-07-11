@@ -11,8 +11,8 @@ class SalesforceReportClient:
     """
 
     _API_VERSION = "v59.0"
-    _ASYNC_POLL_INTERVAL = 3 # 非同期結果ポーリング間隔（秒）
-    _ASYNC_TIMEOUT = 120 # 非同期タイムアウト（秒）
+    _ASYNC_POLL_INTERVAL = 3  # 非同期結果ポーリング間隔（秒）
+    _ASYNC_TIMEOUT = 120  # 非同期タイムアウト（秒）
 
     def __init__(self, instance_url: str, access_token: str) -> None:
         self._base = f"{instance_url}/services/data/{self._API_VERSION}/analytics/reports"
@@ -27,7 +27,8 @@ class SalesforceReportClient:
         Args:
             report_id: SalesforceのレポートID（15桁 or 18桁）
             filters:   絞り込み条件（省略可）
-                       例: [{"column": "CREATED_DATE", "operator": "greaterThan", "value": "2026-01-01"}]
+                       例: [{"column": "CREATED_DATE",
+                            "operator": "greaterThan", "value": "2026-01-01"}]
 
         Returns:
             [{"列名": "値", ...}, ...]
@@ -94,6 +95,5 @@ class SalesforceReportClient:
 
         rows = data.get("factMap", {}).get("T!T", {}).get("rows", [])
         return [
-            {label: row["dataCells"][i]["label"] for i, label in enumerate(labels)}
-            for row in rows
+            {label: row["dataCells"][i]["label"] for i, label in enumerate(labels)} for row in rows
         ]

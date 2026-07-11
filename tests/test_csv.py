@@ -8,7 +8,7 @@ CsvReader クラスのテスト。
 import pytest
 
 from comken.csv.handler import CsvReader
-from comken.exceptions import CsvError
+from comken.exceptions import ColumnNotFoundError, CsvError
 
 
 @pytest.fixture
@@ -117,6 +117,34 @@ class TestCsvReaderHeaders:
         lookup = CsvReader(path, headers=["注文番号", "金額"]).index("注文番号")
 
         assert lookup["A002"]["金額"] == "2000"
+
+
+class TestCsvReaderColumnValidation:
+    """存在しない列名の検証テスト。
+
+    列名が間違っていると「黙って0件」ではなく ColumnNotFoundError になる
+    （非エンジニアがヘッダーを変更したときに気づけるようにする）。
+    """
+
+    def test_find_raises_on_missing_column(self, sample_csv):
+        """find で存在しない列名を指定するとエラーになる。"""
+        with pytest.raises(ColumnNotFoundError, match="存在する列"):
+            CsvReader(sample_csv).find("存在しない列", "A001")
+
+    def test_index_raises_on_missing_column(self, sample_csv):
+        """index で存在しない列名を指定するとエラーになる。"""
+        with pytest.raises(ColumnNotFoundError):
+            CsvReader(sample_csv).index("受注番号")  # 正しくは「注文番号」
+
+    def test_column_raises_on_missing_column(self, sample_csv):
+        """column で存在しない列名を指定するとエラーになる。"""
+        with pytest.raises(ColumnNotFoundError):
+            CsvReader(sample_csv).column("価格")
+
+    def test_rows_columns_raises_on_missing_column(self, sample_csv):
+        """rows(columns=...) に存在しない列名が含まれるとエラーになる。"""
+        with pytest.raises(ColumnNotFoundError):
+            CsvReader(sample_csv).rows(columns=["注文番号", "存在しない列"])
 
 
 class TestCsvReaderEncoding:

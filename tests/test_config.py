@@ -8,6 +8,17 @@ Config クラスのテスト。
 import pytest
 
 from comken.config import Config
+from comken.exceptions import ConfigError
+
+
+class TestConfigMissingFile:
+    def test_missing_file_raises_config_error(self, tmp_path):
+        """config.ini が存在しない場合は ConfigError で即エラーになることを確認する。
+
+        （configparser は黙って空になるため、後の分かりにくい AttributeError を防ぐ）
+        """
+        with pytest.raises(ConfigError, match="config.ini が見つかりません"):
+            Config(tmp_path / "config.ini")
 
 
 class TestConfigBasic:

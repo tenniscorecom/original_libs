@@ -78,7 +78,9 @@ def _register() -> None:
         print("システム名が入力されなかったため中止しました。")
         return
     if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
-        print("システム名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。")
+        print(
+            "システム名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。"
+        )
         return
 
     # 既存システムへの追加なら登録済み項目を表示し、

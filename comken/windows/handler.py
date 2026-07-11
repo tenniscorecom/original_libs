@@ -7,14 +7,13 @@ pywin32 を使った Windows 固有操作を提供する。
 - WindowHandler: ウィンドウの検索・前面表示
 - RegistryHandler: レジストリ値の読み取り
 
-通常の Excel 読み書きは src/excel/handler.py の ExcelFile（openpyxl）を使うこと。
+通常の Excel 読み書きは excel/handler.py の ExcelFile（openpyxl）を使うこと。
 ExcelComHandler は数式やマクロが必要な場面に限定して使う。
 """
 
 import logging
 from pathlib import Path
 
-import pywintypes
 import win32api
 import win32com.client
 import win32con
@@ -226,6 +225,11 @@ class ExcelComHandler:
                 if not key_value or str(key_value).strip() == "":
                     continue
 
+                # 数値セルは COM 経由だと float になり "1001.0" になってしまうため、
+                # 整数値なら int を経由して "1001" に揃える（CSV 側の文字列と一致させる）
+                if isinstance(key_value, float) and key_value.is_integer():
+                    key_value = int(key_value)
+
                 lookup_row = lookup.get(str(key_value).strip())
                 if lookup_row is None:
                     logger.debug("%d行目: キー「%s」が lookup に存在しません", row, key_value)
@@ -310,7 +314,7 @@ class RegistryHandler:
 
     使い方:
         import win32con
-        from src.windows.handler import RegistryHandler
+        from comken.windows.handler import RegistryHandler
 
         with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\\MyApp") as r:
             value = r.read("SettingName")

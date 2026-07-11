@@ -4,7 +4,7 @@ csv/writer.py — CSV 書き込みユーティリティ
 CsvWriter クラスを通じて CSV ファイルへの書き込みを行う。
 
 使い方:
-    from comken.csv.writer import CsvWriter
+    from comken.csv import CsvWriter
 
     rows = [{"注文番号": "A001", "金額": "1000"}, {"注文番号": "A002", "金額": "2000"}]
 

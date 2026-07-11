@@ -25,6 +25,8 @@ import configparser
 import types
 from pathlib import Path
 
+from .exceptions import ConfigError
+
 
 def _parse_value(cfg: configparser.ConfigParser, section: str, key: str) -> bool | str:
     """値が true / false のときだけ bool に変換し、それ以外は文字列のまま返す。
@@ -74,7 +76,14 @@ class Config:
             path: config.ini のパス。省略するとカレントディレクトリの config.ini を読む。
         """
         cfg = configparser.ConfigParser()
-        cfg.read(path, encoding="utf-8")
+        loaded = cfg.read(path, encoding="utf-8")
+        if not loaded:
+            # configparser はファイルがなくても黙って空になるため、明示的にエラーにする
+            # （後で config.FILES 等が分かりにくい AttributeError になるのを防ぐ）
+            raise ConfigError(
+                f"config.ini が見つかりません: {Path(path).resolve()}\n"
+                f"config.ini.example をコピーして config.ini を作成してください。"
+            )
 
         for section in cfg.sections():
             ns = types.SimpleNamespace(

@@ -6,7 +6,7 @@ ExcelFile クラスを通じて Excel ファイルの読み書きを行う。
 内部で自動的に win32com（pywin32）にフォールバックする。
 
 使い方:
-    from src.excel.handler import ExcelFile
+    from comken.excel import ExcelFile
 
     with ExcelFile("data.xlsx") as f:
         rows = f.read_rows("Sheet1")
@@ -66,7 +66,7 @@ class ExcelFile:
         path: str | Path,
         data_only: bool = False,
         read_only: bool = False,
-        local_copy_threshold_mb: int = 10,
+        local_copy_threshold_mb: float = 10,
     ) -> None:
         """
         Args:
@@ -77,7 +77,9 @@ class ExcelFile:
                 NAS・ネットワークドライブのファイルが遅い・不安定な場合に有効。
                 0 を指定するとローカルコピーを無効化できる。
         """
-        src = Path(path)
+        # save() の保存先は常に元のファイル（ローカルコピーに保存すると close で消えてしまう）
+        self._original_path = Path(path)
+        src = self._original_path
 
         # ── NAS・ネットワークファイルのローカルコピー ──────────────────
         # 社内ルールでローカルへのコピーが不可の場合は、
@@ -111,7 +113,9 @@ class ExcelFile:
             ValueError: 指定したシートが存在しない場合。
         """
         if name not in self._wb.sheetnames:
-            raise SheetNotFoundError(f"シートが見つかりません: {name}  存在するシート: {self._wb.sheetnames}")
+            raise SheetNotFoundError(
+                f"シートが見つかりません: {name}  存在するシート: {self._wb.sheetnames}"
+            )
         return self._wb[name]
 
     def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
@@ -159,6 +163,7 @@ class ExcelFile:
         Yields:
             各行の値のタプル。
         """
+        self._sheet(sheet_name)  # シート名の存在チェック（間違いを分かりやすいエラーにする）
         wb = load_workbook(self._path, data_only=True, read_only=True)
         try:
             for row in wb[sheet_name].iter_rows(min_row=min_row, values_only=True):
@@ -180,13 +185,13 @@ class ExcelFile:
         Returns:
             各行を値のタプルにしたリスト。数式は計算後の値になっている。
         """
+        self._sheet(sheet_name)  # シート名の存在チェック（間違いを分かりやすいエラーにする）
         try:
             wb = load_workbook(self._path, data_only=True, read_only=True)
             rows = list(wb[sheet_name].iter_rows(min_row=min_row, values_only=True))
             wb.close()
             has_formula = any(
-                isinstance(cell, str) and cell.startswith("=")
-                for row in rows for cell in row
+                isinstance(cell, str) and cell.startswith("=") for row in rows for cell in row
             )
             if not has_formula:
                 return rows
@@ -194,6 +199,7 @@ class ExcelFile:
             pass
 
         from ..windows.handler import ExcelComHandler
+
         with ExcelComHandler(self._path) as com:
             return com.read_rows(sheet_name, min_row)
 
@@ -211,10 +217,13 @@ class ExcelFile:
     def save(self, path: str | Path | None = None) -> None:
         """ファイルを保存する。
 
+        ローカルコピーで開いている場合も、省略時の保存先は元のファイル
+        （一時コピーに保存すると close() でコピーごと消えてしまうため）。
+
         Args:
-            path: 保存先のパス。省略すると開いたファイルに上書き保存する。
+            path: 保存先のパス。省略すると開いた元のファイルに上書き保存する。
         """
-        save_path = Path(path) if path else self._path
+        save_path = Path(path) if path else self._original_path
         save_path.parent.mkdir(parents=True, exist_ok=True)
         self._wb.save(save_path)
 
@@ -309,6 +318,7 @@ class ExcelFile:
                         例: "Module1.UpdateData"
         """
         from ..windows.handler import ExcelComHandler
+
         with ExcelComHandler(self._path) as com:
             com.run_macro(macro_name)
 

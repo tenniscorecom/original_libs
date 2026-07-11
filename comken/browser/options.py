@@ -17,7 +17,6 @@ from pathlib import Path
 
 
 class BrowserOptions:
-
     # ── ドライバー設定 ──
     DRIVER_PATH: str = r"C:\Users\Public\Documents\msedgedriver.exe"
     WAIT_SECONDS: int = 10

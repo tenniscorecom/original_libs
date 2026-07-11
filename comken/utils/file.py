@@ -61,8 +61,6 @@ def local_copy(path: str | Path):
         tmp_path.unlink(missing_ok=True)
 
 
-
-
 def move_file(src: str | Path, dst: str | Path) -> Path:
     """ファイルを移動する。
 
@@ -133,10 +131,10 @@ class FileNameBuilder:
         """
         Args:
             name: ファイル名（拡張子なし）。
-            ext: 拡張子（デフォルト: ".xlsx"）。
+            ext: 拡張子（デフォルト: ".xlsx"）。ドットなしで渡しても補完される。
         """
         self._name = name
-        self._ext = ext
+        self._ext = ext if ext.startswith(".") else f".{ext}"
 
     def plain(self) -> str:
         """日付なしのファイル名を返す。"""
@@ -245,9 +243,7 @@ class FileFinder:
         files = list(self._folder.glob(pattern))
         if not files:
             if required:
-                raise FileNotFoundError(
-                    f"ファイルが見つかりません: {self._folder}\\{pattern}"
-                )
+                raise FileNotFoundError(f"ファイルが見つかりません: {self._folder}\\{pattern}")
             return None
         if by == SortBy.UPDATED:
             return max(files, key=lambda p: p.stat().st_mtime)

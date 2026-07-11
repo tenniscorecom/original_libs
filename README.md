@@ -17,7 +17,7 @@
 | [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | [Windows（pywin32）](#windows) | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
 | [Browser（Edge）](#browser) | Edge ブラウザ操作 |
-| [Salesforce](#salesforce) | レコード CRUD・レポート取得 |
+| [Salesforce](#salesforce) | CRUD・SOQL・レポート・Bulk（標準ライブラリのみで動く API クライアント） |
 
 ## 定数クラス一覧
 
@@ -772,7 +772,65 @@ python -m examples.sample_login.run
 
 ## Salesforce
 
-### SalesforceClient（simple-salesforce）
+**推奨は `SalesforceApiClient`（標準ライブラリのみで動く。追加インストール不要）。**
+simple-salesforce / requests 版のクライアントも残しているが、外部ライブラリの
+導入承認が下りた環境でのみ使える（王道にはしない）。
+
+| クラス | 依存 | 用途 |
+|---|---|---|
+| `SalesforceApiClient`（推奨） | なし | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
+| `SalesforceClient` | simple-salesforce | CRUD・SOQL |
+| `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
+| `SalesforceRestClient` | requests | REST API 直接操作 |
+| `SalesforceReportClient` | requests | レポート取得 |
+
+### SalesforceApiClient（標準・推奨）
+
+接続アプリケーション（client_id / client_secret）は不要。
+ユーザー名・パスワード・セキュリティトークンだけでログインする。
+
+```python
+from comken.credentials import Credentials
+from comken.salesforce import SalesforceApiClient
+
+cred = Credentials("salesforce")
+sf = SalesforceApiClient(
+    username=cred.username,
+    password=cred.password,
+    security_token=cred.token,
+    # domain="test" # Sandbox の場合
+)
+
+# SOQL クエリ（全件取得・ページネーション自動）
+records = sf.query("SELECT Id, Name FROM Account WHERE IsDeleted = false")
+# → [{"Id": "001...", "Name": "取引先A"}, ...]
+
+# CRUD
+record = sf.get("Account", record_id="001XXXXXXXXXXXX")
+new_id = sf.insert("Account", {"Name": "新規取引先"})
+sf.update("Account", record_id=new_id, data={"Name": "更新後の名前"})
+sf.upsert("Account", external_id_field="ExternalId__c",
+          data={"ExternalId__c": "001", "Name": "取引先"})
+sf.delete("Account", record_id=new_id)
+
+# レポート（2000行以下は run_report、超える場合は run_report_async）
+rows = sf.run_report("00O000000000001")
+rows = sf.run_report_async("00O000000000001", filters=[
+    {"column": "CREATED_DATE", "operator": "greaterThan", "value": "2026-01-01"},
+])
+
+# Bulk API 2.0（1000件を超える大量操作向け）
+result = sf.bulk_insert("Account", [{"Name": f"取引先{i}"} for i in range(10000)])
+# → {"success": 9998, "failed": [{"sf__Error": "...", ...}, ...]}
+result = sf.bulk_update("Account", records)   # 各レコードに "Id" が必要
+result = sf.bulk_upsert("Account", records, external_id_field="ExternalId__c")
+result = sf.bulk_delete("Account", [{"Id": "001..."}, ...])
+big = sf.bulk_query("SELECT Id, Name FROM Account")  # 数万件以上の取得
+```
+
+エラーはすべて `SalesforceError`（ログイン失敗には対処法がメッセージに入る）。
+
+### SalesforceClient（simple-salesforce。導入承認が下りた場合のみ）
 
 ```python
 from comken.credentials import Credentials

@@ -5,7 +5,7 @@ exceptions.py — ライブラリ共通の例外クラス
 まとめて補足したい場合は except OriginalLibsError で受けられる。
 
 使い方:
-    from src.exceptions import SheetNotFoundError, ColumnNotFoundError
+    from comken.exceptions import SheetNotFoundError, ColumnNotFoundError
 
     try:
         with ExcelFile("data.xlsx") as f:
@@ -43,7 +43,7 @@ class ColumnNotFoundError(OriginalLibsError):
     非エンジニアが列名を変更したときに分かりやすいメッセージを出すために使う。
 
     使い方:
-        from src.exceptions import ColumnNotFoundError
+        from comken.exceptions import ColumnNotFoundError
 
         REQUIRED_COLUMNS = ["日付", "担当者", "金額"]
 
@@ -66,6 +66,16 @@ class ConfigError(OriginalLibsError):
     """設定ファイルに関する例外。
 
     発生箇所: Config クラスで必須キーが存在しない場合など。
+    """
+
+
+class SalesforceError(OriginalLibsError):
+    """Salesforce API の呼び出しに失敗した場合。
+
+    発生箇所: SalesforceApiClient の各メソッド
+
+    ログイン失敗・API エラー・Bulk ジョブ失敗など。
+    メッセージに HTTP ステータスや Salesforce からのエラー詳細を含める。
     """
 
 

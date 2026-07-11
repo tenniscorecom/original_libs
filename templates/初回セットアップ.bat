@@ -25,7 +25,7 @@ echo comken をローカルにコピーしています...
 robocopy "%COMKEN_SHARE%" "%COMKEN_LOCAL%" /MIR /XD .git __pycache__ .venv /NJH /NJS /NP /NFL /NDL >nul
 
 echo Python に登録しています...
-pip install -e "%COMKEN_LOCAL%"
+pip install -e "%COMKEN_LOCAL%" --no-deps
 
 echo.
 echo セットアップ完了。以後は各ツールの 実行.bat から起動してください。

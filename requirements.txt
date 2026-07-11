@@ -1,4 +1,10 @@
-selenium>=4.0.0
-openpyxl>=3.0.0
-pywin32>=306
-simple-salesforce>=1.12.0
+; 社内BO環境（オフライン）では pip install -r は使えない。参照・記録用。
+openpyxl
+selenium
+pywin32
+; --- 任意（導入承認が下りた場合のみ。Salesforceの外部ライブラリ版クライアント用）---
+simple-salesforce
+requests
+; --- 開発用 ---
+ruff
+pytest

@@ -4,11 +4,11 @@ salesforce/simple_sf.py — Salesforce CRUD クライアント（simple-salesfor
 simple-salesforce ライブラリを使って Salesforce のレコード操作を行う。
 SOQL クエリ、レコードの作成・更新・削除・Upsert に対応する。
 
-レポートの取得は src/salesforce/report.py の SalesforceReportClient を使うこと。
-REST API を直接叩く場合は src/salesforce/rest_api.py の SalesforceRestClient を使うこと。
+レポートの取得は salesforce/report.py の SalesforceReportClient を使うこと。
+REST API を直接叩く場合は salesforce/rest_api.py の SalesforceRestClient を使うこと。
 
 使い方:
-    from src.salesforce.simple_sf import SalesforceClient
+    from comken.salesforce import SalesforceClient
 
     sf = SalesforceClient(
         username="user@example.com",

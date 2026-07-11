@@ -1,5 +1,4 @@
 from .config import Config
-from .logger import setup_logger
 from .exceptions import (
     ColumnNotFoundError,
     ConfigError,
@@ -10,8 +9,10 @@ from .exceptions import (
     InvalidCredentialNameError,
     MacroError,
     OriginalLibsError,
+    SalesforceError,
     SheetNotFoundError,
 )
+from .logger import setup_logger
 
 __all__ = [
     "Config",
@@ -23,6 +24,7 @@ __all__ = [
     "ColumnNotFoundError",
     "CsvError",
     "ConfigError",
+    "SalesforceError",
     "CredentialError",
     "CredentialNotFoundError",
     "InvalidCredentialNameError",
