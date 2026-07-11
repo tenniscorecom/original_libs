@@ -1,6 +1,5 @@
 from .data import col_to_num, diff_rows
 from .file import (
-    DownloadDir,
     FileFinder,
     FileNameBuilder,
     SortBy,
@@ -13,7 +12,6 @@ __all__ = [
     "FileNameBuilder",
     "FileFinder",
     "SortBy",
-    "DownloadDir",
     "move_file",
     "copy_file",
     "local_copy",

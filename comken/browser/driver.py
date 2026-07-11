@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.edge.service import Service
 
-from ..utils.file import DownloadDir
+from .download import DownloadDir
 from .options import BrowserOptions
 
 
@@ -49,16 +49,17 @@ class EdgeDriver:
             d.driver.get("https://example.com")
             # ... ダウンロード操作 ...
             files = d.download_dir.wait()  # 完了まで待機
-            move_file(files[0], r"C:\作業\output")
+            move_file(files[0], r"C:\\作業\\output")
 
     使い方（使い捨ての一時フォルダを使う場合）:
-        from comken.utils import DownloadDir, move_file
+        from comken.browser import DownloadDir
+        from comken.utils import move_file
 
         with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
             d.driver.get("https://example.com")
             # ... ダウンロード操作 ...
             files = dl.wait()  # d.download_dir.wait() と同じもの
-            move_file(files[0], r"C:\作業\output")  # with 内で移動する
+            move_file(files[0], r"C:\\作業\\output")  # with 内で移動する
         # ← with を抜けると一時フォルダは自動削除される
     """
 

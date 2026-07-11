@@ -11,8 +11,8 @@ import os
 
 import pytest
 
+from comken.browser.download import DownloadDir
 from comken.utils import (
-    DownloadDir,
     FileFinder,
     FileNameBuilder,
     SortBy,

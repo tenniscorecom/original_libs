@@ -378,50 +378,6 @@ if path is None:
     ...  # スキップ処理など
 ```
 
-### ブラウザダウンロード用フォルダ（DownloadDir）
-
-作成・完了待ち・後片付けを1つのオブジェクトで扱う。**with 文で使う**。
-
-**BrowserOptions.DOWNLOAD_DIR とのつながり:**
-EdgeDriver はダウンロード先を常に DownloadDir として `d.download_dir` に持つ。
-`EdgeDriver()` と何も渡さなければ `BrowserOptions.DOWNLOAD_DIR`（固定フォルダ）が使われ、
-その場合も `d.download_dir.wait()` で完了待ちができる。
-
-```python
-with EdgeDriver() as d:                 # デフォルトのダウンロードフォルダを使う
-    ...
-    files = d.download_dir.wait()       # どの指定方法でもこれが使える
-```
-
-**使い分け（ファイルを残したいかどうかで選ぶ）:**
-
-| やりたいこと | 書き方 | with を抜けたとき |
-|---|---|---|
-| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` — 一時フォルダ | **自動削除される**（消し忘れゼロ） |
-| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` — 固定フォルダ | 残る |
-| デフォルトの場所（BrowserOptions.DOWNLOAD_DIR）に残す | `EdgeDriver()` に何も渡さない → `d.download_dir` を使う | 残る |
-
-```python
-from comken.utils import DownloadDir, move_file
-
-# 使い捨て（一時フォルダ）: with を抜けると自動削除されるので、必要なファイルは with 内で移動する
-with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
-    d.driver.get("https://example.com/download")
-    # ... ダウンロード操作 ...
-    files = dl.wait()                                # 完了まで待機（.crdownload が消えるまで）
-    move_file(files[0], r"C:\作業\output")            # with 内で移動する
-# ← ここで一時フォルダは自動削除
-
-# 残す（固定フォルダ）: with を抜けてもフォルダとファイルはそのまま
-with DownloadDir(path=r"C:\作業\downloads") as dl, EdgeDriver(download_dir=dl) as d:
-    ...
-    files = dl.wait()
-```
-
-- 固定フォルダの `wait()` は、作成時点で既にあったファイルを無視して新しく増えた分だけを返す
-  （前回のダウンロードが残っていても誤検出しない）
-- 固定フォルダは `remove()` を呼んでも警告だけで削除されない。本当に消すなら `remove(force=True)`
-
 ---
 
 ## ネットワーク・NAS ファイルの読み込み
@@ -652,6 +608,53 @@ with EdgeDriver(browser_options=MyOptions()) as d:
 print(BrowserOptions()) # デフォルト設定を表示
 print(MyOptions()) # デフォルトからの変更箇所に * が付く
 ```
+
+---
+
+### ダウンロード（DownloadDir）
+
+ブラウザでダウンロードするときのフォルダ管理。作成・完了待ち・後片付けを1つのオブジェクトで扱う。
+Edge がダウンロード中に作る `.crdownload` を監視して完了を判定する（ブラウザ専用。API ダウンロードには不要）。
+
+**BrowserOptions.DOWNLOAD_DIR とのつながり:**
+EdgeDriver はダウンロード先を常に DownloadDir として `d.download_dir` に持つ。
+`EdgeDriver()` と何も渡さなければ `BrowserOptions.DOWNLOAD_DIR`（固定フォルダ）が使われ、
+その場合も `d.download_dir.wait()` で完了待ちができる。
+
+**使い分け（ファイルを残したいかどうかで選ぶ）:**
+
+| やりたいこと | 書き方 | with を抜けたとき |
+|---|---|---|
+| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` — 一時フォルダ | **自動削除される**（消し忘れゼロ） |
+| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` — 固定フォルダ | 残る |
+| デフォルトの場所に残す | `EdgeDriver()` に何も渡さない → `d.download_dir` を使う | 残る |
+
+```python
+from comken.browser import DownloadDir
+from comken.utils import move_file
+
+# デフォルトのダウンロードフォルダを使う
+with EdgeDriver() as d:
+    ...
+    files = d.download_dir.wait()       # どの指定方法でもこれが使える
+
+# 使い捨て（一時フォルダ）: with を抜けると自動削除されるので、必要なファイルは with 内で移動する
+with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
+    d.driver.get("https://example.com/download")
+    # ... ダウンロード操作 ...
+    files = dl.wait()                       # 完了まで待機（.crdownload が消えるまで）
+    move_file(files[0], r"C:\作業\output")   # with 内で移動する
+# ← ここで一時フォルダは自動削除
+
+# 残す（固定フォルダ）: with を抜けてもフォルダとファイルはそのまま
+with DownloadDir(path=r"C:\作業\downloads") as dl, EdgeDriver(download_dir=dl) as d:
+    ...
+    files = dl.wait()
+```
+
+- 固定フォルダの `wait()` は、作成時点で既にあったファイルを無視して新しく増えた分だけを返す
+  （前回のダウンロードが残っていても誤検出しない）
+- 固定フォルダは `remove()` を呼んでも警告だけで削除されない。本当に消すなら `remove(force=True)`
 
 ---
 
