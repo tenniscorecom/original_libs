@@ -94,6 +94,8 @@ my_project/
   main.py ← エントリポイント（python main.py で実行）
   config.ini ← 非機密の設定（.gitignore に追加）
   config.ini.example ← 設定のテンプレート（git に含める）
+  使い方.md ← 操作マニュアル（非エンジニア向け）
+  仕様書.md ← 処理仕様・ユースケース（エンジニア向け）
   ERRORS.md ← エラー対応ガイド（非エンジニア向け）
   src/
     config.py ← AppConfig（comken.Config を継承）
@@ -108,8 +110,13 @@ my_project/
 | `main.py` | ルート | `python main.py` で直接実行できる |
 | `config.ini` | ルート | URL・フォルダパス・フラグ等の**非機密設定**のみ |
 | `config.ini.example` | ルート | 設定テンプレート。git に含めてチームで共有する |
+| `使い方.md` | ルート | 毎日の操作手順・初回準備・FAQ。**非エンジニア向けの言葉**で書く |
+| `仕様書.md` | ルート | ユースケース・処理フロー・入出力/転記仕様・設定仕様。**エンジニア向け** |
 | `ERRORS.md` | ルート | エラー名から対処を引ける表。comken の雛形をコピーし、プロジェクト固有のエラーを追記する |
 | `src/` 以下 | `src/` | コードだけ。エンジニアの管理領域 |
+
+> ドキュメントは読者で分ける: **使い方.md（実行する人）/ 仕様書.md（保守する人）/ ERRORS.md（エラーが出た人）**。
+> README.md は3つへの入口とセットアップ手順だけにする。
 
 > **パスワード・トークンだけでなく、ユーザー名・メールアドレスなど個人情報になりそうなものはすべて config.ini に書かない。**
 > 認証情報は各ユーザーが `python -m comken.credentials` で1回だけ登録し、コードからは `comken.credentials.load_credential()` で取得する（Windows DPAPI でログオンユーザーに紐付けて暗号化されるため、ユーザーごとに自動で分かれる）。

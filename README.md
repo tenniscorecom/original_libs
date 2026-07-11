@@ -2,6 +2,7 @@
 
 業務自動化で使う Python 共通ライブラリ。
 
+- 設計方針・ユースケース: [仕様書.md](仕様書.md)
 - コーディング規約: [CONVENTIONS.md](CONVENTIONS.md)
 - エラーが出たときの対応: [ERRORS.md](ERRORS.md)（プロジェクトに配る雛形）
 
