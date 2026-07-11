@@ -36,15 +36,10 @@
 ### 社内の各 PC（利用者）— 初回1回だけ
 
 `templates\初回セットアップ.bat` を実行する（管理者が冒頭の `COMKEN_SHARE` を環境に合わせておくこと）。
-やっていることは次の2行と同じ:
+共有フォルダのパスの環境変数登録（setx）・ローカルへのコピー・`pip install -e` まで行われる。
 
-```bat
-robocopy \\server\share\tools\comken %LOCALAPPDATA%\comken /MIR /XD .git __pycache__
-pip install -e %LOCALAPPDATA%\comken
-```
-
-以後の更新は不要。各ツールの `実行.bat`（雛形: `templates\実行.bat`）が
-起動のたびに共有フォルダから差分同期するため、常に最新版で実行される。
+以後の更新は不要。各ツールの `実行.bat`（雛形: `templates\実行.bat`。コピーするだけで書き換え不要）が
+環境変数 `COMKEN_SHARE` を参照して起動のたびに差分同期するため、常に最新版で実行される。
 詳しい仕組みは [仕様書.md](仕様書.md) の「配布・運用」を参照。
 
 ### 開発機
