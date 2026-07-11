@@ -6,6 +6,8 @@ Config クラスのテスト。
     python -m pytest tests/ -v
 """
 
+import pytest
+
 from comken.config import Config
 
 
@@ -60,11 +62,18 @@ class TestConfigBoolConversion:
         ini.write_text("[s]\nflag = false\n", encoding="utf-8")
         assert Config(ini).S.FLAG is False
 
-    def test_yes_becomes_true(self, tmp_path):
-        """'yes' が True に変換されることを確認する。"""
+    def test_uppercase_true_becomes_true(self, tmp_path):
+        """'True' / 'TRUE' など大文字混じりも変換されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nflag = yes\n", encoding="utf-8")
+        ini.write_text("[s]\nflag = True\n", encoding="utf-8")
         assert Config(ini).S.FLAG is True
+
+    @pytest.mark.parametrize("value", ["yes", "no", "on", "off", "1", "0"])
+    def test_boolean_like_values_stay_string(self, tmp_path, value):
+        """true / false 以外（yes / no / on / off / 1 / 0）は変換せず文字列のままを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text(f"[s]\nflag = {value}\n", encoding="utf-8")
+        assert Config(ini).S.FLAG == value
 
     def test_number_stays_string(self, tmp_path):
         """数値は文字列のまま返すことを確認する（呼び出し側で変換する）。"""

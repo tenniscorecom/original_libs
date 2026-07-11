@@ -58,6 +58,18 @@ config.REPORT.OUTPUT_FOLDER # → str
 config.REPORT.TEMPLATE_PATH # → str
 ```
 
+**値の型変換ルール:**
+
+| config.ini の値 | 返る型 |
+|---|---|
+| `true` / `false`（大文字小文字問わず） | bool に自動変換 |
+| `yes` / `no` / `on` / `off` / `1` / `0` | **変換しない**（str のまま） |
+| 数値（`10` など） | str のまま。必要なら呼び出し側で変換: `int(config.BROWSER.WAIT_SECONDS)` |
+| その他の文字列 | str のまま |
+
+bool 変換を `true` / `false` に限定しているのは、`1` が「数値の1」なのか「ON の意味」なのか
+曖昧になる事故を避けるため。
+
 **プロジェクト固有の設定を追加する場合は Config を継承する:**
 
 ```python

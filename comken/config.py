@@ -24,23 +24,29 @@ from pathlib import Path
 
 
 def _parse_value(cfg: configparser.ConfigParser, section: str, key: str) -> bool | str:
-    """boolean として解釈できる値は bool に変換し、それ以外は文字列のまま返す。
+    """値が true / false のときだけ bool に変換し、それ以外は文字列のまま返す。
 
-    true / false / yes / no / on / off / 1 / 0 が対象（大文字小文字問わず）。
+    yes / no / on / off / 1 / 0 は変換しない
+    （"1" が数値なのか bool なのか曖昧になる事故を避けるため）。
+    大文字小文字は問わない（True / FALSE 等も変換される）。
     """
-    try:
-        return cfg.getboolean(section, key)
-    except ValueError:
-        return cfg.get(section, key)
+    value = cfg.get(section, key)
+    lowered = value.strip().lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    return value
 
 
 class Config:
     """config.ini を読み込み、config.SECTION.KEY の形式でアクセスできるクラス。
 
     値の型変換:
-        - boolean（true/false/yes/no/on/off/1/0）→ 自動で bool に変換
-        - int / float → プロジェクト側で変換する（例: int(config.BROWSER.WAIT_SECONDS)）
-        - それ以外 → str のまま返す
+        - true / false（大文字小文字問わず）→ 自動で bool に変換
+        - それ以外はすべて str のまま返す
+          （yes / no / on / off / 1 / 0 も変換しない。
+           int / float が必要ならプロジェクト側で変換する: int(config.BROWSER.WAIT_SECONDS)）
 
     config.ini の例（セクション名・キー名は大文字で書く）:
         [BROWSER]
