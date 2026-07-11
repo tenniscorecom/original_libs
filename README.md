@@ -590,13 +590,23 @@ class LoginPage(BasePage):
 | 要素が出るまで待つ | `wait_visible_id` | — | `wait_visible_css` | `wait_visible_xpath` |
 | 要素が消えるまで待つ | — | — | `wait_invisible_css` | `wait_invisible_xpath` |
 | 要素の存在チェック | `has_id` | — | `has_css` | `has_xpath` |
-| 要素の数を数える | — | — | `count_css` | `count_xpath` |
-| 全要素のテキスト取得 | — | — | `texts_css` | `texts_xpath` |
 | スクロール（要素まで） | `scroll_to_id` | — | `scroll_to_css` | — |
 
-同じセレクターに複数の要素が一致する場合は、まずセレクター側で一意に絞り込む
-（例: `"table tr:nth-child(2) .edit-btn"`）。リストで扱いたいときは `texts_css` / `count_css`、
-何番目かを直接指定したいときは `click_css(selector, index=1)`（0始まり）。
+**複数要素の扱い:**
+
+同じセレクターに複数の要素が一致する場合に使う。本来 id は一意だが、複数ある画面も実在するため id 版もある。
+
+| 操作 | ID | name属性 | CSSセレクター | XPath |
+|---|---|---|---|---|
+| 要素の数を数える | `count_id` | — | `count_css` | `count_xpath` |
+| 全要素のテキスト取得 | `texts_id` | — | `texts_css` | `texts_xpath` |
+| n番目をクリック | `click_id(v, index=1)` | `click_name(v, index=1)` | `click_css(v, index=1)` | `click_xpath(v, index=1)` |
+
+使い分けの優先順位:
+
+1. **セレクター側で一意に絞り込む（原則）** — 例: `"table tr:nth-child(2) .edit-btn"`
+2. リストで取得して選ぶ — `texts_css` / `count_css`
+3. 何番目かを直接指定（最終手段） — `click_css(selector, index=1)`（0始まり）
 
 **セレクター不要のメソッド:**
 

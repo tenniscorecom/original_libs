@@ -87,13 +87,24 @@ class BasePage:
         return path
 
     # ------------------------------------------------------------------ click
-    def click_id(self, value: str) -> None:
-        """id 属性でクリックする。"""
-        self._click(By.ID, value)
+    def click_id(self, value: str, index: int = 0) -> None:
+        """id 属性でクリックする。
 
-    def click_name(self, value: str) -> None:
-        """name 属性でクリックする。"""
-        self._click(By.NAME, value)
+        Args:
+            value: id 属性の値。
+            index: 同じ id の要素が複数ある場合に何番目をクリックするか（0始まり）。
+                   本来 id は一意だが、そうなっていない画面への対処用。
+        """
+        self._click_at(By.ID, value, index)
+
+    def click_name(self, value: str, index: int = 0) -> None:
+        """name 属性でクリックする。
+
+        Args:
+            value: name 属性の値。
+            index: 複数一致する場合に何番目をクリックするか（0始まり）。
+        """
+        self._click_at(By.NAME, value, index)
 
     def click_css(self, value: str, index: int = 0) -> None:
         """CSS セレクターでクリックする。
@@ -103,11 +114,7 @@ class BasePage:
             index: 同じセレクターに複数の要素が一致する場合、何番目をクリックするか（0始まり）。
                    基本はセレクター側で一意に絞り込み、index は最終手段として使う。
         """
-        if index == 0:
-            self._click(By.CSS_SELECTOR, value)
-            return
-        elements = self._wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, value)))
-        elements[index].click()
+        self._click_at(By.CSS_SELECTOR, value, index)
 
     def click_xpath(self, value: str, index: int = 0) -> None:
         """XPath でクリックする。
@@ -116,11 +123,7 @@ class BasePage:
             value: XPath。
             index: 複数一致する場合に何番目をクリックするか（0始まり）。
         """
-        if index == 0:
-            self._click(By.XPATH, value)
-            return
-        elements = self._wait.until(EC.presence_of_all_elements_located((By.XPATH, value)))
-        elements[index].click()
+        self._click_at(By.XPATH, value, index)
 
     # ------------------------------------------------------------------ input
     def input_id(self, value: str, text: str) -> None:
@@ -264,6 +267,11 @@ class BasePage:
     # ----------------------------------------------------------- 複数要素の扱い
     # 同じセレクターに複数の要素が一致する場合に使う。
     # 第一選択はセレクター側で一意に絞り込むこと（例: "table tr:nth-child(2) .name"）。
+    # 本来 id は一意だが、複数ある画面も実在するため id 版も用意している。
+    def count_id(self, value: str) -> int:
+        """id 属性に一致する要素の数を返す（0件なら 0。待機しない）。"""
+        return len(self._driver.find_elements(By.ID, value))
+
     def count_css(self, value: str) -> int:
         """CSS セレクターに一致する要素の数を返す（0件なら 0。待機しない）。"""
         return len(self._driver.find_elements(By.CSS_SELECTOR, value))
@@ -272,18 +280,20 @@ class BasePage:
         """XPath に一致する要素の数を返す（0件なら 0。待機しない）。"""
         return len(self._driver.find_elements(By.XPATH, value))
 
+    def texts_id(self, value: str) -> list[str]:
+        """id 属性に一致する全要素のテキストをリストで返す。"""
+        return self._texts(By.ID, value)
+
     def texts_css(self, value: str) -> list[str]:
         """CSS セレクターに一致する全要素のテキストをリストで返す。
 
         一覧テーブルの全行のテキストを取る場合などに使う。
         """
-        elements = self._wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, value)))
-        return [el.text for el in elements]
+        return self._texts(By.CSS_SELECTOR, value)
 
     def texts_xpath(self, value: str) -> list[str]:
         """XPath に一致する全要素のテキストをリストで返す。"""
-        elements = self._wait.until(EC.presence_of_all_elements_located((By.XPATH, value)))
-        return [el.text for el in elements]
+        return self._texts(By.XPATH, value)
 
     # ----------------------------------------------------------------- scroll
     def scroll_to_css(self, value: str) -> None:
@@ -328,6 +338,17 @@ class BasePage:
     # ----------------------------------------------------------- private base
     def _click(self, by: str, value: str) -> None:
         self._wait.until(EC.element_to_be_clickable((by, value))).click()
+
+    def _click_at(self, by: str, value: str, index: int) -> None:
+        if index == 0:
+            self._click(by, value)
+            return
+        elements = self._wait.until(EC.presence_of_all_elements_located((by, value)))
+        elements[index].click()
+
+    def _texts(self, by: str, value: str) -> list[str]:
+        elements = self._wait.until(EC.presence_of_all_elements_located((by, value)))
+        return [el.text for el in elements]
 
     def _input(self, by: str, value: str, text: str) -> None:
         el = self._wait.until(EC.visibility_of_element_located((by, value)))

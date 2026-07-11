@@ -666,11 +666,11 @@ dashboard = LoginPage(d.driver).open().login("user", "pass")
 | 優先順位 | 方法 | 例 |
 |---|---|---|
 | 1. セレクターで一意に絞り込む（原則） | `:nth-child` や親要素を含める | `"table tr:nth-child(2) .edit-btn"` |
-| 2. 全件をリストで取得して選ぶ | `texts_css` / `count_css` | `page.texts_css(".row-name")` |
-| 3. index 引数で何番目かを指定（最終手段） | `click_css(sel, index=1)` | 2番目の「編集」ボタンをクリック |
+| 2. 全件をリストで取得して選ぶ | `texts_*` / `count_*` | `page.texts_css(".row-name")` |
+| 3. index 引数で何番目かを指定（最終手段） | `click_*(sel, index=1)` | 2番目の「編集」ボタンをクリック |
 
-同じ id が複数ある画面は HTML として不正だが実在する。その場合 `click_id` は最初の1件に
-作用するので、2件目以降を操作したいときは CSS（`"[id='dup'] ..."`）に切り替えて上の方針で扱う。
+同じ id が複数ある画面は HTML として不正だが実在する。
+そのため id 版も用意してある（`count_id` / `texts_id` / `click_id(value, index=1)`）。
 
 ---
 
