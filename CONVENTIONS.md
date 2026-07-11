@@ -226,6 +226,40 @@ if file_size > LOCAL_COPY_THRESHOLD_BYTES:
 
 ---
 
+## dataclass・定数クラス・Enum の使い分け
+
+| 用途 | 使うもの | 例 |
+|---|---|---|
+| 定数の入れ物（インスタンスを作らない） | ただのクラス属性 | `Color.RED`, `SortBy.UPDATED`, `Encoding.CP932` |
+| 複数の値をひとまとまりで持ち運ぶ「データの箱」 | `@dataclass` | 集計結果・検索結果など、名前付きの値のセットを返すとき |
+| 振る舞い（メソッド）を持つもの | 普通のクラス | `ExcelFile`, `FileFinder` |
+
+```python
+# 定数の入れ物 → dataclass 不要。クラス属性だけでよい
+class Color:
+    RED = "FF0000"
+    YELLOW = "FFFF00"
+
+# データの箱 → dataclass が最適（__init__ / __repr__ / __eq__ を書かなくて済む）
+from dataclasses import dataclass
+
+@dataclass
+class TransferResult:
+    output_path: Path
+    matched: int
+    skipped: int
+
+# dict で返すより型が明確で、IDE 補完も効く
+result.matched  # ← result["matched"] より typo に強い
+```
+
+- 定数の入れ物に `enum.Enum` を使う選択肢もあるが、値の取り出しに `.value` が必要になる等
+  初学者に読みにくいため、この規約ではプレーンなクラス定数を使う
+  （typo が `AttributeError` で即発覚するという Enum の主な利点はクラス定数でも同じ）
+- 返す値が2個までならタプルでよい（`return output_path, matched`）。3個以上になったら dataclass を検討する
+
+---
+
 ## getter / setter は書かない
 
 Java 風の `get_x()` / `set_x()` は Python では使わない。属性には直接アクセスする。
