@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-from comken.utils import DownloadDir, FileFinder, FileNameBuilder, col_to_num
+from comken.utils import DownloadDir, FileFinder, FileNameBuilder, SortBy, col_to_num
 
 
 class TestColToNum:
@@ -124,18 +124,33 @@ class TestFileFinderToday:
 class TestFileFinderLatest:
     """FileFinder.latest() のテスト。
 
-    フォルダ内から更新日時が最も新しいファイルを取得する。
+    デフォルトはファイル名の辞書順で最後のファイルを取得する。
     """
 
-    def test_finds_latest(self, tmp_path):
-        """更新日時が最も新しいファイルを返す。"""
-        old = tmp_path / "20260101_old.xlsx"
-        new = tmp_path / "20260711_new.xlsx"
-        old.touch()
-        new.touch()
-        os.utime(old, (0, 0))  # old の更新日時を過去に設定
+    def test_finds_latest_by_name(self, tmp_path):
+        """ファイル名の辞書順で最後のファイルを返す（更新日時は影響しない）。"""
+        name_new = tmp_path / "20260711_売上.xlsx"
+        name_old = tmp_path / "20260101_売上.xlsx"
+        name_new.touch()
+        name_old.touch()
+        os.utime(name_new, (0, 0))  # 名前上の最新の方を、更新日時では最古にする
 
-        assert FileFinder(tmp_path).latest() == new
+        assert FileFinder(tmp_path).latest() == name_new
+
+    def test_finds_latest_by_updated(self, tmp_path):
+        """by="updated" なら更新日時が最も新しいファイルを返す。"""
+        name_new = tmp_path / "20260711_売上.xlsx"
+        name_old = tmp_path / "20260101_売上.xlsx"
+        name_new.touch()
+        name_old.touch()
+        os.utime(name_new, (0, 0))  # 名前上の最新の方を、更新日時では最古にする
+
+        assert FileFinder(tmp_path).latest(by=SortBy.UPDATED) == name_old
+
+    def test_invalid_by_raises(self, tmp_path):
+        """by に不正な値を指定すると ValueError になる。"""
+        with pytest.raises(ValueError):
+            FileFinder(tmp_path).latest(by="date")
 
     def test_raises_when_empty(self, tmp_path):
         """対象ファイルが存在しない場合は FileNotFoundError になる。"""

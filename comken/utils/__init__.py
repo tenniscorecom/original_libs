@@ -3,12 +3,14 @@ from .file import (
     DownloadDir,
     FileFinder,
     FileNameBuilder,
+    SortBy,
     local_copy,
 )
 
 __all__ = [
     "FileNameBuilder",
     "FileFinder",
+    "SortBy",
     "DownloadDir",
     "local_copy",
     "col_to_num",

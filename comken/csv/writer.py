@@ -20,6 +20,8 @@ CsvWriter クラスを通じて CSV ファイルへの書き込みを行う。
 import csv
 from pathlib import Path
 
+from .handler import Encoding
+
 
 class CsvWriter:
     """CSV ファイルへの書き込みユーティリティ。
@@ -39,14 +41,14 @@ class CsvWriter:
         self,
         path: str | Path,
         fieldnames: list[str],
-        encoding: str = "utf-8-sig",
+        encoding: str = Encoding.UTF8_SIG,
     ) -> None:
         """
         Args:
             path: 書き込み先の CSV ファイルパス。
             fieldnames: ヘッダー行の列名リスト。書き込み順に影響する。
-            encoding: 文字コード。Excel で開く場合は "utf-8-sig"（デフォルト）。
-                      Shift-JIS が必要な場合は "cp932" を指定する。
+            encoding: 文字コード。Excel で開く場合は Encoding.UTF8_SIG（デフォルト）。
+                      Shift-JIS が必要な場合は Encoding.CP932 を指定する。
         """
         self._path = Path(path)
         self._fieldnames = fieldnames

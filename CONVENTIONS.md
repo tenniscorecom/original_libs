@@ -222,6 +222,41 @@ if file_size > LOCAL_COPY_THRESHOLD_BYTES:
 | **大文字スネークケース** | `SHEET_NAME`, `MAX_RETRY_COUNT` |
 | **場所** | ファイルの先頭またはクラスの先頭（メソッドより上）にまとめる |
 | **計算式はそのまま書く** | `10 * 1024 * 1024`（`10485760` より意味が伝わる） |
+| **選択肢を渡す引数は定数クラスを使う** | `latest(by=SortBy.UPDATED)`, `CsvReader(encoding=Encoding.CP932)`, `set_fill(color=Color.RED)`。生の文字列（`by="updated"`）はマジックナンバーになるので書かない |
+
+---
+
+## getter / setter は書かない
+
+Java 風の `get_x()` / `set_x()` は Python では使わない。属性には直接アクセスする。
+
+```python
+# 悪い（Java 風）
+class DownloadDir:
+    def get_path(self): return self._path
+    def set_path(self, value): self._path = value
+
+# 良い（直接アクセス）
+dl = DownloadDir()
+print(dl.path)
+```
+
+**`@property` を使うのは「読み取り時に組み立て・計算が必要」なときだけ:**
+
+```python
+class AppConfig(Config):
+    @property
+    def csv_east_path(self) -> Path:
+        # 2つの設定値からパスを組み立てる。呼び出し側は config.csv_east_path と属性のように読める
+        return Path(self.FILES.INPUT_FOLDER) / self.FILES.CSV_EAST
+```
+
+| 状況 | 書き方 |
+|---|---|
+| ただの値の保持 | 普通の属性（`self.path = ...`） |
+| 外から書き換えてほしくない | `_` プレフィックス（`self._driver`） |
+| 読み取り時に計算・組み立てが要る | `@property` |
+| セッター（`@x.setter`） | ほぼ使わない。検証つき代入が必要になったときだけ |
 
 ---
 

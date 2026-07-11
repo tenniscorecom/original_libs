@@ -142,6 +142,30 @@ class BasePage:
         """XPath の入力欄にテキストを入力する（既存の値はクリアされる）。"""
         self._input(By.XPATH, value, text)
 
+    # -------------------------------------------------------------- fill_form
+    def fill_form_id(self, values: dict[str, str]) -> None:
+        """複数の入力欄に {id: 入力値} の辞書でまとめて入力する。
+
+        使い方:
+            page.fill_form_id({
+                "username": "yamada",
+                "email": "yamada@example.com",
+                "phone": "052-000-0000",
+            })
+        """
+        for element_id, text in values.items():
+            self.input_id(element_id, text)
+
+    def fill_form_name(self, values: dict[str, str]) -> None:
+        """複数の入力欄に {name属性: 入力値} の辞書でまとめて入力する。"""
+        for element_name, text in values.items():
+            self.input_name(element_name, text)
+
+    def fill_form_css(self, values: dict[str, str]) -> None:
+        """複数の入力欄に {CSSセレクター: 入力値} の辞書でまとめて入力する。"""
+        for selector, text in values.items():
+            self.input_css(selector, text)
+
     # ---------------------------------------------------------------- get_text
     def text_id(self, value: str) -> str:
         """id 属性の要素のテキストを返す。"""

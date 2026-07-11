@@ -96,6 +96,30 @@ class TestCsvReaderIndex:
         assert len(lookup) == 3
 
 
+class TestCsvReaderHeaders:
+    """ヘッダーなし CSV（headers 引数）のテスト。"""
+
+    def test_reads_headerless_csv(self, tmp_path):
+        """headers で列名を付けると、1行目からデータとして読めることを確認する。"""
+        path = tmp_path / "no_header.csv"
+        path.write_text("A001,1000\nA002,2000\n", encoding="utf-8")
+
+        rows = CsvReader(path, headers=["注文番号", "金額"]).rows()
+
+        assert len(rows) == 2
+        assert rows[0]["注文番号"] == "A001"
+        assert rows[1]["金額"] == "2000"
+
+    def test_index_works_with_headers(self, tmp_path):
+        """headers 指定でも index() で突合用辞書を作れることを確認する。"""
+        path = tmp_path / "no_header.csv"
+        path.write_text("A001,1000\nA002,2000\n", encoding="utf-8")
+
+        lookup = CsvReader(path, headers=["注文番号", "金額"]).index("注文番号")
+
+        assert lookup["A002"]["金額"] == "2000"
+
+
 class TestCsvReaderEncoding:
     """文字コードのテスト。"""
 

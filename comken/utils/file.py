@@ -206,6 +206,13 @@ class FileNameBuilder:
         return datetime.date.today().strftime(date_format)
 
 
+class SortBy:
+    """FileFinder.latest() の by 引数に使う定数。"""
+
+    NAME = "name"  # ファイル名の辞書順
+    UPDATED = "updated"  # 更新日時順
+
+
 class FileFinder:
     """フォルダからファイルを探して取得する。
 
@@ -260,17 +267,32 @@ class FileFinder:
             return None
         return max(matched, key=lambda p: p.stat().st_mtime)
 
-    def latest(self, pattern: str = "*.xlsx", required: bool = True) -> Path | None:
-        """更新日時が最も新しいファイルを返す。
+    def latest(
+        self,
+        pattern: str = "*.xlsx",
+        by: str = SortBy.NAME,
+        required: bool = True,
+    ) -> Path | None:
+        """最新のファイルを返す。
+
+        デフォルトは**ファイル名の辞書順で最後**のもの
+        （"20260711_売上.xlsx" のような日付プレフィックス命名で「名前上の最新」を取る用途）。
+        コピーや再保存で更新日時が変わっていても影響を受けない。
+        更新日時で選びたい場合は by=SortBy.UPDATED を指定する。
 
         Args:
             pattern: ファイルのパターン（デフォルト: "*.xlsx"）。
+            by: SortBy.NAME（ファイル名順・デフォルト）または SortBy.UPDATED（更新日時順）。
             required: True（デフォルト）なら見つからないとき FileNotFoundError。
                       False なら None を返す。
 
         Raises:
             FileNotFoundError: required=True で該当ファイルがない場合。
+            ValueError: by に SortBy.NAME / SortBy.UPDATED 以外を指定した場合。
         """
+        if by not in (SortBy.NAME, SortBy.UPDATED):
+            raise ValueError(f"by には SortBy.NAME か SortBy.UPDATED を指定してください: {by}")
+
         files = list(self._folder.glob(pattern))
         if not files:
             if required:
@@ -278,4 +300,6 @@ class FileFinder:
                     f"ファイルが見つかりません: {self._folder}\\{pattern}"
                 )
             return None
-        return max(files, key=lambda p: p.stat().st_mtime)
+        if by == SortBy.UPDATED:
+            return max(files, key=lambda p: p.stat().st_mtime)
+        return max(files, key=lambda p: p.name)

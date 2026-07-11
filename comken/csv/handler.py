@@ -21,6 +21,14 @@ from pathlib import Path
 from ..exceptions import CsvError
 
 
+class Encoding:
+    """CsvReader / CsvWriter の encoding 引数に使う定数。"""
+
+    AUTO = "auto"  # UTF-8 → CP932 の順に自動判定（CsvReader のみ）
+    UTF8_SIG = "utf-8-sig"  # BOM 付き UTF-8（Excel でそのまま開ける）
+    CP932 = "cp932"  # Shift-JIS（Windows の従来形式）
+
+
 class CsvReader:
     """CSV ファイルの読み込みユーティリティ。
 
@@ -54,33 +62,43 @@ class CsvReader:
         # → {"A001": {"注文番号": "A001", ...}, "A002": {...}}
     """
 
-    # encoding="auto" のときに試す文字コード（この順に試す）
+    # encoding=Encoding.AUTO のときに試す文字コード（この順に試す）
     # UTF-8 を先にするのは、CP932 は大半のバイト列を「読めてしまう」ため
     # （逆順にすると UTF-8 のファイルが文字化けしたまま通ってしまう）
-    AUTO_ENCODINGS = ("utf-8-sig", "cp932")
+    AUTO_ENCODINGS = (Encoding.UTF8_SIG, Encoding.CP932)
 
-    def __init__(self, path: str | Path, encoding: str = "auto") -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        encoding: str = Encoding.AUTO,
+        headers: list[str] | None = None,
+    ) -> None:
         """
         Args:
             path: CSV ファイルのパス。
-            encoding: 文字コード。"auto"（デフォルト）は UTF-8（BOM付き含む）→
+            encoding: 文字コード。Encoding.AUTO（デフォルト）は UTF-8（BOM付き含む）→
                       CP932（Shift-JIS）の順に自動判定する。
-                      明示したい場合は "utf-8-sig" や "cp932" を指定する。
+                      明示したい場合は Encoding.UTF8_SIG / Encoding.CP932 を指定する。
+            headers: ヘッダー行がない CSV の場合に、列名のリストをここで付ける。
+                     指定すると1行目からデータとして読む。
+                     例: CsvReader("data.csv", headers=["注文番号", "金額", "担当者"])
         """
         self._path = Path(path)
         self._encoding = encoding
+        self._headers = headers
 
     def _load(self) -> list[dict[str, str]]:
-        return list(csv.DictReader(io.StringIO(self._read_text())))
+        # headers 指定時は1行目をヘッダーではなくデータとして扱う
+        return list(csv.DictReader(io.StringIO(self._read_text()), fieldnames=self._headers))
 
     def _read_text(self) -> str:
         """ファイルを読み、文字コードを判定してテキストとして返す。
 
         Raises:
-            CsvError: encoding="auto" でどの文字コードでも読めなかった場合。
+            CsvError: encoding=Encoding.AUTO でどの文字コードでも読めなかった場合。
         """
         raw = self._path.read_bytes()
-        if self._encoding != "auto":
+        if self._encoding != Encoding.AUTO:
             return raw.decode(self._encoding)
 
         for encoding in self.AUTO_ENCODINGS:
