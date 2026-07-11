@@ -2,8 +2,7 @@
 サンプル: ログイン → セキュアエリア確認 → ログアウト
 
 実行方法:
-    cd F:\dev\original_libs
-    python -m examples.sample_login.run
+    リポジトリのルートで python -m examples.sample_login.run
 """
 
 from comken.browser.driver import EdgeDriver

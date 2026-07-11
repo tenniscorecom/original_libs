@@ -42,10 +42,11 @@
 環境変数 `COMKEN_SHARE` を参照して起動のたびに差分同期するため、常に最新版で実行される。
 詳しい仕組みは [仕様書.md](仕様書.md) の「配布・運用」を参照。
 
-### 開発機
+### 開発するとき
 
 ```bash
-pip install -e F:\dev\original_libs
+# このリポジトリを clone したフォルダで
+pip install -e .
 pip install -r requirements.txt
 ```
 
@@ -763,7 +764,7 @@ examples/sample_login/
 実行:
 
 ```bash
-cd F:\dev\original_libs
+# リポジトリのルートで
 python -m examples.sample_login.run
 ```
 

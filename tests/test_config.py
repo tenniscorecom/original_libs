@@ -2,8 +2,7 @@
 Config クラスのテスト。
 
 実行方法:
-    cd F:\\dev\\original_libs
-    python -m pytest tests/ -v
+    リポジトリのルートで python -m pytest tests/ -v
 """
 
 import pytest
