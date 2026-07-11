@@ -45,7 +45,11 @@ def setup_logger(name: str = "main", log_dir: str | Path = "logs") -> logging.Lo
 
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
-    root.handlers.clear()  # 二重に呼ばれてもハンドラが重複しない（ログが2重に出ない）ようにする
+    # 二重に呼ばれてもハンドラが重複しない（ログが2重に出ない）ようにする。
+    # close() してから外す（clear だけだとログファイルが開きっぱなしになる）
+    for handler in root.handlers[:]:
+        handler.close()
+        root.removeHandler(handler)
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
