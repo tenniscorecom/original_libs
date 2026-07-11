@@ -314,6 +314,39 @@ class TestDownloadDir:
         assert target.exists()
         assert (target / "report.xlsx").exists()
 
+
+class TestResolveDownloadDir:
+    """EdgeDriver の download_dir 解決（_resolve_download_dir）のテスト。
+
+    どの指定方法でも DownloadDir に揃い、d.download_dir.wait() が使えることを保証する。
+    """
+
+    def test_passes_through_download_dir_instance(self, tmp_path):
+        """DownloadDir を渡した場合はそのまま使われる（一時フォルダの性質を保つ）。"""
+        from comken.browser.driver import _resolve_download_dir
+
+        dl = DownloadDir(path=tmp_path / "dl")
+        assert _resolve_download_dir(dl, tmp_path / "default") is dl
+
+    def test_wraps_path_as_fixed_folder(self, tmp_path):
+        """パスを渡した場合は固定フォルダの DownloadDir に包まれる。"""
+        from comken.browser.driver import _resolve_download_dir
+
+        result = _resolve_download_dir(tmp_path / "dl", tmp_path / "default")
+
+        assert isinstance(result, DownloadDir)
+        assert result.path == tmp_path / "dl"
+        assert result.path.is_dir()  # なければ作成される
+
+    def test_uses_default_when_omitted(self, tmp_path):
+        """未指定なら BrowserOptions のデフォルトパスが固定フォルダとして使われる。"""
+        from comken.browser.driver import _resolve_download_dir
+
+        result = _resolve_download_dir(None, tmp_path / "default")
+
+        assert isinstance(result, DownloadDir)
+        assert result.path == tmp_path / "default"
+
     def test_uses_specified_path(self, tmp_path):
         """path 指定で既存フォルダをそのまま使えることを確認する。"""
         target = tmp_path / "downloads"

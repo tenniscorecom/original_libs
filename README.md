@@ -382,12 +382,24 @@ if path is None:
 
 作成・完了待ち・後片付けを1つのオブジェクトで扱う。**with 文で使う**。
 
+**BrowserOptions.DOWNLOAD_DIR とのつながり:**
+EdgeDriver はダウンロード先を常に DownloadDir として `d.download_dir` に持つ。
+`EdgeDriver()` と何も渡さなければ `BrowserOptions.DOWNLOAD_DIR`（固定フォルダ）が使われ、
+その場合も `d.download_dir.wait()` で完了待ちができる。
+
+```python
+with EdgeDriver() as d:                 # デフォルトのダウンロードフォルダを使う
+    ...
+    files = d.download_dir.wait()       # どの指定方法でもこれが使える
+```
+
 **使い分け（ファイルを残したいかどうかで選ぶ）:**
 
 | やりたいこと | 書き方 | with を抜けたとき |
 |---|---|---|
 | ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` — 一時フォルダ | **自動削除される**（消し忘れゼロ） |
 | ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` — 固定フォルダ | 残る |
+| デフォルトの場所（BrowserOptions.DOWNLOAD_DIR）に残す | `EdgeDriver()` に何も渡さない → `d.download_dir` を使う | 残る |
 
 ```python
 from comken.utils import DownloadDir, move_file
