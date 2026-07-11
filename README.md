@@ -636,7 +636,6 @@ class LoginPage(BasePage):
 |---|---|---|---|---|
 | クリック | `click_id` | `click_name` | `click_css` | `click_xpath` |
 | テキスト入力 | `input_id` | `input_name` | `input_css` | `input_xpath` |
-| フォーム一括入力 | `fill_form_id` | `fill_form_name` | `fill_form_css` | — |
 | テキスト取得 | `text_id` | `text_name` | `text_css` | `text_xpath` |
 | プルダウン（テキスト） | `select_text_id` | `select_text_name` | `select_text_css` | `select_text_xpath` |
 | プルダウン（value） | `select_value_id` | `select_value_name` | `select_value_css` | `select_value_xpath` |
@@ -676,17 +675,7 @@ class LoginPage(BasePage):
 | `save_screenshot(prefix)` | スクリーンショットを保存 |
 
 セレクターの値は Edge の開発者ツール（F12）で確認する。
-
-**フォーム一括入力の例:**
-
-```python
-page.fill_form_id({
-    "username": "yamada",
-    "email": "yamada@example.com",
-    "phone": "052-000-0000",
-})
-# input_id を3回書くのと同じ。入力欄が多い画面で使う
-```
+`input_*` は入力前に既存の値を自動でクリアする（clear() → send_keys() の順）。
 
 ---
 
