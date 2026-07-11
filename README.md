@@ -19,6 +19,16 @@
 | [Browser（Edge）](#browser) | Edge ブラウザ操作 |
 | [Salesforce](#salesforce) | レコード CRUD・レポート取得 |
 
+## 定数クラス一覧
+
+選択肢を渡す引数には生の文字列ではなく、これらの定数を使う。
+
+| 定数クラス | import | 用途 | 例 |
+|---|---|---|---|
+| `Color` | `from comken.excel import Color` | セルの背景色 | `set_fill(color=Color.RED)` |
+| `SortBy` | `from comken.utils import SortBy` | FileFinder.latest の並び順 | `latest(by=SortBy.UPDATED)` |
+| `Encoding` | `from comken.csv import Encoding` | CSV の文字コード | `CsvReader(path, encoding=Encoding.CP932)` |
+
 ---
 
 ## セットアップ
