@@ -374,6 +374,13 @@ shutil.move(str(files[0]), "output/report.xlsx")
 dl.remove()  # 不要なら削除（残したい場合は呼ばない）
 ```
 
+**使い分け（ファイルを残したいかどうかで選ぶ）:**
+
+| やりたいこと | 書き方 |
+|---|---|
+| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` で一時フォルダ → 最後に `dl.remove()` |
+| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` で固定フォルダ → `remove()` を呼ばない |
+
 固定のフォルダに落としたい場合は `path` を指定する（なければ作成される）。
 
 ```python
@@ -382,7 +389,7 @@ dl = DownloadDir(path=r"C:\作業\downloads")
 # （前回のダウンロードが残っていても誤検出しない）
 
 # path 指定した固定フォルダは remove() では削除されない（警告が出るだけ）
-# 本当に削除したい場合は remove(force=True)
+# → うっかり呼んでもファイルは残る。本当に削除したい場合だけ remove(force=True)
 ```
 
 ---
