@@ -7,7 +7,8 @@ credentials/__main__.py — 認証情報の管理ツール（対話式）
 他の人・他の PC からは読み取れない。
 
 起動方法:
-    python -m comken.credentials
+    python -m comken.credentials          # 対話式（ターミナル）
+    python -m comken.credentials --gui    # GUI 版（gui.py）
 
 プロジェクトのフォルダ（main.py がある場所）で起動すると、
 コード内の REQUIRED_CREDENTIALS 宣言を読み取り、

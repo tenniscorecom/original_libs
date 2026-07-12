@@ -1,8 +1,9 @@
 """
-salesforce/api.py — Salesforce API クライアント（標準ライブラリのみ）
+salesforce_std/api.py — Salesforce API クライアント（標準ライブラリのみ）
 
-社内環境では外部ライブラリ（simple-salesforce / requests）をインストールできないため、
+外部ライブラリ（simple-salesforce / requests）をインストールできない環境向けに、
 urllib・json・xml など Python 標準ライブラリだけで Salesforce の API を直接呼ぶ。
+requests が導入できる環境では salesforce_requests 版（同じ API・同じクラス名）も使える。
 
 対応している操作:
     - ログイン（SOAP ログイン。接続アプリケーション不要）
@@ -13,7 +14,7 @@ urllib・json・xml など Python 標準ライブラリだけで Salesforce の 
 
 使い方:
     from comken.credentials import Credentials
-    from comken.salesforce import SalesforceApiClient
+    from comken.salesforce_std import SalesforceApiClient
 
     cred = Credentials("salesforce")
     sf = SalesforceApiClient(

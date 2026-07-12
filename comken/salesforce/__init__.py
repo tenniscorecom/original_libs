@@ -1,37 +1,32 @@
 """
-salesforce — Salesforce 連携クライアント
+salesforce — 旧 import パスの互換シム
 
-推奨は SalesforceApiClient(標準ライブラリのみで動く。追加インストール不要)。
+Salesforce クライアントは salesforce_std（標準ライブラリのみ）と
+salesforce_requests（requests 版）の2フォルダに分かれた。
+どちらも同じクラス名・同じメソッドなので、import 行の変更だけで切り替えられる:
 
-simple-salesforce / requests ベースのクライアントも残しているが、
-これらは外部ライブラリの導入承認が下りた環境でのみ使えるため、王道にはしない。
+    from comken.salesforce_std import SalesforceApiClient       # 標準ライブラリ版
+    from comken.salesforce_requests import SalesforceApiClient  # requests 版
 
-| クラス | 依存 | 用途 |
-|---|---|---|
-| SalesforceApiClient(推奨) | なし(標準ライブラリのみ) | CRUD・SOQL・レポート・Bulk 2.0 |
-| SalesforceClient | simple-salesforce | CRUD・SOQL |
-| SalesforceBulkClient | simple-salesforce | Bulk 一括操作 |
-| SalesforceRestClient | requests | REST API 直接操作 |
-| SalesforceReportClient | requests | レポート取得 |
+このモジュール（comken.salesforce）は旧コードを壊さないための入り口で、
+salesforce_std → salesforce_requests の順に探して SalesforceApiClient を返す。
+新しいコードでは使わないこと。
 """
 
-from .api import SalesforceApiClient
+from ..deprecation import warn_renamed
+
+try:
+    from ..salesforce_std import SalesforceApiClient as _SalesforceApiClient
+    _NEW_NAME = "comken.salesforce_std"
+except ImportError:  # salesforce_std フォルダが削除されている環境
+    from ..salesforce_requests import SalesforceApiClient as _SalesforceApiClient
+    _NEW_NAME = "comken.salesforce_requests"
 
 __all__ = ["SalesforceApiClient"]
 
-# 外部ライブラリ版はインストールされている場合だけ使える(未導入でも import エラーにしない)
-try:
-    from .bulk import SalesforceBulkClient
-    from .simple_sf import SalesforceClient
 
-    __all__ += ["SalesforceClient", "SalesforceBulkClient"]
-except ImportError:  # simple-salesforce 未導入
-    pass
-
-try:
-    from .report import SalesforceReportClient
-    from .rest_api import SalesforceRestClient
-
-    __all__ += ["SalesforceRestClient", "SalesforceReportClient"]
-except ImportError:  # requests 未導入
-    pass
+def __getattr__(name):
+    if name == "SalesforceApiClient":
+        warn_renamed("comken.salesforce", _NEW_NAME)
+        return _SalesforceApiClient
+    raise AttributeError(name)
