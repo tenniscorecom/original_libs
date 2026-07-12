@@ -35,6 +35,11 @@ class ExcelError(OriginalLibsError):
         "ヘッダー行に空のセルがあります。列番号: {cols}\n"
         "Excelの1行目（ヘッダー行）を確認してください。"
     )
+    MSG_HEADERS_TOO_FEW = (
+        "headers の列数（{expected}列）がシートの列数（{actual}列）より少ないため、"
+        "はみ出した列のデータが失われます。\n"
+        "headers にすべての列名を指定してください。"
+    )
 
 
 class SheetNotFoundError(ExcelError):
@@ -81,6 +86,10 @@ class ColumnNotFoundError(OriginalLibsError):
         "存在する列: {existing}\n"
         "CSVのヘッダー（1行目）が変更されていないか確認してください。"
     )
+    MSG_KEY = (
+        "キー列が見つかりません: {key}\n"
+        "存在する列: {existing}"
+    )
 
 
 class CsvError(OriginalLibsError):
@@ -89,6 +98,11 @@ class CsvError(OriginalLibsError):
     MSG_ENCODING = (
         "文字コードを判定できませんでした（UTF-8 / CP932 のどちらでも読めません）: {path}\n"
         "CsvReader(path, encoding='文字コード名') で明示してください。"
+    )
+    MSG_HEADERS_TOO_FEW = (
+        "headers の列数（{expected}列）が CSV の列数より少ないため、"
+        "はみ出した列のデータが失われます: {path}\n"
+        "headers にすべての列名を指定してください。"
     )
 
 

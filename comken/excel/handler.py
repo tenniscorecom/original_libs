@@ -27,6 +27,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ..exceptions import ExcelError, SheetNotFoundError, _warn_coerce
+from ..utils.data import col_to_num
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,11 @@ class ExcelFile:
 
             rows = f.read_rows_as_dicts("Sheet1")
             # → [{"列名": 値, ...}, ...]
+
+        # ヘッダー行がない場合は __init__ で列名を渡す
+        with ExcelFile("data.xlsx", headers=["注文番号", "金額", "担当者"]) as f:
+            rows = f.read_rows_as_dicts("Sheet1")
+            # → 1行目からデータとして読み込む
 
         # 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
         with ExcelFile("data.xlsx") as f:
@@ -72,6 +78,7 @@ class ExcelFile:
         data_only: bool = False,
         read_only: bool = False,
         local_copy_threshold_mb: float = 10,
+        headers: list[str] | None = None,
     ) -> None:
         """
         Args:
@@ -81,6 +88,9 @@ class ExcelFile:
             local_copy_threshold_mb: この MB 以上のファイルはローカルにコピーしてから開く。
                 NAS・ネットワークドライブのファイルが遅い・不安定な場合に有効。
                 0 を指定するとローカルコピーを無効化できる。
+            headers: ヘッダー行がない Excel の場合に、列名のリストをここで付ける。
+                     指定すると read_rows_as_dicts() は全行をデータとして読む。
+                     例: ExcelFile("data.xlsx", headers=["注文番号", "金額", "担当者"])
         """
         # save() の保存先は常に元のファイル（ローカルコピーに保存すると close で消えてしまう）
         self._original_path = Path(path)
@@ -100,6 +110,7 @@ class ExcelFile:
         # ────────────────────────────────────────────────────────────────
 
         self._path = src
+        self._headers = headers
         self._wb: Workbook = load_workbook(self._path, data_only=data_only, read_only=read_only)
 
     def __enter__(self) -> "ExcelFile":
@@ -137,26 +148,41 @@ class ExcelFile:
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
         """ヘッダー行をキーとした辞書のリストで返す。
 
+        ヘッダー行がないファイルは ExcelFile(path, headers=[...]) で列名を指定すること。
+
         Args:
             sheet_name: シート名。
             header_row: ヘッダーが存在する行番号（デフォルト: 1）。
+                        __init__ で headers を指定した場合は無視される。
 
         Returns:
-            [{"列名": 値, ...}, ...] の形式のリスト。
+            [{"列名": 値, ...}, ...] の形式のリスト。全セルが空の行は除外される。
 
         Raises:
             SheetNotFoundError: 指定したシートが存在しない場合。
-            ExcelError: ヘッダー行に空のセルがある場合。
+            ExcelError: ヘッダー行に空のセルがある場合（headers 未指定時のみ）、
+                        または headers の列数がシートの列数より少ない場合。
         """
         ws = self._sheet(sheet_name)
+        if self._headers is not None:
+            all_rows = list(ws.iter_rows(min_row=1, values_only=True))
+            if all_rows and len(all_rows[0]) > len(self._headers):
+                raise ExcelError(
+                    ExcelError.MSG_HEADERS_TOO_FEW.format(
+                        expected=len(self._headers), actual=len(all_rows[0])
+                    )
+                )
+            return [dict(zip(self._headers, row)) for row in all_rows if not all(c is None for c in row)]
         all_rows = list(ws.iter_rows(min_row=int(header_row), values_only=True))
         if not all_rows:
             return []
-        headers = all_rows[0]
-        none_cols = [i + 1 for i, h in enumerate(headers) if h is None]
+        file_headers = all_rows[0]
+        if all(h is None for h in file_headers):
+            return []
+        none_cols = [i + 1 for i, h in enumerate(file_headers) if h is None]
         if none_cols:
             raise ExcelError(ExcelError.MSG_HEADER_NONE.format(cols=none_cols))
-        return [dict(zip(headers, row)) for row in all_rows[1:]]
+        return [dict(zip(file_headers, row)) for row in all_rows[1:]]
 
     def iter_rows(self, sheet_name: str, min_row: int = 2) -> Generator[tuple[Any, ...], None, None]:
         """大量データ向け。行をジェネレータで1行ずつ返す（メモリ効率優先）。
@@ -227,6 +253,73 @@ class ExcelFile:
             value: 書き込む値。
         """
         self._sheet(sheet_name).cell(row=int(row), column=int(col)).value = value
+
+    def transfer_by_key(
+        self,
+        sheet_name: str,
+        key_col: int | str,
+        lookup: dict[str, dict],
+        column_mapping: dict[str, str],
+        start_row: int = 2,
+    ) -> int:
+        """キー列の値で lookup を引き、一致した行に値を転記する（XLOOKUP 的転記）。
+
+        ExcelComHandler.transfer_by_key の openpyxl 版。
+        Excel を起動しないため数万行でも速い。数式の再計算が必要な場合だけ COM 版を使う。
+        書き込み後は save() を忘れずに呼ぶこと。
+
+        使い方:
+            lookup = CsvReader("data.csv").index("注文番号")
+            mapping = {"A": "顧客名", "B": "金額"}  # 列レター → lookup の列名
+
+            with ExcelFile("data.xlsx") as f:
+                matched = f.transfer_by_key("T_data", key_col="Q",
+                                            lookup=lookup, column_mapping=mapping)
+                f.save()
+
+        Args:
+            sheet_name: シート名。
+            key_col: キー列。列レター（"Q"）または列番号（17）で指定する。
+            lookup: {キーの値: {列名: 値}} の辞書。CsvReader.index() 等で作る。
+            column_mapping: {列レター: lookup の列名} の辞書。
+            start_row: 転記を始める行番号（デフォルト: 2。1行目はヘッダー想定）。
+
+        Returns:
+            転記した行数。
+
+        Raises:
+            SheetNotFoundError: 指定したシートが存在しない場合。
+        """
+        key_col_num = col_to_num(key_col) if isinstance(key_col, str) else int(key_col)
+        mapping = {col_to_num(letter): name for letter, name in column_mapping.items()}
+
+        ws = self._sheet(sheet_name)
+        last_row = ws.max_row
+        logger.info("シート「%s」: 最終行 %d行", sheet_name, last_row)
+
+        matched = 0
+        for row in range(int(start_row), last_row + 1):
+            key_value = ws.cell(row=row, column=key_col_num).value
+            if key_value is None or str(key_value).strip() == "":
+                continue
+
+            # 数値セルが float で入っていると "1001.0" になってしまうため、
+            # 整数値なら int を経由して "1001" に揃える（CSV 側の文字列と一致させる）
+            if isinstance(key_value, float) and key_value.is_integer():
+                key_value = int(key_value)
+
+            lookup_row = lookup.get(str(key_value).strip())
+            if lookup_row is None:
+                logger.debug("%d行目: キー「%s」が lookup に存在しません", row, key_value)
+                continue
+
+            for col_num, name in mapping.items():
+                ws.cell(row=row, column=col_num).value = lookup_row.get(name, "")
+            logger.debug("%d行目: 転記完了（キー: %s）", row, key_value)
+            matched += 1
+
+        logger.info("転記完了: %d件一致（シート: %s）", matched, sheet_name)
+        return matched
 
     def save(self, path: str | Path | None = None) -> None:
         """ファイルを保存する。

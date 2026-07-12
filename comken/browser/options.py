@@ -20,7 +20,7 @@ class BrowserOptions:
     # ── ドライバー設定 ──
     DRIVER_PATH: str = r"C:\Users\Public\Documents\msedgedriver.exe"
     WAIT_SECONDS: int = 10
-    DOWNLOAD_DIR: str = str(Path.home() / "Downloads" / "comken")
+    DOWNLOAD_DIR: str | None = None  # None = 一時フォルダを自動作成（EdgeDriver 終了時に削除）
 
     # 属性名 → 実際の Chrome 引数
     _BOOL_ARGS: dict[str, str] = {
@@ -113,7 +113,8 @@ class BrowserOptions:
             current = getattr(self, attr)
             default = getattr(base, attr)
             diff = " *" if current != default else ""
-            lines.append(f"    {attr:<35} = {current}{diff}")
+            display = current if current is not None else "None（一時フォルダ自動作成）"
+            lines.append(f"    {attr:<35} = {display}{diff}")
 
         if self.__class__ is not BrowserOptions:
             lines.append("  (* = デフォルトから変更)")

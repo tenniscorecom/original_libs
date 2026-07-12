@@ -1,4 +1,4 @@
-from .data import col_to_num, diff_rows
+from .data import DiffResult, RowChange, col_to_num, diff_row, diff_rows
 from .file import (
     FileFinder,
     FileNameBuilder,
@@ -16,5 +16,8 @@ __all__ = [
     "copy_file",
     "local_copy",
     "col_to_num",
+    "diff_row",
     "diff_rows",
+    "DiffResult",
+    "RowChange",
 ]

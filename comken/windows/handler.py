@@ -61,20 +61,31 @@ class ExcelComHandler:
             h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
     """
 
-    def __init__(self, path: str | Path, password: str = "") -> None:
+    def __init__(self, path: str | Path, password: str = "", headers: list[str] | None = None) -> None:
         """
         Args:
             path: Excel ファイルのパス。
             password: 読み取りパスワード（パスワード保護されたファイルを開く場合）。
+            headers: ヘッダー行がない Excel の場合に、列名のリストをここで付ける。
+                     指定すると read_rows_as_dicts() は全行をデータとして読む。
         """
+        self._headers = headers
+        self._wb = None
         self._excel = win32com.client.Dispatch("Excel.Application")
         self._excel.Visible = False
         self._excel.DisplayAlerts = False
-        kwargs = {"Filename": str(Path(path).resolve())}
-        if password:
-            kwargs["Password"] = password
-        self._wb = self._excel.Workbooks.Open(**kwargs)
-        self._excel.CalculateFull()
+        # Open に失敗すると with に入る前に例外で抜けるため、ここで Quit しないと
+        # 起動済みの Excel プロセスが残り続ける
+        try:
+            kwargs = {"Filename": str(Path(path).resolve())}
+            if password:
+                kwargs["Password"] = password
+            self._wb = self._excel.Workbooks.Open(**kwargs)
+            self._excel.CalculateFull()
+        except Exception:
+            self._excel.Quit()
+            self._excel = None
+            raise
 
     def __enter__(self) -> "ExcelComHandler":
         return self
@@ -128,26 +139,42 @@ class ExcelComHandler:
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
         """ヘッダー行をキーとした辞書のリストで返す。
 
+        ヘッダー行がないファイルは ExcelComHandler(path, headers=[...]) で列名を指定すること。
+
         Args:
             sheet_name: シート名。
             header_row: ヘッダーが存在する行番号（デフォルト: 1）。
+                        __init__ で headers を指定した場合は無視される。
 
         Returns:
-            [{"列名": 値, ...}, ...] の形式のリスト。
+            [{"列名": 値, ...}, ...] の形式のリスト。全セルが空の行は除外される。
 
         Raises:
-            ExcelError: ヘッダー行に空のセルがある場合。
+            ExcelError: ヘッダー行に空のセルがある場合（headers 未指定時のみ）、
+                        または headers の列数がシートの列数より少ない場合。
         """
         ws = self._sheet(sheet_name)
         last_row = self.used_last_row(sheet_name)
         last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+        if self._headers is not None:
+            if last_col > len(self._headers):
+                raise ExcelError(
+                    ExcelError.MSG_HEADERS_TOO_FEW.format(expected=len(self._headers), actual=last_col)
+                )
+            rows = [
+                tuple(ws.Cells(row, col).Value for col in range(1, last_col + 1))
+                for row in range(1, last_row + 1)
+            ]
+            return [dict(zip(self._headers, row)) for row in rows if not all(c is None for c in row)]
         header_row = int(header_row)
-        headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
-        none_cols = [i + 1 for i, h in enumerate(headers) if h is None]
+        file_headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
+        if all(h is None for h in file_headers):
+            return []  # 空シート（ExcelFile 側と挙動を揃える）
+        none_cols = [i + 1 for i, h in enumerate(file_headers) if h is None]
         if none_cols:
             raise ExcelError(ExcelError.MSG_HEADER_NONE.format(cols=none_cols))
         return [
-            dict(zip(headers, (ws.Cells(row, col).Value for col in range(1, last_col + 1))))
+            dict(zip(file_headers, (ws.Cells(row, col).Value for col in range(1, last_col + 1))))
             for row in range(header_row + 1, last_row + 1)
         ]
 

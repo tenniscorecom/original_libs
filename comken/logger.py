@@ -35,7 +35,7 @@ def setup_logger(name: str = "main", log_dir: str | Path = "logs") -> logging.Lo
         name のロガー。
     """
     log_path = Path(log_dir)
-    log_path.mkdir(exist_ok=True)
+    log_path.mkdir(parents=True, exist_ok=True)
     log_file = log_path / f"{name}_{datetime.datetime.now():%Y%m%d}.log"
 
     formatter = logging.Formatter(

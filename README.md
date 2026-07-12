@@ -86,7 +86,7 @@ config = Config("path/to/config.ini") # パスを指定する場合
 SALESFORCE = salesforce
 
 [REPORT]
-OUTPUT_FOLDER = \\nas-server\reports
+OUTPUT_FOLDER = C:\作業\reports
 TEMPLATE_PATH = \\nas-server\templates\template.xlsx
 ```
 
@@ -148,7 +148,8 @@ logger = setup_logger("main")
 logger.info("処理開始")
 
 # ログの出力先フォルダを変えたい場合は log_dir で指定する（なければ作成される）
-logger = setup_logger("main", log_dir=r"\\nas-server\logs\my_project")
+# ※ 出力先はローカルにする。NAS はモジュールの置き場・読み込み元であり、ログ等の新規出力先にはしない
+logger = setup_logger("main", log_dir=r"C:\logs\my_project")
 ```
 
 ```python
@@ -360,6 +361,26 @@ reader.rows()
 # → [{"注文番号": "A001", "金額": "1000"}, {"注文番号": "A002", "金額": "2000"}]
 ```
 
+### CSV の書き込み（CsvWriter）
+
+```python
+from comken.csv import CsvWriter
+
+rows = [{"注文番号": "A001", "金額": "1000"}, {"注文番号": "A002", "金額": "2000"}]
+
+# 新規作成（上書き）。親フォルダがなければ自動作成される
+writer = CsvWriter("output.csv", fieldnames=["注文番号", "金額"])
+writer.write_rows(rows)
+
+# 既存ファイルの末尾に追記（ファイルがなければヘッダー付きで新規作成）
+writer.append_row({"注文番号": "A003", "金額": "3000"})
+writer.append_rows(rows)
+
+# 文字コードはデフォルト UTF8_SIG（Excel でそのまま開ける）。Shift-JIS が必要なら:
+writer = CsvWriter("output.csv", fieldnames=["注文番号"], encoding=Encoding.CP932)
+# ※ Encoding.AUTO（読み込み時の自動判定用）を渡した場合は UTF8_SIG として書き込まれる
+```
+
 ---
 
 ## ファイル名・ファイル取得ユーティリティ
@@ -409,6 +430,40 @@ path = FileFinder(FOLDER).latest(by=SortBy.UPDATED)      # 更新日時で選び
 path = FileFinder(FOLDER).today(required=False)
 if path is None:
     ...  # スキップ処理など
+```
+
+### データ比較（diff_row / diff_rows）
+
+CSV・Excel から読んだ行（辞書）同士の差分を取る。for ループを自分で書かなくてよい。
+**CSV の文字列と Excel の数値は同一視される**（`"1000"` と `1000` は差分にならない。
+空セルの `None` と `""` も同じ扱い）ので、CSV ↔ Excel をまたいだ比較にそのまま使える。
+
+```python
+from comken.utils import diff_row, diff_rows
+
+# 1行同士の差分（値が違う列だけ返る）
+before = {"注文番号": "A001", "金額": "1000", "担当者": "山田"}
+after = {"注文番号": "A001", "金額": 2000, "担当者": "山田"}
+
+diff_row(before, after)
+# → {"金額": ("1000", 2000)}
+# 差分がなければ {} が返るので、if diff_row(a, b): で「変更あり」を判定できる
+
+# データセット同士の差分（キー列で突合）
+before = CsvReader("昨日.csv").rows()
+with ExcelFile("今日.xlsx") as f:
+    after = f.read_rows_as_dicts("Sheet1")
+
+result = diff_rows(before, after, key="社員番号")
+result.added    # → after にだけある行のリスト
+result.removed  # → before にだけある行のリスト
+result.changed  # → 値が変わった行のリスト（RowChange）
+
+for change in result.changed:
+    print(change.key)      # → "001"（キー列の値）
+    print(change.columns)  # → {"氏名": ("山田", "山田太郎")}（変わった列だけ）
+    print(change.before)   # → 変更前の行全体
+    print(change.after)    # → 変更後の行全体
 ```
 
 ---
@@ -476,6 +531,10 @@ with ExcelFile("data.xlsx") as f:
     rows = f.read_rows(SHEET) # タプルのリスト
     rows = f.read_rows_as_dicts(SHEET) # 辞書のリスト（ヘッダーをキーに）
 
+# ヘッダー行がない Excel は __init__ で列名を渡す（1行目からデータとして読まれる）
+with ExcelFile("data.xlsx", headers=["注文番号", "金額", "担当者"]) as f:
+    rows = f.read_rows_as_dicts(SHEET)
+
 # 数式の計算結果を読む（openpyxl → win32com 自動フォールバック）
 with ExcelFile("data.xlsx") as f:
     rows = f.read_computed_rows(SHEET)
@@ -493,6 +552,15 @@ with ExcelFile("data.xlsx") as f:
 
 # 複数ファイルを同時処理する場合（目安: 10ファイル以上）は
 # concurrent.futures.ThreadPoolExecutor を使うと高速化できる
+
+# キー突合で転記（XLOOKUP 的転記。CSV → Excel の更新などに使う）
+lookup = CsvReader("data.csv").index("注文番号")
+MAPPING = {"B": "顧客名", "C": "金額"}  # Excel の列レター → lookup の列名
+
+with ExcelFile("data.xlsx") as f:
+    matched = f.transfer_by_key(SHEET, key_col="A", lookup=lookup, column_mapping=MAPPING)
+    f.save()  # 書き込み後は save() を忘れずに
+# Excel を起動しないため数万行でも速い。数式の再計算が必要なら ExcelComHandler 版を使う
 
 # 背景色の設定（よく使う色は Color 定数で指定できる）
 from comken.excel import Color
@@ -518,7 +586,7 @@ with ExcelFile("data.xlsm") as f:
 | 大量行を読む | `iter_rows()` で1行ずつ処理する（全行をメモリに乗せない） |
 | NAS 上の大きいファイル | `local_copy_threshold_mb` の自動ローカルコピーに任せる（デフォルト10MB） |
 | 大量行への書き込み | openpyxl（`ExcelFile.write_cell`）を使う。COM のセル単位書き込みは1呼び出しごとにプロセス間通信が発生して桁違いに遅い |
-| COM でしかできない処理が大量行 | `transfer_by_key` 等はセル単位アクセスのため数万行では時間がかかる。可能なら openpyxl 側で処理してから COM は最後の保存・マクロだけに使う |
+| キー突合転記が大量行 | `ExcelFile.transfer_by_key`（openpyxl 版）を使う。COM 版（`ExcelComHandler.transfer_by_key`）はセル単位アクセスのため数万行では時間がかかる。COM は最後の保存・マクロだけに使う |
 
 ---
 
@@ -559,6 +627,7 @@ with ExcelComHandler("data.xlsx") as h:
 
 キー列の値で lookup を引き、一致した行に列マッピングに従って値を書き込む。
 空行・キーが空の行・lookup にないキーの行は自動でスキップされる。
+数式の再計算が不要なら openpyxl 版（`ExcelFile.transfer_by_key`）の方が速い（Excel セクション参照）。
 
 ```python
 lookup = CsvReader("data.csv").index("注文番号")
@@ -651,45 +720,34 @@ print(MyOptions()) # デフォルトからの変更箇所に * が付く
 ブラウザでダウンロードするときのフォルダ管理。作成・完了待ち・後片付けを1つのオブジェクトで扱う。
 Edge がダウンロード中に作る `.crdownload` を監視して完了を判定する（ブラウザ専用。API ダウンロードには不要）。
 
-**BrowserOptions.DOWNLOAD_DIR とのつながり:**
-EdgeDriver はダウンロード先を常に DownloadDir として `d.download_dir` に持つ。
-`EdgeDriver()` と何も渡さなければ `BrowserOptions.DOWNLOAD_DIR`（固定フォルダ）が使われ、
-その場合も `d.download_dir.wait()` で完了待ちができる。
-
-**使い分け（ファイルを残したいかどうかで選ぶ）:**
-
-| やりたいこと | 書き方 | with を抜けたとき |
-|---|---|---|
-| ダウンロード → 処理したら消す（使い捨て） | `DownloadDir()` — 一時フォルダ | **自動削除される**（消し忘れゼロ） |
-| ダウンロードしたものをそのまま残す | `DownloadDir(path=r"C:\作業\downloads")` — 固定フォルダ | 残る |
-| デフォルトの場所に残す | `EdgeDriver()` に何も渡さない → `d.download_dir` を使う | 残る |
+**デフォルトは一時フォルダ。`with EdgeDriver()` を抜けると自動削除される。**
+ファイルを残したい場合は `BrowserOptions.DOWNLOAD_DIR` か `EdgeDriver(download_dir=...)` でパスを指定する。
 
 ```python
-from comken.browser import DownloadDir
 from comken.utils import move_file
 
-# デフォルトのダウンロードフォルダを使う
+# デフォルト（一時フォルダ）: with を抜けると自動削除される
 with EdgeDriver() as d:
-    ...
-    files = d.download_dir.wait()       # どの指定方法でもこれが使える
-
-# 使い捨て（一時フォルダ）: with を抜けると自動削除されるので、必要なファイルは with 内で移動する
-with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
     d.driver.get("https://example.com/download")
     # ... ダウンロード操作 ...
-    files = dl.wait()                       # 完了まで待機（.crdownload が消えるまで）
-    move_file(files[0], r"C:\作業\output")   # with 内で移動する
-# ← ここで一時フォルダは自動削除
+    files = d.download_dir.wait()            # 完了まで待機（.crdownload が消えるまで）
+    move_file(files[0], r"C:\作業\output")   # with 内でファイルを移動する
+# ← ここで一時フォルダは自動削除される
 
-# 残す（固定フォルダ）: with を抜けてもフォルダとファイルはそのまま
-with DownloadDir(path=r"C:\作業\downloads") as dl, EdgeDriver(download_dir=dl) as d:
-    ...
-    files = dl.wait()
+# ファイルを残す（BrowserOptions で指定）
+opts = BrowserOptions()
+opts.DOWNLOAD_DIR = r"C:\作業\downloads"
+with EdgeDriver(opts) as d:
+    files = d.download_dir.wait()
+# ← C:\作業\downloads のファイルはそのまま残る
+
+# ファイルを残す（EdgeDriver に直接指定）
+with EdgeDriver(download_dir=r"C:\作業\downloads") as d:
+    files = d.download_dir.wait()
 ```
 
-- 固定フォルダの `wait()` は、作成時点で既にあったファイルを無視して新しく増えた分だけを返す
-  （前回のダウンロードが残っていても誤検出しない）
-- 固定フォルダは `remove()` を呼んでも警告だけで削除されない。本当に消すなら `remove(force=True)`
+- `wait()` は固定フォルダに前回のファイルが残っていても誤検出しない（新しく増えた分だけを返す）
+- `d.download_dir` は常に `DownloadDir` インスタンスとして持つ（どの指定方法でも `.wait()` が使える）
 
 ---
 
@@ -996,3 +1054,4 @@ flowchart LR
 | 2026-07-09 | 初版作成 |
 | 2026-07-10 | 全モジュールにドキュメント追加、README 整理 |
 | 2026-07-11 | credentials モジュール追加（認証情報の暗号化保存・管理ツール） |
+| 2026-07-12 | ExcelFile・ExcelComHandler に `headers` 引数追加（ヘッダーなし Excel 対応）。EdgeDriver のダウンロードフォルダ管理を内部化（デフォルト一時フォルダ・with 終了時自動削除）。`ExcelFile.transfer_by_key`（openpyxl 版）追加。`diff_row` 追加・`diff_rows` を列単位の差分付きに改良。ExcelComHandler の初期化失敗時に Excel プロセスが残るバグ等を修正 |

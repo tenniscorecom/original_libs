@@ -7,7 +7,8 @@ CsvReader クラスのテスト。
 
 import pytest
 
-from comken.csv.handler import CsvReader
+from comken.csv.handler import CsvReader, Encoding
+from comken.csv.writer import CsvWriter
 from comken.exceptions import ColumnNotFoundError, CsvError
 
 
@@ -118,6 +119,17 @@ class TestCsvReaderHeaders:
 
         assert lookup["A002"]["金額"] == "2000"
 
+    def test_headers_too_few_raises(self, tmp_path):
+        """headers の列数が CSV の列数より少ないと CsvError になることを確認する。
+
+        （DictReader が余った列を None キーに押し込み、黙ってデータが迷子になるため）
+        """
+        path = tmp_path / "no_header.csv"
+        path.write_text("A001,1000,山田\n", encoding="utf-8")  # 実際は3列
+
+        with pytest.raises(CsvError, match="列数"):
+            CsvReader(path, headers=["注文番号", "金額"]).rows()
+
 
 class TestCsvReaderColumnValidation:
     """存在しない列名の検証テスト。
@@ -181,3 +193,60 @@ class TestCsvReaderEncoding:
 
         with pytest.raises(CsvError):
             CsvReader(path).rows()
+
+
+class TestCsvWriter:
+    """CsvWriter のテスト。"""
+
+    def test_write_rows_creates_file_with_header(self, tmp_path):
+        """write_rows でヘッダー付きの CSV が作られることを確認する。"""
+        path = tmp_path / "output.csv"
+        rows = [{"注文番号": "A001", "金額": "1000"}, {"注文番号": "A002", "金額": "2000"}]
+
+        CsvWriter(path, fieldnames=["注文番号", "金額"]).write_rows(rows)
+
+        result = CsvReader(path).rows()
+        assert len(result) == 2
+        assert result[0] == {"注文番号": "A001", "金額": "1000"}
+
+    def test_append_row_adds_to_existing_file(self, tmp_path):
+        """append_row で既存ファイルの末尾に追記されることを確認する。"""
+        path = tmp_path / "output.csv"
+        writer = CsvWriter(path, fieldnames=["注文番号", "金額"])
+        writer.write_rows([{"注文番号": "A001", "金額": "1000"}])
+
+        writer.append_row({"注文番号": "A002", "金額": "2000"})
+
+        result = CsvReader(path).rows()
+        assert len(result) == 2
+        assert result[1]["注文番号"] == "A002"
+
+    def test_append_row_creates_file_with_header_when_missing(self, tmp_path):
+        """ファイルがない状態の append_row はヘッダー付きで新規作成されることを確認する。"""
+        path = tmp_path / "new.csv"
+
+        CsvWriter(path, fieldnames=["注文番号"]).append_row({"注文番号": "A001"})
+
+        result = CsvReader(path).rows()
+        assert result == [{"注文番号": "A001"}]
+
+    def test_creates_parent_folder(self, tmp_path):
+        """親フォルダがなくても自動作成して書き込めることを確認する（ExcelFile.save と同じ挙動）。"""
+        path = tmp_path / "reports" / "2026" / "output.csv"
+
+        CsvWriter(path, fieldnames=["注文番号"]).write_rows([{"注文番号": "A001"}])
+
+        assert path.exists()
+
+    def test_auto_encoding_falls_back_to_utf8_sig(self, tmp_path):
+        """Encoding.AUTO を渡すと UTF8_SIG として書き込まれることを確認する。
+
+        （素通しすると open() の "unknown encoding: auto" という不親切なエラーになる。
+        CsvReader と同じ定数を渡し回しても落ちないようにフォールバックする）
+        """
+        path = tmp_path / "output.csv"
+
+        CsvWriter(path, fieldnames=["名前"], encoding=Encoding.AUTO).write_rows([{"名前": "山田"}])
+
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")  # UTF-8 BOM
+        assert CsvReader(path).rows() == [{"名前": "山田"}]

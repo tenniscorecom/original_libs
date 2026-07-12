@@ -382,7 +382,7 @@ from comken.browser.options import BrowserOptions
 
 options = BrowserOptions()
 options.HEADLESS = True
-options.DOWNLOAD_DIR = r"\\nas-server\reports"
+options.DOWNLOAD_DIR = r"C:\作業\downloads"  # 出力先はローカル（NAS は読み込み元・モジュール置き場）
 options.WAIT_SECONDS = 20
 ```
 
@@ -401,7 +401,7 @@ SALESFORCE = salesforce
 HEADLESS = False
 
 [REPORT]
-OUTPUT_FOLDER = \\nas-server\reports
+OUTPUT_FOLDER = C:\作業\reports
 ```
 
 ---

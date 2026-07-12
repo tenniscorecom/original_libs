@@ -45,14 +45,24 @@ class CsvWriter:
     ) -> None:
         """
         Args:
-            path: 書き込み先の CSV ファイルパス。
+            path: 書き込み先の CSV ファイルパス。親フォルダがなければ書き込み時に自動作成される。
             fieldnames: ヘッダー行の列名リスト。書き込み順に影響する。
             encoding: 文字コード。Excel で開く場合は Encoding.UTF8_SIG（デフォルト）。
                       Shift-JIS が必要な場合は Encoding.CP932 を指定する。
+                      Encoding.AUTO は自動判定できない（読み込み専用）ため UTF8_SIG として扱う。
         """
+        # AUTO は読み込み時の自動判定用。書き込みではデフォルトの UTF8_SIG に揃える
+        # （CsvReader と同じ定数を渡し回しても落ちないようにする）
+        if encoding == Encoding.AUTO:
+            encoding = Encoding.UTF8_SIG
         self._path = Path(path)
         self._fieldnames = fieldnames
         self._encoding = encoding
+
+    def _open(self, mode: str):
+        """親フォルダを作ってからファイルを開く（ExcelFile.save と挙動を揃える）。"""
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        return open(self._path, mode, encoding=self._encoding, newline="")
 
     def write_rows(self, rows: list[dict]) -> None:
         """ファイルを新規作成（または上書き）して全行を書き込む。
@@ -62,7 +72,7 @@ class CsvWriter:
         Args:
             rows: 書き込む行のリスト（辞書のリスト）。
         """
-        with open(self._path, "w", encoding=self._encoding, newline="") as f:
+        with self._open("w") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")
             writer.writeheader()
             writer.writerows(rows)
@@ -76,7 +86,7 @@ class CsvWriter:
             row: 追記する行の辞書。
         """
         is_new = not self._path.exists()
-        with open(self._path, "a", encoding=self._encoding, newline="") as f:
+        with self._open("a") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")
             if is_new:
                 writer.writeheader()
@@ -91,7 +101,7 @@ class CsvWriter:
             rows: 追記する行のリスト（辞書のリスト）。
         """
         is_new = not self._path.exists()
-        with open(self._path, "a", encoding=self._encoding, newline="") as f:
+        with self._open("a") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")
             if is_new:
                 writer.writeheader()

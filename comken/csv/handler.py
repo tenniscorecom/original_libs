@@ -88,8 +88,19 @@ class CsvReader:
         self._headers = headers
 
     def _load(self) -> list[dict[str, str]]:
+        """
+        Raises:
+            CsvError: headers の列数が CSV の実際の列数より少ない場合
+                      （はみ出した列が黙って失われるのを防ぐ）。
+        """
         # headers 指定時は1行目をヘッダーではなくデータとして扱う
-        return list(csv.DictReader(io.StringIO(self._read_text()), fieldnames=self._headers))
+        rows = list(csv.DictReader(io.StringIO(self._read_text()), fieldnames=self._headers))
+        # DictReader は headers より多い列を None キーに押し込む。無音のデータ落ちを防ぐ
+        if self._headers is not None and any(None in row for row in rows):
+            raise CsvError(
+                CsvError.MSG_HEADERS_TOO_FEW.format(expected=len(self._headers), path=self._path)
+            )
+        return rows
 
     @staticmethod
     def _validate_columns(rows: list[dict[str, str]], columns: list[str]) -> None:

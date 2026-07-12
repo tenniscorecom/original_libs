@@ -11,12 +11,15 @@ import os
 import pytest
 
 from comken.browser.download import DownloadDir
+from comken.exceptions import ColumnNotFoundError
 from comken.utils import (
     FileFinder,
     FileNameBuilder,
     SortBy,
     col_to_num,
     copy_file,
+    diff_row,
+    diff_rows,
     move_file,
 )
 
@@ -410,3 +413,91 @@ class TestResolveDownloadDir:
         dl.remove(force=True)
 
         assert not target.exists()
+
+
+class TestDiffRow:
+    """diff_row（1行同士の差分）のテスト。"""
+
+    def test_returns_changed_columns(self):
+        """値が異なる列だけが {列名: (変更前, 変更後)} で返ることを確認する。"""
+        before = {"注文番号": "A001", "金額": "1000", "担当者": "山田"}
+        after = {"注文番号": "A001", "金額": "2000", "担当者": "山田"}
+
+        assert diff_row(before, after) == {"金額": ("1000", "2000")}
+
+    def test_returns_empty_when_same(self):
+        """差分がなければ空の辞書が返ることを確認する（if で判定できる）。"""
+        row = {"注文番号": "A001", "金額": "1000"}
+        assert diff_row(row, dict(row)) == {}
+
+    def test_csv_string_equals_excel_number(self):
+        """CSV の "1000" と Excel の 1000 / 1000.0 は差分にならないことを確認する。"""
+        before = {"金額": "1000", "数量": "5"}
+        after = {"金額": 1000.0, "数量": 5}
+
+        assert diff_row(before, after) == {}
+
+    def test_none_equals_empty_string(self):
+        """Excel の空セル（None）と CSV の空文字（""）は差分にならないことを確認する。"""
+        before = {"備考": ""}
+        after = {"備考": None}
+
+        assert diff_row(before, after) == {}
+
+    def test_column_only_in_one_side(self):
+        """片方にしかない列は、もう片方を None として差分になることを確認する。"""
+        before = {"注文番号": "A001"}
+        after = {"注文番号": "A001", "金額": "1000"}
+
+        assert diff_row(before, after) == {"金額": (None, "1000")}
+
+
+class TestDiffRows:
+    """diff_rows（データセット同士の差分）のテスト。"""
+
+    def test_detects_added_removed_changed(self):
+        """追加・削除・変更をそれぞれ検出することを確認する。"""
+        before = [
+            {"社員番号": "001", "氏名": "山田"},
+            {"社員番号": "002", "氏名": "佐藤"},
+        ]
+        after = [
+            {"社員番号": "001", "氏名": "山田太郎"},  # 変更
+            {"社員番号": "003", "氏名": "鈴木"},      # 追加（002 は削除）
+        ]
+
+        result = diff_rows(before, after, key="社員番号")
+
+        assert result.added == [{"社員番号": "003", "氏名": "鈴木"}]
+        assert result.removed == [{"社員番号": "002", "氏名": "佐藤"}]
+        assert len(result.changed) == 1
+        assert result.changed[0].key == "001"
+        assert result.changed[0].columns == {"氏名": ("山田", "山田太郎")}
+
+    def test_no_diff_returns_empty_result(self):
+        """同じデータなら added / removed / changed すべて空になることを確認する。"""
+        rows = [{"社員番号": "001", "氏名": "山田"}]
+
+        result = diff_rows(rows, [dict(r) for r in rows], key="社員番号")
+
+        assert result.added == []
+        assert result.removed == []
+        assert result.changed == []
+
+    def test_key_matches_across_csv_and_excel(self):
+        """CSV の "1001" と Excel の 1001.0 がキーとして突合できることを確認する。"""
+        before = [{"注文番号": "1001", "金額": "1000"}]  # CSV（全部 str）
+        after = [{"注文番号": 1001.0, "金額": 2000}]     # Excel（数値）
+
+        result = diff_rows(before, after, key="注文番号")
+
+        assert result.added == []
+        assert result.removed == []
+        assert result.changed[0].columns == {"金額": ("1000", 2000)}
+
+    def test_missing_key_column_raises(self):
+        """key で指定した列が存在しないと ColumnNotFoundError になることを確認する。"""
+        rows = [{"注文番号": "A001"}]
+
+        with pytest.raises(ColumnNotFoundError, match="キー列"):
+            diff_rows(rows, rows, key="社員番号")
