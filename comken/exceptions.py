@@ -14,6 +14,8 @@ exceptions.py — ライブラリ共通の例外クラス
         print(e)  # → "シートが見つかりません: 存在しないシート ..."
 """
 
+import warnings
+
 
 class OriginalLibsError(Exception):
     """ライブラリ共通の基底例外。"""
@@ -22,12 +24,19 @@ class OriginalLibsError(Exception):
 class ExcelError(OriginalLibsError):
     """Excel 操作に関する例外の基底クラス。"""
 
+    MSG_TRANSFER = (
+        "Excel {row}行目の転記中にエラーが発生しました。"
+        "該当行を確認してください。（詳細: {detail}）"
+    )
+
 
 class SheetNotFoundError(ExcelError):
     """指定したシートが存在しない場合。
 
-    発生箇所: ExcelFile.sheet() / ExcelComHandler.sheet()
+    発生箇所: ExcelFile._sheet() / ExcelComHandler._sheet()
     """
+
+    MSG = "シートが見つかりません: {name}  存在するシート: {sheets}"
 
 
 class MacroError(ExcelError):
@@ -51,22 +60,41 @@ class ColumnNotFoundError(OriginalLibsError):
             missing = set(required) - set(rows[0].keys())
             if missing:
                 raise ColumnNotFoundError(
-                    f"Excelのヘッダーが正しくありません。\\n"
-                    f"見つからない列: {', '.join(missing)}\\n"
-                    f"Excelの1行目を確認してください。"
+                    ColumnNotFoundError.MSG_EXCEL.format(columns=", ".join(missing))
                 )
     """
+
+    MSG_EXCEL = (
+        "Excelのヘッダーが正しくありません。\n"
+        "見つからない列: {columns}\n"
+        "Excelの1行目を確認してください。"
+    )
+    MSG_CSV = (
+        "CSVに列が見つかりません: {columns}\n"
+        "存在する列: {existing}\n"
+        "CSVのヘッダー（1行目）が変更されていないか確認してください。"
+    )
 
 
 class CsvError(OriginalLibsError):
     """CSV 操作に関する例外の基底クラス。"""
 
+    MSG_ENCODING = (
+        "文字コードを判定できませんでした（UTF-8 / CP932 のどちらでも読めません）: {path}\n"
+        "CsvReader(path, encoding='文字コード名') で明示してください。"
+    )
+
 
 class ConfigError(OriginalLibsError):
     """設定ファイルに関する例外。
 
-    発生箇所: Config クラスで必須キーが存在しない場合など。
+    発生箇所: Config.__init__() でファイルが見つからない場合。
     """
+
+    MSG = (
+        "config.ini が見つかりません: {path}\n"
+        "config.ini.example をコピーして config.ini を作成してください。"
+    )
 
 
 class SalesforceError(OriginalLibsError):
@@ -86,18 +114,56 @@ class CredentialError(OriginalLibsError):
 class CredentialNotFoundError(CredentialError):
     """指定したサービス名の認証情報が登録されていない場合。
 
-    発生箇所: credentials.load_credential()
-
-    非エンジニアにも分かるよう、登録コマンド（python -m comken.credentials)
-    を案内するメッセージを含めている。
+    発生箇所: credentials.load_credential() / delete_credential()
     """
+
+    MSG = (
+        "認証情報が登録されていません: {name}\n"
+        "python -m comken.credentials を実行して登録してください。"
+    )
 
 
 class InvalidCredentialNameError(CredentialError):
     """キー名に使えない文字が含まれている場合。
 
-    発生箇所: credentials.save_credential()
+    発生箇所: credentials.save_credential() / Credentials.__init__()
 
     キー名に使えるのは半角英数字とアンダースコアのみ。
-    漢字・スペース・記号を含む名前はコードや config.ini に書きにくいため弾く。
     """
+
+    MSG_PREFIX = "プレフィックスに使えるのは半角英数字とアンダースコアだけです: {name}"
+    MSG_KEY = (
+        "キー名に使えるのは半角英数字とアンダースコアだけです: {name}\n"
+        "例: salesforce_username, salesforce_password, oju_sys_password"
+    )
+
+
+# ── 型変換の警告 ──────────────────────────────────────────────────────────────
+
+class Warnings:
+    """ライブラリが発行する UserWarning のメッセージテンプレート。"""
+
+    COERCION = (
+        "{param} に {type_name}（{value!r}）が渡されました。"
+        "{expected} に変換します。"
+    )
+
+
+def _warn_coerce(value, expected: type, param: str, stacklevel: int = 3):
+    """型が違う場合に警告して変換する。ライブラリ内部用。
+
+    型が一致していれば何もしない。違う場合だけ UserWarning を発行して変換する。
+    stacklevel はユーザーコードの行番号を警告に表示するために調整する。
+    """
+    if not isinstance(value, expected):
+        warnings.warn(
+            Warnings.COERCION.format(
+                param=param,
+                type_name=type(value).__name__,
+                value=value,
+                expected=expected.__name__,
+            ),
+            UserWarning,
+            stacklevel=stacklevel,
+        )
+    return expected(value)

@@ -19,7 +19,7 @@ import win32com.client
 import win32con
 import win32gui
 
-from ..exceptions import ExcelError
+from ..exceptions import ExcelError, _warn_coerce
 from ..utils.data import col_to_num
 
 logger = logging.getLogger(__name__)
@@ -81,9 +81,9 @@ class ExcelComHandler:
     def __exit__(self, *args) -> None:
         self.close()
 
-    def _sheet(self, name: str):
+    def _sheet(self, name):
         """シートオブジェクトを返す。"""
-        return self._wb.Sheets(name)
+        return self._wb.Sheets(_warn_coerce(name, str, "sheet_name", stacklevel=3))
 
     def read_cell(self, sheet_name: str, row: int, col: int):
         """セルの値を返す（数式の計算結果）。
@@ -93,7 +93,7 @@ class ExcelComHandler:
             row: 行番号（1始まり）。
             col: 列番号（1始まり。A列=1、B列=2、…）。
         """
-        return self._wb.Sheets(sheet_name).Cells(row, col).Value
+        return self._sheet(sheet_name).Cells(int(row), int(col)).Value
 
     def write_cell(self, sheet_name: str, row: int, col: int, value) -> None:
         """セルに値を書き込む。
@@ -104,7 +104,7 @@ class ExcelComHandler:
             col: 列番号（1始まり）。
             value: 書き込む値。
         """
-        self._wb.Sheets(sheet_name).Cells(row, col).Value = value
+        self._sheet(sheet_name).Cells(int(row), int(col)).Value = value
 
     def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
         """指定シートの行データをタプルのリストで返す。
@@ -116,12 +116,12 @@ class ExcelComHandler:
         Returns:
             各行を値のタプルにしたリスト。
         """
-        ws = self._wb.Sheets(sheet_name)
+        ws = self._sheet(sheet_name)
         last_row = self.used_last_row(sheet_name)
         last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
         return [
             tuple(ws.Cells(row, col).Value for col in range(1, last_col + 1))
-            for row in range(min_row, last_row + 1)
+            for row in range(int(min_row), last_row + 1)
         ]
 
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
@@ -134,9 +134,10 @@ class ExcelComHandler:
         Returns:
             [{"列名": 値, ...}, ...] の形式のリスト。
         """
-        ws = self._wb.Sheets(sheet_name)
+        ws = self._sheet(sheet_name)
         last_row = self.used_last_row(sheet_name)
         last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+        header_row = int(header_row)
         headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
         return [
             dict(zip(headers, (ws.Cells(row, col).Value for col in range(1, last_col + 1))))
@@ -156,8 +157,8 @@ class ExcelComHandler:
         Returns:
             空でないセルの数。0 なら行全体が空。
         """
-        ws = self._wb.Sheets(sheet_name)
-        return self._excel.WorksheetFunction.CountA(ws.Rows(row))
+        ws = self._sheet(sheet_name)
+        return self._excel.WorksheetFunction.CountA(ws.Rows(int(row)))
 
     def used_last_row(self, sheet_name: str) -> int:
         """データが存在する最終行の行番号を返す。
@@ -170,7 +171,7 @@ class ExcelComHandler:
         Returns:
             最終行の行番号（1始まり）。
         """
-        ws = self._wb.Sheets(sheet_name)
+        ws = self._sheet(sheet_name)
         return ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
 
     def transfer_by_key(
@@ -211,12 +212,12 @@ class ExcelComHandler:
         key_col_num = col_to_num(key_col) if isinstance(key_col, str) else key_col
         mapping = {col_to_num(letter): name for letter, name in column_mapping.items()}
 
-        ws = self._wb.Sheets(sheet_name)
+        ws = self._sheet(sheet_name)
         last_row = self.used_last_row(sheet_name)
         logger.info("シート「%s」: 最終行 %d行", sheet_name, last_row)
 
         matched = 0
-        for row in range(start_row, last_row + 1):
+        for row in range(int(start_row), last_row + 1):
             try:
                 if self._excel.WorksheetFunction.CountA(ws.Rows(row)) == 0:
                     continue
@@ -241,10 +242,7 @@ class ExcelComHandler:
                 matched += 1
 
             except Exception as e:
-                raise ExcelError(
-                    f"Excel {row}行目の転記中にエラーが発生しました。"
-                    f"該当行を確認してください。（詳細: {e}）"
-                ) from e
+                raise ExcelError(ExcelError.MSG_TRANSFER.format(row=row, detail=e)) from e
 
         logger.info("転記完了: %d件一致（シート: %s）", matched, sheet_name)
         return matched
@@ -256,7 +254,7 @@ class ExcelComHandler:
             macro_name: 実行するマクロ名。"モジュール名.プロシージャ名" の形式で指定する。
                         例: "Module1.UpdateData"
         """
-        self._excel.Run(macro_name)
+        self._excel.Run(str(macro_name))
 
     def save_as(self, path: str | Path, read_pw: str = "", write_pw: str = "") -> None:
         """ファイルを別名で保存する。パスワードを設定できる。

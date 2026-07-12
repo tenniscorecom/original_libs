@@ -79,9 +79,7 @@ class Credentials:
             path: 保存先ファイル。省略時は CREDENTIALS_PATH（通常は省略する）。
         """
         if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
-            raise InvalidCredentialNameError(
-                f"プレフィックスに使えるのは半角英数字とアンダースコアだけです: {prefix}"
-            )
+            raise InvalidCredentialNameError(InvalidCredentialNameError.MSG_PREFIX.format(name=prefix))
         self._prefix = prefix
         self._path = path
 
@@ -105,10 +103,7 @@ def save_credential(name: str, value: str, path: Path | None = None) -> None:
         InvalidCredentialNameError: キー名に使えない文字が含まれている場合。
     """
     if not CREDENTIAL_NAME_PATTERN.fullmatch(name):
-        raise InvalidCredentialNameError(
-            f"キー名に使えるのは半角英数字とアンダースコアだけです: {name}\n"
-            f"例: salesforce_username, salesforce_password, oju_sys_password"
-        )
+        raise InvalidCredentialNameError(InvalidCredentialNameError.MSG_KEY.format(name=name))
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
     data[name] = value
@@ -127,10 +122,7 @@ def load_credential(name: str, path: Path | None = None) -> str:
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
     if name not in data:
-        raise CredentialNotFoundError(
-            f"認証情報が登録されていません: {name}\n"
-            f"python -m comken.credentials を実行して登録してください。"
-        )
+        raise CredentialNotFoundError(CredentialNotFoundError.MSG.format(name=name))
     return data[name]
 
 
@@ -143,7 +135,7 @@ def delete_credential(name: str, path: Path | None = None) -> None:
     path = path or CREDENTIALS_PATH
     data = _load_all(path)
     if name not in data:
-        raise CredentialNotFoundError(f"認証情報が登録されていません: {name}")
+        raise CredentialNotFoundError(CredentialNotFoundError.MSG.format(name=name))
     del data[name]
     _save_all(data, path)
 

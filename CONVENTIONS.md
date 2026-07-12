@@ -13,19 +13,20 @@
 4. 公開 API の管理
 5. 型ヒント
 6. 定数とマジックナンバー
-7. 設定の上書きパターン
-8. 認証情報の規約
-9. リソース管理（with 文）
-10. 例外
-11. ロギング
-12. Excel（openpyxl）
-13. Windows 操作（pywin32）
-14. コメント
-15. Page Object Model
-16. 循環インポートの解決
-17. テスト
-18. プロジェクトセットアップファイル
-19. 開発環境（VS Code）
+7. デコレーター
+8. 設定パターン
+9. 認証情報の規約
+10. リソース管理（with 文）
+11. 例外
+12. ロギング
+13. Excel（openpyxl）
+14. Windows 操作（pywin32）
+15. コメント
+16. Page Object Model
+17. 循環インポートの解決
+18. テスト
+19. プロジェクトセットアップファイル
+20. 開発環境（VS Code）
 
 ---
 
@@ -107,8 +108,8 @@ my_project/
   仕様書.md ← 処理仕様・ユースケース（エンジニア向け）
   ERRORS.md ← エラー対応ガイド（非エンジニア向け）
   src/
-    config.py ← AppConfig（comken.Config を継承）
-    browser_options.py ← MyOptions（comken.BrowserOptions を継承）
+    config.py ← config のシングルトン（config = Config()）
+    browser_options.py ← options のシングルトン（options = BrowserOptions(); options.XX = ...）
     pages/ ← 画面クラス（SitePage を継承）
     excel/ ← Excel 処理
     salesforce/ ← Salesforce 連携
@@ -253,51 +254,128 @@ result.matched  # ← result["matched"] より typo に強い
 
 ## getter / setter は書かない
 
-Java 風の `get_x()` / `set_x()` は Python では使わない。属性には直接アクセスする。
+Java 風の `get_x()` / `set_x()` も Python の `@property` も使わない。
 
 ```python
-# 悪い（Java 風）
+# 悪い（Java 風 getter）
 class DownloadDir:
     def get_path(self): return self._path
-    def set_path(self, value): self._path = value
+
+# 悪い（@property）
+class AppConfig(Config):
+    @property
+    def csv_east_path(self) -> Path:
+        return Path(self.FILES.INPUT_FOLDER) / self.FILES.CSV_EAST
 
 # 良い（直接アクセス）
 dl = DownloadDir()
 print(dl.path)
+
+# 良い（計算値はインラインで書く）
+path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
 ```
 
-**`@property` を使うのは「読み取り時に組み立て・計算が必要」なときだけ:**
+`@property` を使わない理由:
 
-```python
-class AppConfig(Config):
-    @property
-    def csv_east_path(self) -> Path:
-        # 2つの設定値からパスを組み立てる。呼び出し側は config.csv_east_path と属性のように読める
-        return Path(self.FILES.INPUT_FOLDER) / self.FILES.CSV_EAST
-```
-
-| 状況 | 書き方 |
+| 代替手段 | 場面 |
 |---|---|
-| ただの値の保持 | 普通の属性（`self.path = ...`） |
-| 外から書き換えてほしくない | `_` プレフィックス（`self._driver`） |
-| 読み取り時に計算・組み立てが要る | `@property` |
-| セッター（`@x.setter`） | ほぼ使わない。検証つき代入が必要になったときだけ |
+| インライン計算 | 計算値（パス組み立て等） |
+| モジュールレベル定数 | 複数箇所で使う計算値 |
+| 普通のメソッド | 呼ぶたびに処理が走ることを明示したいとき |
+| `_` プレフィックス | 外から書き換えてほしくない属性 |
 
 ---
 
-## 設定の上書きパターン
+## デコレーター
 
-ライブラリのクラスはデフォルト値を持っており、プロジェクト側でサブクラスを作って上書きする。
-変更したい項目だけ書けばよく、他はデフォルト値が使われる。
+**使わないのが基本方針。** 明確な必要性がない限り使わない。
+
+| デコレーター | 方針 |
+|---|---|
+| `@property` | 使わない（[getter/setter は書かない](#getter--setter-は書かない) 参照） |
+| `@staticmethod` | 使わない。`self` が不要なら**モジュールレベル関数**にする |
+| `@classmethod` | ファクトリメソッド（別コンストラクタ）にだけ使う |
+| `@cache` / `@lru_cache` | 使わない。状態はインスタンスで持つ |
+| カスタムデコレーター | 書かない |
+| `@dataclass` | [dataclass・定数クラス・Enum の使い分け](#dataclass定数クラスenum-の使い分け) 参照 |
+
+### @classmethod の使いどき
+
+別コンストラクタが必要なときだけ使う。
+
+```python
+class ExcelFile:
+    @classmethod
+    def from_template(cls, template_path: Path, output_path: Path) -> "ExcelFile":
+        """テンプレートをコピーして新しい ExcelFile を返す。"""
+        shutil.copy2(template_path, output_path)
+        return cls(output_path)
+
+# 呼び出し側
+f = ExcelFile.from_template(TEMPLATE_PATH, output_path)
+```
+
+### @staticmethod を使わない理由
+
+`self` も `cls` も使わないなら、クラスに属している必要がない。モジュールレベル関数の方がシンプルで import しやすい。
+
+```python
+# 悪い（クラスに入れる必要がない）
+class CsvUtils:
+    @staticmethod
+    def normalize_key(key: str) -> str:
+        return key.strip().upper()
+
+# 良い（モジュールレベル関数）
+def normalize_key(key: str) -> str:
+    return key.strip().upper()
+```
+
+---
+
+## 設定パターン
+
+### config のシングルトン
+
+`Config` はモジュールレベルでインスタンス化する。Python のモジュールキャッシュにより `Config()` は1回しか実行されず、どこからインポートしても同じインスタンスが返る。
+
+```python
+# src/config.py
+from comken.config import Config
+
+config = Config()
+```
+
+```python
+# 各モジュールはここからインポートする
+from .config import config
+
+source = FileFinder(config.FILES.EXCEL_INPUT_FOLDER).today(pattern="DIY_*.xlsx")
+paths = [config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST,
+         config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_WEST]
+```
+
+同じ設定値を複数箇所で使う場合はモジュールレベル定数に入れる。
+
+```python
+SHEET_NAME = config.EXCEL.SHEET_NAME  # 複数箇所で使うなら定数化
+
+rows = f.read_rows(SHEET_NAME)
+f.write_cell(SHEET_NAME, row=2, col=1, value="完了")
+```
+
+### BrowserOptions のシングルトン
+
+継承せず、インスタンスに直接属性を上書きする。
 
 ```python
 # src/browser_options.py
 from comken.browser.options import BrowserOptions
 
-class MyOptions(BrowserOptions):
-    HEADLESS = True
-    DOWNLOAD_DIR = r"\\nas-server\reports"
-    WAIT_SECONDS = 20
+options = BrowserOptions()
+options.HEADLESS = True
+options.DOWNLOAD_DIR = r"\\nas-server\reports"
+options.WAIT_SECONDS = 20
 ```
 
 **config.ini に書くのは非機密のプロジェクト固有の値だけ。**
@@ -316,17 +394,6 @@ HEADLESS = False
 
 [REPORT]
 OUTPUT_FOLDER = \\nas-server\reports
-```
-
-```python
-# config.py での読み込みパターン（読んだ値は大文字で定数として定義する）
-import configparser
-
-_cfg = configparser.ConfigParser()
-_cfg.read("config.ini", encoding="utf-8")
-
-HEADLESS: bool = _cfg.getboolean("BROWSER", "HEADLESS")
-OUTPUT_DIR: str = _cfg.get("REPORT", "OUTPUT_FOLDER")
 ```
 
 ---

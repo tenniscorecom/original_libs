@@ -78,18 +78,51 @@ class TestConfigBoolConversion:
         ini.write_text("[s]\nflag = True\n", encoding="utf-8")
         assert Config(ini).S.FLAG is True
 
-    @pytest.mark.parametrize("value", ["yes", "no", "on", "off", "1", "0"])
+    @pytest.mark.parametrize("value", ["yes", "no", "on", "off"])
     def test_boolean_like_values_stay_string(self, tmp_path, value):
-        """true / false 以外（yes / no / on / off / 1 / 0）は変換せず文字列のままを確認する。"""
+        """true / false 以外の yes / no / on / off は変換せず文字列のままを確認する。"""
         ini = tmp_path / "config.ini"
         ini.write_text(f"[s]\nflag = {value}\n", encoding="utf-8")
         assert Config(ini).S.FLAG == value
 
-    def test_number_stays_string(self, tmp_path):
-        """数値は文字列のまま返すことを確認する（呼び出し側で変換する）。"""
+
+class TestConfigTypeConversion:
+    """int / float / Path 自動変換のテスト。"""
+
+    def test_integer_value_becomes_int(self, tmp_path):
+        """整数値が int に変換されることを確認する。"""
         ini = tmp_path / "config.ini"
         ini.write_text("[s]\ncount = 10\n", encoding="utf-8")
-        assert Config(ini).S.COUNT == "10"
+        assert Config(ini).S.COUNT == 10
+        assert isinstance(Config(ini).S.COUNT, int)
+
+    def test_float_value_becomes_float(self, tmp_path):
+        """小数値が float に変換されることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nratio = 1.5\n", encoding="utf-8")
+        assert Config(ini).S.RATIO == 1.5
+        assert isinstance(Config(ini).S.RATIO, float)
+
+    def test_windows_absolute_path_becomes_path(self, tmp_path):
+        """Windows 絶対パス（C:\\）が Path に変換されることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nfolder = C:\\work\\input\n", encoding="utf-8")
+        from pathlib import Path
+        assert Config(ini).S.FOLDER == Path("C:\\work\\input")
+
+    def test_unc_path_becomes_path(self, tmp_path):
+        """UNC パス（\\\\server\\...）が Path に変換されることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nfolder = \\\\nas\\reports\n", encoding="utf-8")
+        from pathlib import Path
+        assert isinstance(Config(ini).S.FOLDER, Path)
+
+    def test_plain_string_stays_string(self, tmp_path):
+        """数値・パスでない文字列はそのまま str で返ることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nname = T_data\n", encoding="utf-8")
+        assert Config(ini).S.NAME == "T_data"
+        assert isinstance(Config(ini).S.NAME, str)
 
 
 class TestConfigParseList:

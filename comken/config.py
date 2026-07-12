@@ -4,20 +4,17 @@ config.py — INI ファイル読み込みユーティリティ
 config.ini を読み込み、config.SECTION.KEY の形式でアクセスできる Config クラスを提供する。
 
 プロジェクト側での使い方:
-    1. Config をそのまま使う場合
+    src/config.py でシングルトンを作り、各モジュールからインポートする。
+
+        # src/config.py
         from comken.config import Config
         config = Config()
-        config.FILES.INPUT_FOLDER
 
-    2. プロジェクト固有の設定を追加する場合（推奨）
-        class AppConfig(Config):
-            @property
-            def input_csv_path(self) -> Path:
-                return Path(self.FILES.INPUT_FOLDER) / self.FILES.CSV_NAME
+        # 各モジュール
+        from .config import config
+        path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
 
-        config = AppConfig()
-
-※ ブラウザの設定は config.ini ではなく BrowserOptions のサブクラス
+※ ブラウザの設定は config.ini ではなく BrowserOptions のインスタンス
    （src/browser_options.py）で行う。config はブラウザ設定を持たない。
 """
 
@@ -28,30 +25,52 @@ from pathlib import Path
 from .exceptions import ConfigError
 
 
-def _parse_value(cfg: configparser.ConfigParser, section: str, key: str) -> bool | str:
-    """値が true / false のときだけ bool に変換し、それ以外は文字列のまま返す。
+def _parse_value(cfg: configparser.ConfigParser, section: str, key: str) -> bool | int | float | Path | str:
+    """ini の値を適切な Python 型に変換して返す。
 
-    yes / no / on / off / 1 / 0 は変換しない
-    （"1" が数値なのか bool なのか曖昧になる事故を避けるため）。
-    大文字小文字は問わない（True / FALSE 等も変換される）。
+    変換の優先順位:
+        1. true / false（大文字小文字問わず）→ bool
+        2. 絶対パス（C:\\ / \\\\ / / で始まる）→ Path
+        3. 整数に変換できる → int
+        4. 小数に変換できる → float
+        5. それ以外 → str
+
+    文字列として使いたい数値（例: シート名 "2024"）はコード側で str() に変換する。
     """
-    value = cfg.get(section, key)
-    lowered = value.strip().lower()
-    if lowered == "true":
+    value = cfg.get(section, key).strip()
+    lower = value.lower()
+
+    if lower == "true":
         return True
-    if lowered == "false":
+    if lower == "false":
         return False
+
+    if len(value) >= 2 and (value[1:3] == ":\\" or value[:2] == "\\\\" or value[0] == "/"):
+        return Path(value)
+
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        pass
+
     return value
 
 
 class Config:
     """config.ini を読み込み、config.SECTION.KEY の形式でアクセスできるクラス。
 
-    値の型変換:
-        - true / false（大文字小文字問わず）→ 自動で bool に変換
-        - それ以外はすべて str のまま返す
-          （yes / no / on / off / 1 / 0 も変換しない。
-           int / float が必要ならプロジェクト側で変換する: int(config.BROWSER.WAIT_SECONDS)）
+    値の型変換（_parse_value の変換順と同じ）:
+        - true / false → bool
+        - 絶対パス（C:\\ / \\\\ / /）→ Path
+        - 整数 → int
+        - 小数 → float
+        - それ以外 → str
+
+    数値を文字列として使いたい場合はコード側で str() に変換する。
 
     config.ini の例（セクション名・キー名は大文字で書く）:
         [BROWSER]
@@ -65,9 +84,10 @@ class Config:
         config = Config() # カレントディレクトリの config.ini を読む
         config = Config("path/to/config.ini") # パスを指定する場合
 
-        config.BROWSER.HEADLESS # → False（bool に自動変換）
-        config.BROWSER.WAIT_SECONDS # → "10"（str のまま）
-        int(config.BROWSER.WAIT_SECONDS) # → 10（必要なら呼び出し側で変換）
+        config.BROWSER.HEADLESS        # → False（bool）
+        config.BROWSER.WAIT_SECONDS    # → 10（int）
+        config.FILES.INPUT_FOLDER      # → Path("C:\\作業\\input")
+        config.FILES.INPUT_FOLDER / "東日本.csv"  # → Path("C:\\作業\\input\\東日本.csv")
     """
 
     def __init__(self, path: str | Path = "config.ini") -> None:
@@ -80,10 +100,7 @@ class Config:
         if not loaded:
             # configparser はファイルがなくても黙って空になるため、明示的にエラーにする
             # （後で config.FILES 等が分かりにくい AttributeError になるのを防ぐ）
-            raise ConfigError(
-                f"config.ini が見つかりません: {Path(path).resolve()}\n"
-                f"config.ini.example をコピーして config.ini を作成してください。"
-            )
+            raise ConfigError(ConfigError.MSG.format(path=Path(path).resolve()))
 
         for section in cfg.sections():
             ns = types.SimpleNamespace(

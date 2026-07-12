@@ -23,7 +23,7 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from ..exceptions import SheetNotFoundError
+from ..exceptions import SheetNotFoundError, _warn_coerce
 
 
 class ExcelFile:
@@ -112,10 +112,9 @@ class ExcelFile:
         Raises:
             ValueError: 指定したシートが存在しない場合。
         """
+        name = _warn_coerce(name, str, "sheet_name", stacklevel=3)
         if name not in self._wb.sheetnames:
-            raise SheetNotFoundError(
-                f"シートが見つかりません: {name}  存在するシート: {self._wb.sheetnames}"
-            )
+            raise SheetNotFoundError(SheetNotFoundError.MSG.format(name=name, sheets=self._wb.sheetnames))
         return self._wb[name]
 
     def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
@@ -128,7 +127,7 @@ class ExcelFile:
         Returns:
             各行を値のタプルにしたリスト。
         """
-        return list(self._sheet(sheet_name).iter_rows(min_row=min_row, values_only=True))
+        return list(self._sheet(sheet_name).iter_rows(min_row=int(min_row), values_only=True))
 
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
         """ヘッダー行をキーとした辞書のリストで返す。
@@ -141,7 +140,7 @@ class ExcelFile:
             [{"列名": 値, ...}, ...] の形式のリスト。
         """
         ws = self._sheet(sheet_name)
-        all_rows = list(ws.iter_rows(min_row=header_row, values_only=True))
+        all_rows = list(ws.iter_rows(min_row=int(header_row), values_only=True))
         if not all_rows:
             return []
         headers = all_rows[0]
@@ -166,7 +165,7 @@ class ExcelFile:
         self._sheet(sheet_name)  # シート名の存在チェック（間違いを分かりやすいエラーにする）
         wb = load_workbook(self._path, data_only=True, read_only=True)
         try:
-            for row in wb[sheet_name].iter_rows(min_row=min_row, values_only=True):
+            for row in wb[str(sheet_name)].iter_rows(min_row=int(min_row), values_only=True):
                 yield row
         finally:
             wb.close()
@@ -188,7 +187,7 @@ class ExcelFile:
         self._sheet(sheet_name)  # シート名の存在チェック（間違いを分かりやすいエラーにする）
         try:
             wb = load_workbook(self._path, data_only=True, read_only=True)
-            rows = list(wb[sheet_name].iter_rows(min_row=min_row, values_only=True))
+            rows = list(wb[str(sheet_name)].iter_rows(min_row=int(min_row), values_only=True))
             wb.close()
             has_formula = any(
                 isinstance(cell, str) and cell.startswith("=") for row in rows for cell in row
@@ -212,7 +211,7 @@ class ExcelFile:
             col: 列番号（1始まり。A列=1、B列=2、…）。
             value: 書き込む値。
         """
-        self._sheet(sheet_name).cell(row=row, column=col).value = value
+        self._sheet(sheet_name).cell(row=int(row), column=int(col)).value = value
 
     def save(self, path: str | Path | None = None) -> None:
         """ファイルを保存する。
@@ -247,8 +246,8 @@ class ExcelFile:
             col: 列番号（1始まり）。
             color: 16進数カラーコード（"RRGGBB" 形式、# なし）。
         """
-        fill = PatternFill(fill_type="solid", fgColor=color)
-        self._sheet(sheet_name).cell(row=row, column=col).fill = fill
+        fill = PatternFill(fill_type="solid", fgColor=_warn_coerce(color, str, "color", stacklevel=2))
+        self._sheet(sheet_name).cell(row=int(row), column=int(col)).fill = fill
 
     def set_column_width(self, sheet_name: str, col: int, width: float) -> None:
         """列幅を設定する。
@@ -266,8 +265,8 @@ class ExcelFile:
             col: 列番号（1始まり。A列=1、B列=2、…）。
             width: 列幅（Excel の列幅単位）。
         """
-        col_letter = get_column_letter(col)
-        self._sheet(sheet_name).column_dimensions[col_letter].width = width
+        col_letter = get_column_letter(int(col))
+        self._sheet(sheet_name).column_dimensions[col_letter].width = float(width)
 
     def set_number_format(self, sheet_name: str, row: int, col: int, fmt: str) -> None:
         """セルの数値フォーマットを設定する。
@@ -291,7 +290,7 @@ class ExcelFile:
             col: 列番号（1始まり）。
             fmt: Excel の書式文字列。
         """
-        self._sheet(sheet_name).cell(row=row, column=col).number_format = fmt
+        self._sheet(sheet_name).cell(row=int(row), column=int(col)).number_format = _warn_coerce(fmt, str, "fmt", stacklevel=2)
 
     def set_bold(self, sheet_name: str, row: int, col: int, bold: bool = True) -> None:
         """セルの太字を設定する。
@@ -307,8 +306,8 @@ class ExcelFile:
             col: 列番号（1始まり）。
             bold: True で太字、False で解除。
         """
-        cell = self._sheet(sheet_name).cell(row=row, column=col)
-        cell.font = Font(bold=bold)
+        cell = self._sheet(sheet_name).cell(row=int(row), column=int(col))
+        cell.font = Font(bold=bool(bold))
 
     def run_macro(self, macro_name: str) -> None:
         """VBA マクロを実行する。内部で win32com（pywin32）を使用する。

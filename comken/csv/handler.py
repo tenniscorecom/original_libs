@@ -106,9 +106,7 @@ class CsvReader:
         missing = [col for col in columns if col not in rows[0]]
         if missing:
             raise ColumnNotFoundError(
-                f"CSVに列が見つかりません: {', '.join(missing)}\n"
-                f"存在する列: {', '.join(rows[0].keys())}\n"
-                f"CSVのヘッダー（1行目）が変更されていないか確認してください。"
+                ColumnNotFoundError.MSG_CSV.format(columns=", ".join(missing), existing=", ".join(rows[0].keys()))
             )
 
     def _read_text(self) -> str:
@@ -126,11 +124,7 @@ class CsvReader:
                 return raw.decode(encoding)
             except UnicodeDecodeError:
                 continue
-        raise CsvError(
-            f"文字コードを判定できませんでした（UTF-8 / CP932 のどちらでも読めません）: "
-            f"{self._path}\n"
-            f"CsvReader(path, encoding='文字コード名') で明示してください。"
-        )
+        raise CsvError(CsvError.MSG_ENCODING.format(path=self._path))
 
     def rows(self, columns: list[str] | None = None) -> list[dict[str, str]]:
         """全行を返す。
