@@ -24,6 +24,11 @@ python -m examples.csv_to_excel_report.run
 - 1〜3 は外部システム・ネット接続なしでそのまま動く。出力は各フォルダの `output/` に入る
 - 4〜6 は各フォルダの run.py 冒頭に書いてある事前準備を済ませてから実行する
 
+> **run.py という名前について**: 実プロジェクトのエントリポイントは規約どおり `main.py`（CONVENTIONS.md 参照）。
+> examples 内は複数のサンプルが同居し `python -m examples.<フォルダ名>.run` とモジュール実行するため、
+> プロジェクトの main.py と区別して run.py にしている。**サンプルをコピーして実プロジェクトにするときは
+> main.py にリネームする**（既存プロジェクトを run.py に合わせる必要はない）。
+
 ## 新しいツールを作るときは
 
 `daily_batch_template` をコピーして始めるのが早い。
