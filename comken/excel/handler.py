@@ -14,6 +14,7 @@ ExcelFile クラスを通じて Excel ファイルの読み書きを行う。
         f.save()
 """
 
+import logging
 import shutil
 import tempfile
 from collections.abc import Generator
@@ -25,7 +26,9 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from ..exceptions import SheetNotFoundError, _warn_coerce
+from ..exceptions import ExcelError, SheetNotFoundError, _warn_coerce
+
+logger = logging.getLogger(__name__)
 
 
 class ExcelFile:
@@ -146,6 +149,9 @@ class ExcelFile:
         if not all_rows:
             return []
         headers = all_rows[0]
+        none_cols = [i + 1 for i, h in enumerate(headers) if h is None]
+        if none_cols:
+            raise ExcelError(ExcelError.MSG_HEADER_NONE.format(cols=none_cols))
         return [dict(zip(headers, row)) for row in all_rows[1:]]
 
     def iter_rows(self, sheet_name: str, min_row: int = 2) -> Generator[tuple[Any, ...], None, None]:
@@ -196,8 +202,8 @@ class ExcelFile:
             )
             if not has_formula:
                 return rows
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("openpyxl での読み込みに失敗（%s）。win32com にフォールバックします", e)
 
         from ..windows.handler import ExcelComHandler
 

@@ -31,6 +31,10 @@ class ExcelError(OriginalLibsError):
         "Excel {row}行目の転記中にエラーが発生しました。"
         "該当行を確認してください。（詳細: {detail}）"
     )
+    MSG_HEADER_NONE = (
+        "ヘッダー行に空のセルがあります。列番号: {cols}\n"
+        "Excelの1行目（ヘッダー行）を確認してください。"
+    )
 
 
 class SheetNotFoundError(ExcelError):
@@ -156,8 +160,13 @@ def _warn_coerce(value: Any, expected: type[_T], param: str, stacklevel: int = 3
     """型が違う場合に警告して変換する。ライブラリ内部用。
 
     型が一致していれば何もしない。違う場合だけ UserWarning を発行して変換する。
+    None が渡された場合は TypeError を発生させる（"None" という文字列に変換しない）。
     stacklevel はユーザーコードの行番号を警告に表示するために調整する。
     """
+    if value is None:
+        raise TypeError(
+            f"{param} に None が渡されました。{expected.__name__} を渡してください。"
+        )
     if not isinstance(value, expected):
         warnings.warn(
             Warnings.COERCION.format(

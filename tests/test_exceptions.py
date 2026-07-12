@@ -5,6 +5,8 @@
     リポジトリのルートで python -m pytest tests/ -v
 """
 
+import warnings
+
 import pytest
 
 from comken.exceptions import (
@@ -15,6 +17,7 @@ from comken.exceptions import (
     MacroError,
     OriginalLibsError,
     SheetNotFoundError,
+    _warn_coerce,
 )
 
 
@@ -85,3 +88,30 @@ class TestExceptionMessages:
 
         with pytest.raises(OriginalLibsError):
             raise MacroError("テスト")
+
+
+class TestWarnCoerce:
+    """_warn_coerce のテスト。"""
+
+    def test_none_raises_type_error(self):
+        """None を渡すと TypeError が発生することを確認する。"""
+        with pytest.raises(TypeError, match="None"):
+            _warn_coerce(None, str, "sheet_name")
+
+    def test_wrong_type_warns_and_converts(self):
+        """型が違う場合に UserWarning を発行して変換することを確認する。"""
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = _warn_coerce(1, str, "sheet_name")
+        assert result == "1"
+        assert isinstance(result, str)
+        assert len(caught) == 1
+        assert issubclass(caught[0].category, UserWarning)
+
+    def test_correct_type_no_warning(self):
+        """型が一致している場合は警告なしでそのまま返すことを確認する。"""
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = _warn_coerce("ok", str, "sheet_name")
+        assert result == "ok"
+        assert len(caught) == 0

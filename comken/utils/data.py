@@ -22,13 +22,22 @@ def col_to_num(letter: str) -> int:
     ExcelComHandler.read_cell() 等の col 引数（数値）に変換するときに使う。
 
     Args:
-        letter: 列レター（大文字・小文字どちらでも可）。
+        letter: 列レター（大文字・小文字どちらでも可。A〜Z または AA〜ZZZ 形式）。
 
     Returns:
         1始まりの列番号。
+
+    Raises:
+        ValueError: 空文字列または英字以外が含まれる場合。
     """
+    normalized = str(letter).strip().upper()
+    if not normalized or not normalized.isalpha():
+        raise ValueError(
+            f"列レターとして無効な値です: {letter!r}\n"
+            "A〜Z または AA〜ZZZ 形式で指定してください（例: 'A', 'Q', 'AA'）。"
+        )
     result = 0
-    for char in letter.upper():
+    for char in normalized:
         result = result * 26 + (ord(char) - ord("A") + 1)
     return result
 

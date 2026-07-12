@@ -113,9 +113,15 @@ class Config:
 
         config.ini でカンマ区切りや複数行の値を扱う場合に使う。
 
-        config.ini の例:
+        config.ini の例（カンマ区切り）:
             [REPORT]
             TARGET_SHEETS = 東日本, 西日本, 集計
+
+        config.ini の例（改行区切り。2行目以降はスペースかタブで字下げする）:
+            [REPORT]
+            TARGET_SHEETS = 東日本
+                西日本
+                集計
 
         使い方:
             config.parse_list(config.REPORT.TARGET_SHEETS)

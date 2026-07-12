@@ -140,6 +140,9 @@ class ExcelComHandler:
         last_col = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
         header_row = int(header_row)
         headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
+        none_cols = [i + 1 for i, h in enumerate(headers) if h is None]
+        if none_cols:
+            raise ExcelError(ExcelError.MSG_HEADER_NONE.format(cols=none_cols))
         return [
             dict(zip(headers, (ws.Cells(row, col).Value for col in range(1, last_col + 1))))
             for row in range(header_row + 1, last_row + 1)

@@ -103,6 +103,16 @@ class TestColToNum:
         """小文字でも変換できることを確認する。"""
         assert col_to_num("q") == 17
 
+    def test_empty_string_raises(self):
+        """空文字列を渡すと ValueError が発生することを確認する。"""
+        with pytest.raises(ValueError, match="無効な値"):
+            col_to_num("")
+
+    def test_number_string_raises(self):
+        """数字文字列を渡すと ValueError が発生することを確認する。"""
+        with pytest.raises(ValueError, match="無効な値"):
+            col_to_num("1")
+
 
 class TestFileNameBuilder:
     """FileNameBuilder のテスト。

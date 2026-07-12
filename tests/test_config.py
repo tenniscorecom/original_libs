@@ -141,3 +141,18 @@ class TestConfigParseList:
         ini.write_text("[s]\nitems = a, , b\n", encoding="utf-8")
         config = Config(ini)
         assert config.parse_list(config.S.ITEMS) == ["a", "b"]
+
+    def test_newline_separated(self, tmp_path):
+        """改行区切りの複数行値もリストに変換することを確認する。
+
+        config.ini で複数行値を書く場合は、2行目以降を字下げ（スペースまたはタブ）する。
+
+        [REPORT]
+        TARGET_SHEETS = 東日本
+            西日本
+            集計
+        """
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nitems = a\n\tb\n\tc\n", encoding="utf-8")
+        config = Config(ini)
+        assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
