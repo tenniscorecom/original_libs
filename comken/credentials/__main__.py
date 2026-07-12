@@ -239,8 +239,15 @@ def _delete() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except (EOFError, KeyboardInterrupt):
-        # Ctrl+C 等で中断されたときにトレースバックを出さず静かに終わる
-        print("\n中断しました。")
+    import sys
+
+    if "--gui" in sys.argv:
+        from .gui import main as gui_main
+
+        gui_main()
+    else:
+        try:
+            main()
+        except (EOFError, KeyboardInterrupt):
+            # Ctrl+C 等で中断されたときにトレースバックを出さず静かに終わる
+            print("\n中断しました。")
