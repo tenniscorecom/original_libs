@@ -116,6 +116,11 @@ class ConfigError(OriginalLibsError):
         "config.ini が見つかりません: {path}\n"
         "config.ini.example をコピーして config.ini を作成してください。"
     )
+    MSG_STUB_TARGET = (
+        "補完スタブの出力先が見つかりません: {path}\n"
+        "src/config.py（from comken.config import Config / config = Config()）を"
+        "作成してから実行してください。"
+    )
 
 
 class TeamsError(OriginalLibsError):

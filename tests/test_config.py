@@ -239,11 +239,13 @@ class TestGenerateStub:
         assert "    BROWSER: _BROWSER" in text
         assert "config: Config" in text
 
-    def test_default_output_is_src_config_pyi(self, ini, tmp_path, monkeypatch):
-        """src/config.py があるプロジェクトでは src/config.pyi に出力されることを確認する。"""
+    def test_default_output_is_src_config_pyi(self, ini, tmp_path):
+        """src/config.py があるプロジェクトでは src/config.pyi に出力されることを確認する。
+
+        出力先は config.ini の場所基準なので、どこから実行しても同じ場所に生成される。
+        """
         from comken.config import generate_stub
 
-        monkeypatch.chdir(tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "config.py").write_text(
             "from comken.config import Config\nconfig = Config()\n", encoding="utf-8"
@@ -251,8 +253,18 @@ class TestGenerateStub:
 
         out = generate_stub(ini)
 
-        assert out == Path("src/config.pyi")
-        assert (tmp_path / "src" / "config.pyi").exists()
+        assert out == tmp_path / "src" / "config.pyi"
+        assert out.exists()
+
+    def test_no_target_module_raises(self, ini, tmp_path):
+        """src/config.py も config.py もない場合は ConfigError になることを確認する。
+
+        （.pyi は同名の .py の隣にないとエディタに認識されないため、置き場がない）
+        """
+        from comken.config import generate_stub
+
+        with pytest.raises(ConfigError, match="src/config.py"):
+            generate_stub(ini)
 
     def test_missing_ini_raises(self, tmp_path):
         """config.ini がない場合は ConfigError になることを確認する。"""
@@ -269,3 +281,60 @@ class TestGenerateStub:
 
         text = generate_stub(ini, tmp_path / "config.pyi").read_text(encoding="utf-8")
         ast.parse(text)  # 構文エラーなら例外になる
+
+
+class TestAutoStub:
+    """Config() 実行時のスタブ自動更新のテスト。"""
+
+    @pytest.fixture
+    def project(self, tmp_path):
+        """src/config.py がある最小プロジェクトを作って (ini, stub) を返す。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[report]\ncount = 10\n", encoding="utf-8")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "config.py").write_text(
+            "from comken.config import Config\nconfig = Config()\n", encoding="utf-8"
+        )
+        return ini, tmp_path / "src" / "config.pyi"
+
+    def test_config_creates_stub_automatically(self, project):
+        """Config() を呼ぶだけでスタブが生成されることを確認する。"""
+        ini, stub = project
+
+        Config(ini)
+
+        assert stub.exists()
+        assert "COUNT: int" in stub.read_text(encoding="utf-8")
+
+    def test_stub_updated_when_ini_changes(self, project):
+        """config.ini を変更して再実行するとスタブに反映されることを確認する。"""
+        ini, stub = project
+        Config(ini)
+
+        ini.write_text("[report]\ncount = 10\nname = 月次\n", encoding="utf-8")
+        Config(ini)
+
+        assert "NAME: str" in stub.read_text(encoding="utf-8")
+
+    def test_broken_stub_is_restored(self, project):
+        """スタブが手で書き換えられていても、次の実行で正しい内容に戻ることを確認する。"""
+        ini, stub = project
+        Config(ini)
+        stub.write_text("# 壊れた内容", encoding="utf-8")
+
+        Config(ini)
+
+        assert "COUNT: int" in stub.read_text(encoding="utf-8")
+
+    def test_no_stub_without_config_py(self, tmp_path):
+        """src/config.py がないプロジェクトではスタブを作らないことを確認する。
+
+        （.pyi 単体では補完に使えず、無関係なフォルダを汚さないため）
+        """
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nk = v\n", encoding="utf-8")
+
+        Config(ini)
+
+        assert not (tmp_path / "config.pyi").exists()
+        assert not (tmp_path / "src" / "config.pyi").exists()
