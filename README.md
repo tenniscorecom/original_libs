@@ -17,7 +17,7 @@
 | Excel（openpyxl） | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | Windows（pywin32） | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
 | Browser（Edge） | Edge ブラウザ操作 |
-| Salesforce | CRUD・SOQL・レポート・Bulk（標準ライブラリのみで動く API クライアント） |
+| Salesforce | CRUD・SOQL・レポート・Bulk（salesforce_std: 標準ライブラリのみ / salesforce_requests: requests 版） |
 | Teams | Teams チャンネルへの通知（Power Automate Webhook。標準ライブラリのみ） |
 | utils | ファイル操作・データ比較・テキスト正規化・待機・特殊フォルダ取得 |
 
@@ -179,9 +179,29 @@ config.ini には機密情報を書かず、このモジュールを使う。
 - 1ユーザーにつき1ファイルで、キー名1つに値1つを何件でも登録できる
 - 「ユーザー名とパスワードが必ずセット」という決め打ちはしない。パスワードだけのシステムにも対応できる
 
+### 登録・削除（GUI）
+
+ターミナル操作が不要な GUI 版。登録済みキーの一覧・登録フォーム・削除ボタンが1画面に揃っている。
+値はマスク表示（●●●）され、「値を表示する」チェックで確認できる。
+
+```
+> python -m comken.credentials --gui
+```
+
+bat ファイルにしておくとダブルクリックで起動できる:
+
+```bat
+@echo off
+python -m comken.credentials --gui
+```
+
+- 登録済みキーをダブルクリックするとフォームに読み込まれる（上書き用。値は空のまま）
+- プロジェクトのフォルダで起動すると、コード内の REQUIRED_CREDENTIALS 宣言のうち
+  未登録の項目が一覧表示される。ダブルクリックでフォームに入力される
+
 ### 登録・削除（対話式ツール）
 
-非エンジニアでも使える。起動してメニューを選ぶだけ。
+GUI が使えない環境（リモートのターミナル等）向け。起動してメニューを選ぶだけ。
 
 ```
 > python -m comken.credentials
@@ -910,26 +930,36 @@ python -m examples.sample_login.run
 
 ## Salesforce
 
-**推奨は `SalesforceApiClient`（標準ライブラリのみで動く。追加インストール不要）。**
-simple-salesforce / requests 版のクライアントも残しているが、外部ライブラリの
-導入承認が下りた環境でのみ使える（王道にはしない）。
+**標準ライブラリ版（salesforce_std）と requests 版（salesforce_requests）の2フォルダ構成。**
+`SalesforceApiClient` はどちらにも同じクラス名・同じメソッドで入っており、
+**import 行の変更だけで切り替えられる**。requests が導入できない環境では
+`salesforce_requests` フォルダごと削除してよい（std 側は影響を受けない）。
 
-| クラス | 依存 | 用途 |
-|---|---|---|
-| `SalesforceApiClient`（推奨） | なし | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
-| `SalesforceClient` | simple-salesforce | CRUD・SOQL |
-| `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
-| `SalesforceRestClient` | requests | REST API 直接操作 |
-| `SalesforceReportClient` | requests | レポート取得 |
+```python
+from comken.salesforce_std import SalesforceApiClient       # 標準ライブラリ版（追加インストール不要）
+from comken.salesforce_requests import SalesforceApiClient  # requests 版（Session で接続再利用・速い）
+```
 
-### SalesforceApiClient（標準・推奨）
+| フォルダ | クラス | 依存 | 用途 |
+|---|---|---|---|
+| salesforce_std | `SalesforceApiClient` | なし | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
+| salesforce_requests | `SalesforceApiClient` | requests | 同上（requests 版） |
+| salesforce_requests | `SalesforceClient` | simple-salesforce | CRUD・SOQL |
+| salesforce_requests | `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
+| salesforce_requests | `SalesforceRestClient` | requests | REST API 直接操作 |
+| salesforce_requests | `SalesforceReportClient` | requests | レポート取得 |
+
+旧 import パス `comken.salesforce` は警告付きで動くが、新しいコードでは使わない。
+
+### SalesforceApiClient
 
 接続アプリケーション（client_id / client_secret）は不要。
 ユーザー名・パスワード・セキュリティトークンだけでログインする。
+以下の例は std / requests のどちらでも同じように動く。
 
 ```python
 from comken.credentials import Credentials
-from comken.salesforce import SalesforceApiClient
+from comken.salesforce_std import SalesforceApiClient
 
 cred = Credentials("salesforce")
 sf = SalesforceApiClient(
@@ -972,7 +1002,7 @@ big = sf.bulk_query("SELECT Id, Name FROM Account")  # 数万件以上の取得
 
 ```python
 from comken.credentials import Credentials
-from comken.salesforce.simple_sf import SalesforceClient
+from comken.salesforce_requests import SalesforceClient
 
 # 事前に python -m comken.credentials で登録しておく
 cred = Credentials("salesforce") # 本番・テストの切り替えは config.ini のプレフィックスで
@@ -996,7 +1026,7 @@ sf.delete("Account", record_id=new_id)
 ### SalesforceRestClient（REST API）
 
 ```python
-from comken.salesforce.rest_api import SalesforceRestClient
+from comken.salesforce_requests import SalesforceRestClient
 
 sf = SalesforceRestClient.from_password(
     username="user@example.com",
@@ -1019,7 +1049,7 @@ sf.delete("Account", record_id=new_id)
 ### SalesforceReportClient（レポート取得）
 
 ```python
-from comken.salesforce.report import SalesforceReportClient
+from comken.salesforce_requests import SalesforceReportClient
 
 sf = SalesforceReportClient(
     instance_url="https://xxx.salesforce.com",
@@ -1101,7 +1131,8 @@ graph LR
     comken --> csv["csv\nCSV"]
     comken --> windows["windows\nCOM / Window"]
     comken --> browser["browser\nブラウザ"]
-    comken --> salesforce["salesforce\nSalesforce"]
+    comken --> salesforce_std["salesforce_std\nSalesforce（標準）"]
+    comken --> salesforce_requests["salesforce_requests\nSalesforce（requests）"]
     comken --> teams["teams\nTeams 通知"]
 ```
 
@@ -1133,7 +1164,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A["Salesforce"] -->|SalesforceReportClient| B["レポート取得"]
+    A["Salesforce"] -->|SalesforceApiClient.run_report| B["レポート取得"]
     B --> C["データ加工"]
     C -->|ExcelFile| D["Excel出力"]
 ```
@@ -1158,3 +1189,4 @@ flowchart LR
 | 2026-07-11 | credentials モジュール追加（認証情報の暗号化保存・管理ツール） |
 | 2026-07-12 | ExcelFile・ExcelComHandler に `headers` 引数追加（ヘッダーなし Excel 対応）。EdgeDriver のダウンロードフォルダ管理を内部化（デフォルト一時フォルダ・with 終了時自動削除）。`ExcelFile.transfer_by_key`（openpyxl 版）追加。`diff_row` 追加・`diff_rows` を列単位の差分付きに改良。ExcelComHandler の初期化失敗時に Excel プロセスが残るバグ等を修正 |
 | 2026-07-12 | Teams 通知（TeamsNotifier。Power Automate Webhook / Adaptive Card 形式）・テキスト正規化（normalize / strip_spaces / remove_spaces）・待機（wait）・特殊フォルダ取得（Paths）を追加。Paths は OneDrive リダイレクトに追従、通知失敗は TeamsError |
+| 2026-07-12 | Salesforce を salesforce_std（標準ライブラリのみ）と salesforce_requests（requests 版）の2フォルダ構成に分割（同じクラス名・同じ API。import 行だけで切り替え）。credentials に GUI 版を追加（python -m comken.credentials --gui） |
