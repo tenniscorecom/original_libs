@@ -4,6 +4,7 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.edge.service import Service
+from selenium.webdriver.remote.webelement import WebElement
 
 from .download import DownloadDir
 from .options import BrowserOptions
@@ -34,6 +35,10 @@ def _resolve_download_dir(
 class EdgeDriver:
     """Edge WebDriver のラッパー。with 文で確実に終了できる。
 
+    よく使うブラウザ操作は d.open(...) / d.find_element(...) のように直接呼べる
+    （d.driver.get(...) と書かなくてよい。エディタ補完も効く）。
+    ここにない WebDriver の機能は d.driver.xxx で使う。
+
     デフォルトでは内部に一時ダウンロードフォルダを自動作成し、
     with を抜けると自動削除する。ファイルを残したい場合は
     BrowserOptions.DOWNLOAD_DIR またはコンストラクタの download_dir にパスを指定する。
@@ -50,7 +55,7 @@ class EdgeDriver:
         from comken.utils import move_file
 
         with EdgeDriver() as d:
-            d.driver.get("https://example.com")
+            d.open("https://example.com")
             # ... ダウンロード操作 ...
             files = d.download_dir.wait()        # 完了まで待機
             move_file(files[0], r"C:\\作業\\output")  # with 内で移動する
@@ -108,7 +113,77 @@ class EdgeDriver:
 
     @property
     def driver(self) -> webdriver.Edge:
+        """内部の WebDriver。BasePage 等に生の WebDriver を渡したい場合に使う。"""
         return self._driver
 
     def quit(self) -> None:
         self._driver.quit()
+
+    # ---------------------------------------------------- WebDriver の委譲
+    # よく使うものはエディタ補完が効くよう明示的にラップする。
+    # ここにない WebDriver の機能は d.driver.xxx で使う（型付きなので補完が効く）。
+
+    def open(self, url: str) -> None:
+        """URL を開く（WebDriver の get に相当。役割が分かる名前にしている）。"""
+        self._driver.get(url)
+
+    def find_element(self, by: str, value: str) -> WebElement:
+        """要素を1つ取得する（見つからなければ NoSuchElementException）。
+
+        使い方:
+            from selenium.webdriver.common.by import By
+            d.find_element(By.ID, "login-btn").click()
+        """
+        return self._driver.find_element(by, value)
+
+    def find_elements(self, by: str, value: str) -> list[WebElement]:
+        """要素をすべて取得する（見つからなければ空リスト）。"""
+        return self._driver.find_elements(by, value)
+
+    def execute_script(self, script: str, *args):
+        """JavaScript を実行する。"""
+        return self._driver.execute_script(script, *args)
+
+    def refresh(self) -> None:
+        """ページを再読み込みする。"""
+        self._driver.refresh()
+
+    def back(self) -> None:
+        """ブラウザの「戻る」。"""
+        self._driver.back()
+
+    def save_screenshot(self, path: "str | os.PathLike") -> bool:
+        """スクリーンショットを PNG で保存する。"""
+        return self._driver.save_screenshot(str(path))
+
+    def maximize_window(self) -> None:
+        """ウィンドウを最大化する。"""
+        self._driver.maximize_window()
+
+    @property
+    def current_url(self) -> str:
+        """現在の URL。"""
+        return self._driver.current_url
+
+    @property
+    def title(self) -> str:
+        """現在のページタイトル。"""
+        return self._driver.title
+
+    @property
+    def page_source(self) -> str:
+        """現在のページの HTML ソース。"""
+        return self._driver.page_source
+
+    @property
+    def switch_to(self):
+        """フレーム・ウィンドウ・アラートの切り替え（d.switch_to.frame(...) 等）。"""
+        return self._driver.switch_to
+
+    def __getattr__(self, name: str):
+        # 明示的にラップしていない WebDriver のメソッド・属性はそのまま委譲する
+        # （__getattr__ は通常の属性探索で見つからなかったときだけ呼ばれる）
+        if name.startswith("_"):
+            # _driver 未設定時の無限再帰と、copy/pickle 等の内部属性探索を防ぐ
+            raise AttributeError(name)
+        return getattr(self._driver, name)

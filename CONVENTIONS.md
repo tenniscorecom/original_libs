@@ -730,7 +730,7 @@ class LoginPage(AppPage):
 
 ```python
 # 呼び出し側: 開く→操作→遷移が1つの流れで読める
-dashboard = LoginPage(d.driver).open().login("user", "pass")
+dashboard = LoginPage(d).open().login("user", "pass")
 ```
 
 ### メソッドの返り値のルール

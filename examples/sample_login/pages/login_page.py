@@ -37,7 +37,7 @@ class LoginPage(AppPage):
         """ログイン画面を開き、自分自身を返す（メソッドチェーンできる）。
 
         使い方:
-            secure = LoginPage(d.driver).open().login("user", "pass")
+            secure = LoginPage(d).open().login("user", "pass")
         """
         self.go(self.PATH)
         return self

@@ -22,11 +22,11 @@ browser/base_page.py — Page Object の基底クラス
             def get_error(self) -> str:
                 return self.text_css(".error-message") # CSS セレクターでテキスト取得
 
-    2. EdgeDriver と組み合わせて使う
+    2. EdgeDriver と組み合わせて使う（EdgeDriver をそのまま渡せる）
         from comken.browser.driver import EdgeDriver
 
         with EdgeDriver() as d:
-            page = LoginPage(d.driver)
+            page = LoginPage(d)
             page.open()
             page.login("yamada", "password123")
 
@@ -54,13 +54,18 @@ class BasePage:
     要素が見つかるまで wait_seconds 秒まで自動で待機する（暗黙的待機）。
     """
 
-    def __init__(self, driver: WebDriver, wait_seconds: int = 10) -> None:
+    def __init__(self, driver, wait_seconds: int = 10) -> None:
         """
         Args:
-            driver: WebDriver インスタンス（EdgeDriver.driver から取得）。
+            driver: EdgeDriver または生の WebDriver。
+                    EdgeDriver をそのまま渡せる（LoginPage(d) と書ける）。
             wait_seconds: 要素待機のタイムアウト秒数。
         """
-        self._driver = driver
+        # EdgeDriver が渡されたら中の WebDriver を取り出す
+        # （isinstance にしないのは driver.py との循環 import を避けるため）
+        if hasattr(driver, "driver"):
+            driver = driver.driver
+        self._driver: WebDriver = driver
         self._wait = WebDriverWait(driver, wait_seconds)
 
     def open(self, url: str) -> "BasePage":

@@ -17,7 +17,7 @@ def main() -> None:
     with EdgeDriver(browser_options=SampleBrowserOptions()) as d:
         # open() は自分自身を返すので、開いてそのままログインまでチェーンできる
         # login() は SecurePage を返す → そのまま次の画面の操作が書ける
-        secure = LoginPage(d.driver).open().login(username=USERNAME, password=PASSWORD)
+        secure = LoginPage(d).open().login(username=USERNAME, password=PASSWORD)
         print("画面見出し:", secure.get_heading())
         print("メッセージ:", secure.get_flash_message())
 

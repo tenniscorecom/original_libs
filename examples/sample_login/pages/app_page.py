@@ -28,7 +28,7 @@ app_page.py — このサンプルサイト共通の SitePage
             return SecurePage(self._driver)   # 遷移先クラスのインスタンスを返す
 
     # 呼び出し側
-    login_page = LoginPage(d.driver)
+    login_page = LoginPage(d)
     secure_page = login_page.login("user", "pass")   # SecurePage が返ってくる
     print(secure_page.get_heading())                 # そのまま次の画面の操作が書ける
 ---------------------------------------------------------------------------

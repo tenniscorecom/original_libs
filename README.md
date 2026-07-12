@@ -105,7 +105,7 @@ config.REPORT.TEMPLATE_PATH # → str
 |---|---|
 | `true` / `false`（大文字小文字問わず） | bool に自動変換 |
 | `yes` / `no` / `on` / `off` | **変換しない**（str のまま） |
-| `LIST(a, b, c)` | list[str] に自動変換 |
+| `[a, b, c]` | list[str] に自動変換 |
 | 整数（`10` など） | int に自動変換 |
 | 小数（`1.5` など） | float に自動変換 |
 | 絶対パス（`C:\...` / `\\...` / `/...`） | Path に自動変換 |
@@ -115,16 +115,22 @@ config.REPORT.TEMPLATE_PATH # → str
 `1` が「数値の1」なのか「ON の意味」なのか曖昧になる事故を避けるため。
 数値を文字列として使いたい場合（シート名 `"2024"` など）はコード側で `str()` に変換する。
 
-**リスト値は `LIST(...)` で書く**（カンマ区切り。改行区切りも可）:
+**リスト値は `[...]` で囲んで書く**（カンマ区切り。改行区切りも可）:
 
 ```ini
 [REPORT]
-TARGET_SHEETS = LIST(東日本, 西日本, 集計)
+TARGET_SHEETS = [東日本, 西日本, 集計]
+ONE_SHEET = [東日本]
 ```
 
 ```python
 config.REPORT.TARGET_SHEETS   # → ["東日本", "西日本", "集計"]
+config.REPORT.ONE_SHEET       # → ["東日本"]（1要素でもリスト）
 ```
+
+`[...]` で囲むのは「1要素のリスト」と「ただの文字列」を区別するため
+（カンマの有無だけで判定すると、リストを1件に減らした途端に文字列になり、
+for ループが文字単位になる事故が起きる）。
 
 **エディタの補完候補を出す（型スタブの生成）:**
 
@@ -781,7 +787,22 @@ URL = "https://example.com"
 
 # デフォルト設定のまま起動
 with EdgeDriver() as d:
-    d.driver.get(URL)
+    d.open(URL)
+```
+
+よく使うブラウザ操作は `d.` から直接呼べる（エディタ補完が効く）:
+
+```python
+d.open(url)                      # URL を開く
+d.find_element(By.ID, "btn")     # 要素取得
+d.current_url                    # 現在の URL
+d.title                          # ページタイトル
+d.save_screenshot("shot.png")    # スクリーンショット
+d.switch_to.frame("main")        # フレーム切り替え
+d.refresh() / d.back()           # 再読み込み / 戻る
+
+# ここにない WebDriver の機能は d.driver から使う（こちらも補完が効く）
+d.driver.set_window_size(1200, 800)
 ```
 
 **ブラウザオプションのカスタマイズ:**
@@ -830,7 +851,7 @@ from comken.utils import move_file
 
 # デフォルト（一時フォルダ）: with を抜けると自動削除される
 with EdgeDriver() as d:
-    d.driver.get("https://example.com/download")
+    d.open("https://example.com/download")
     # ... ダウンロード操作 ...
     files = d.download_dir.wait()            # 完了まで待機（.crdownload が消えるまで）
     move_file(files[0], r"C:\作業\output")   # with 内でファイルを移動する
@@ -1214,4 +1235,4 @@ flowchart LR
 | 2026-07-12 | ExcelFile・ExcelComHandler に `headers` 引数追加（ヘッダーなし Excel 対応）。EdgeDriver のダウンロードフォルダ管理を内部化（デフォルト一時フォルダ・with 終了時自動削除）。`ExcelFile.transfer_by_key`（openpyxl 版）追加。`diff_row` 追加・`diff_rows` を列単位の差分付きに改良。ExcelComHandler の初期化失敗時に Excel プロセスが残るバグ等を修正 |
 | 2026-07-12 | Teams 通知（TeamsNotifier。Power Automate Webhook / Adaptive Card 形式）・テキスト正規化（normalize / strip_spaces / remove_spaces）・待機（wait）・特殊フォルダ取得（Paths）を追加。Paths は OneDrive リダイレクトに追従、通知失敗は TeamsError |
 | 2026-07-12 | Salesforce を salesforce_std（標準ライブラリのみ）と salesforce_requests（requests 版）の2フォルダ構成に分割（同じクラス名・同じ API。import 行だけで切り替え）。credentials に GUI 版を追加（python -m comken.credentials --gui） |
-| 2026-07-12 | Config: LIST(a, b, c) 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |
+| 2026-07-12 | Config: [a, b, c] 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |

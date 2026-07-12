@@ -48,7 +48,7 @@ def _parse_value(
 
     変換の優先順位:
         1. true / false（大文字小文字問わず）→ bool
-        2. LIST(a, b, c) → list[str]（改行区切りも可）
+        2. [a, b, c] → list[str]（改行区切りも可）
         3. 絶対パス（C:\\ / \\\\ / / で始まる）→ Path
         4. 整数に変換できる → int
         5. 小数に変換できる → float
@@ -64,8 +64,8 @@ def _parse_value(
     if lower == "false":
         return False
 
-    if value.startswith("LIST(") and value.endswith(")"):
-        return _split_list_items(value[len("LIST("):-1])
+    if value.startswith("[") and value.endswith("]"):
+        return _split_list_items(value[1:-1])
 
     if len(value) >= 2 and (value[1:3] == ":\\" or value[:2] == "\\\\" or value[0] == "/"):
         return Path(value)
@@ -87,7 +87,7 @@ class Config:
 
     値の型変換（_parse_value の変換順と同じ）:
         - true / false → bool
-        - LIST(a, b, c) → list[str]
+        - [a, b, c] → list[str]
         - 絶対パス（C:\\ / \\\\ / /）→ Path
         - 整数 → int
         - 小数 → float
@@ -104,7 +104,7 @@ class Config:
         INPUT_FOLDER = C:\\作業\\input
 
         [REPORT]
-        TARGET_SHEETS = LIST(東日本, 西日本, 集計)
+        TARGET_SHEETS = [東日本, 西日本, 集計]
 
     使い方:
         config = Config() # カレントディレクトリの config.ini を読む
@@ -139,7 +139,7 @@ class Config:
     def parse_list(self, value: str) -> list[str]:
         """【旧方式】カンマまたは改行区切りの文字列をリストに変換する。
 
-        現在は config.ini 側で LIST(a, b, c) と書けば自動でリストに変換されるため、
+        現在は config.ini 側で [a, b, c] と書けば自動でリストに変換されるため、
         このメソッドを呼ぶ必要はない。旧コードを壊さないために残している。
 
         Args:
@@ -149,7 +149,7 @@ class Config:
             空文字を除いた文字列のリスト。
         """
         warnings.warn(
-            "parse_list は不要になりました。config.ini 側で LIST(a, b, c) と書くと"
+            "parse_list は不要になりました。config.ini 側で [a, b, c] と書くと"
             "自動でリストに変換されます（改行区切りも可）。",
             FutureWarning,
             stacklevel=2,

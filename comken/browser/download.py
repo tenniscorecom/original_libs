@@ -25,7 +25,7 @@ class DownloadDir:
         from comken.utils import move_file
 
         with DownloadDir() as dl, EdgeDriver(download_dir=dl) as d:
-            d.driver.get("https://example.com/download")
+            d.open("https://example.com/download")
             ...  # ダウンロード操作
             files = dl.wait()                        # 完了まで待機
             move_file(files[0], r"C:\\作業\\output")  # with 内で移動する

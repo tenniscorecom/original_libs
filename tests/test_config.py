@@ -138,51 +138,57 @@ class TestConfigTypeConversion:
 
 
 class TestConfigListConversion:
-    """LIST(...) 記法の自動変換のテスト。"""
+    """[a, b, c] 記法の自動変換のテスト。"""
 
     def test_comma_separated(self, tmp_path):
-        """LIST(a, b, c) が自動でリストに変換されることを確認する。"""
+        """[a, b, c] が自動でリストに変換されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = LIST(a, b, c)\n", encoding="utf-8")
+        ini.write_text("[s]\nitems = [a, b, c]\n", encoding="utf-8")
         assert Config(ini).S.ITEMS == ["a", "b", "c"]
 
     def test_japanese_values(self, tmp_path):
         """日本語の値も変換されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nsheets = LIST(東日本, 西日本, 集計)\n", encoding="utf-8")
+        ini.write_text("[s]\nsheets = [東日本, 西日本, 集計]\n", encoding="utf-8")
         assert Config(ini).S.SHEETS == ["東日本", "西日本", "集計"]
+
+    def test_single_item_is_still_list(self, tmp_path):
+        """1要素でもリストになることを確認する（カンマ自動判定では実現できない要件）。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nsheets = [東日本]\n", encoding="utf-8")
+        assert Config(ini).S.SHEETS == ["東日本"]
 
     def test_empty_values_excluded(self, tmp_path):
         """空文字列はリストから除外されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = LIST(a, , b)\n", encoding="utf-8")
+        ini.write_text("[s]\nitems = [a, , b]\n", encoding="utf-8")
         assert Config(ini).S.ITEMS == ["a", "b"]
 
     def test_newline_separated(self, tmp_path):
-        """改行区切りの複数行 LIST も変換されることを確認する。
+        """改行区切りの複数行リストも変換されることを確認する。
 
         config.ini で複数行値を書く場合は、2行目以降を字下げ（スペースまたはタブ）する。
 
         [REPORT]
-        TARGET_SHEETS = LIST(東日本
+        TARGET_SHEETS = [東日本
             西日本
-            集計)
+            集計]
         """
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = LIST(a\n\tb\n\tc)\n", encoding="utf-8")
+        ini.write_text("[s]\nitems = [a\n\tb\n\tc]\n", encoding="utf-8")
         assert Config(ini).S.ITEMS == ["a", "b", "c"]
 
     def test_empty_list(self, tmp_path):
-        """LIST() は空リストになることを確認する。"""
+        """[] は空リストになることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = LIST()\n", encoding="utf-8")
+        ini.write_text("[s]\nitems = []\n", encoding="utf-8")
         assert Config(ini).S.ITEMS == []
 
-    def test_lowercase_list_stays_string(self, tmp_path):
-        """小文字の list(...) は変換されず文字列のままを確認する（誤変換防止）。"""
+    def test_comma_without_brackets_stays_string(self, tmp_path):
+        """[] なしのカンマ入り文字列は変換されないことを確認する（SOQL 等の誤変換防止）。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = list(a, b)\n", encoding="utf-8")
-        assert Config(ini).S.ITEMS == "list(a, b)"
+        ini.write_text("[s]\nquery = SELECT Id, Name FROM Account\n", encoding="utf-8")
+        assert Config(ini).S.QUERY == "SELECT Id, Name FROM Account"
 
     def test_parse_list_still_works_with_warning(self, tmp_path):
         """旧方式の parse_list は FutureWarning 付きで動くことを確認する。"""
@@ -190,7 +196,7 @@ class TestConfigListConversion:
         ini.write_text("[s]\nitems = a, b, c\n", encoding="utf-8")
         config = Config(ini)
 
-        with pytest.warns(FutureWarning, match="LIST"):
+        with pytest.warns(FutureWarning, match="不要"):
             assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
 
 
@@ -203,7 +209,7 @@ class TestGenerateStub:
         path.write_text(
             "[browser]\nwait_seconds = 10\nheadless = false\n"
             "[files]\ninput_folder = C:\\work\\input\nratio = 1.5\n"
-            "[report]\nsheets = LIST(a, b)\nname = T_data\n",
+            "[report]\nsheets = [a, b]\nname = T_data\n",
             encoding="utf-8",
         )
         return path
