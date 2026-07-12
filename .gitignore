@@ -7,3 +7,11 @@ venv/
 comken.egg-info/
 dist/
 build/
+
+# 実行時に生成されるもの（サンプルの出力・ログ・Config の補完スタブ）
+logs/
+examples/**/output/
+config.pyi
+
+# プロジェクト設定（テンプレートは config.ini.example を使う）
+config.ini

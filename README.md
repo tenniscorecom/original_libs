@@ -8,7 +8,8 @@
 
 1. **セットアップ**（下の「セットアップ」節。各 PC で初回1回だけ）
 2. **やりたいことを「モジュール一覧」から探す** → その節のコード例をコピーして動かす
-3. **動くサンプルを見る** → `examples/sample_login/`（ブラウザ自動化の一式）
+3. **動くサンプルを見る** → `examples/`（一覧は examples/README.md。CSV→Excel レポート・
+   突合転記・差分レポートはインストール直後にそのまま動かせる。新規ツールの雛形もここ）
 4. **エラーが出たら** → ERRORS.md（メッセージに対処法が書いてある）
 
 最初の1本はこれだけで書ける（CSV を読んで Excel レポートを作る例）:
@@ -1124,7 +1125,7 @@ class LoginPage(BasePage):
 
 ### サンプル実装
 
-`examples/sample_login/` に動作するサンプルがある。
+`examples/sample_login/` に動作するサンプルがある（他モジュールのサンプルは examples/README.md 参照）。
 
 ```
 examples/sample_login/
@@ -1429,3 +1430,4 @@ flowchart LR
 | 2026-07-12 | Config: [a, b, c] 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |
 | 2026-07-12 | Locator（セレクターのクラス変数管理）・retry・Timer / measure・zip・PDF（pypdf）・Excel の Sheet ラッパー（セル参照 / write_table / auto_width / freeze_header）・ExcelFile.create を追加 |
 | 2026-07-12 | comken.__version__ / set_debug()（主要処理の時間を DEBUG ログに記録）/ set_dry_run()（外部に影響する操作をスキップ）を追加。EdgeDriver がエラー時に画面を logs/ に自動保存。Excel 孤立プロセス対策（is_excel_running / kill_excel）。リリース.bat で git tag を打つ運用に。スタブ書き込みをアトミック化 |
+| 2026-07-13 | examples を拡充。CSV→Excel レポート・キー突合転記・CSV 差分レポート（オフラインでそのまま動く3本）、Salesforce→Excel、日次バッチ雛形（daily_batch_template。新規プロジェクトのコピー元）と examples/README.md を追加 |
