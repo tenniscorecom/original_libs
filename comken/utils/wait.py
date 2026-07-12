@@ -20,6 +20,7 @@ time.sleep の薄いラッパー。単位を明示することで可読性を上
 """
 
 import time
+from typing import Callable
 
 
 class wait:
@@ -44,7 +45,7 @@ class wait:
         time.sleep(n * 60)
 
     @staticmethod
-    def until(condition, timeout: float = 60, interval: float = 1.0) -> bool:
+    def until(condition: Callable[[], bool], timeout: float = 60, interval: float = 1.0) -> bool:
         """条件が True になるまで繰り返し確認する。
 
         Args:

@@ -28,8 +28,12 @@ utils/timer.py — 処理時間の計測
 import functools
 import logging
 import time
+from typing import Callable, ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
 class Timer:
@@ -56,17 +60,17 @@ class Timer:
         self.elapsed = time.perf_counter() - self._start
         logger.info("%s: %.2f秒", self._name, self.elapsed)
 
-    def __call__(self, func):
+    def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]:
         """デコレータとして使う（@Timer("処理名")）。"""
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             # 呼び出しごとに独立して計測する（同じ Timer を使い回さない）
             with Timer(self._name):
                 return func(*args, **kwargs)
         return wrapper
 
 
-def measure(func):
+def measure(func: Callable[_P, _R]) -> Callable[_P, _R]:
     """デバッグモード時だけ処理時間を DEBUG ログに出すデコレータ。
 
     ライブラリの主要処理に付いており、comken.set_debug(True) にすると
@@ -85,7 +89,7 @@ def measure(func):
             ...
     """
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         from ..runtime import is_debug
 
         if not is_debug():

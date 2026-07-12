@@ -44,6 +44,7 @@ browser/base_page.py — Page Object の基底クラス
 
 import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -52,6 +53,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
 
+from .locator import Locator
+
+if TYPE_CHECKING:
+    from .driver import EdgeDriver
+
 
 class BasePage:
     """全 Page Object の基底クラス。画面ごとにこのクラスを継承して使う。
@@ -59,7 +65,7 @@ class BasePage:
     要素が見つかるまで wait_seconds 秒まで自動で待機する（暗黙的待機）。
     """
 
-    def __init__(self, driver, wait_seconds: int = 10) -> None:
+    def __init__(self, driver: "EdgeDriver | WebDriver", wait_seconds: int = 10) -> None:
         """
         Args:
             driver: EdgeDriver または生の WebDriver。
@@ -100,7 +106,7 @@ class BasePage:
     # セレクターを Locator のクラス変数として宣言し、これらのメソッドに渡す。
     # （従来の click_id / input_css 等もそのまま使える）
 
-    def click(self, locator, index: int = 0) -> None:
+    def click(self, locator: Locator, index: int = 0) -> None:
         """Locator で指定した要素をクリックする。
 
         Args:
@@ -109,47 +115,47 @@ class BasePage:
         """
         self._click_at(locator.by, locator.value, index)
 
-    def input(self, locator, text: str) -> None:
+    def input(self, locator: Locator, text: str) -> None:
         """Locator で指定した入力欄にテキストを入力する（既存の値はクリアされる）。"""
         self._input(locator.by, locator.value, text)
 
-    def text(self, locator) -> str:
+    def text(self, locator: Locator) -> str:
         """Locator で指定した要素のテキストを返す。"""
         return self._text(locator.by, locator.value)
 
-    def texts(self, locator) -> list[str]:
+    def texts(self, locator: Locator) -> list[str]:
         """Locator に一致する全要素のテキストをリストで返す。"""
         return self._texts(locator.by, locator.value)
 
-    def has(self, locator) -> bool:
+    def has(self, locator: Locator) -> bool:
         """Locator の要素が DOM 上に存在するか返す（表示非表示は問わない）。"""
         return self._has(locator.by, locator.value)
 
-    def count(self, locator) -> int:
+    def count(self, locator: Locator) -> int:
         """Locator に一致する要素の数を返す（0件なら 0。待機しない）。"""
         return len(self._driver.find_elements(locator.by, locator.value))
 
-    def select_text(self, locator, text: str) -> None:
+    def select_text(self, locator: Locator, text: str) -> None:
         """Locator の <select> をテキストで選択する。"""
         self._select_text(locator.by, locator.value, text)
 
-    def select_value(self, locator, option_value: str) -> None:
+    def select_value(self, locator: Locator, option_value: str) -> None:
         """Locator の <select> を value 属性で選択する。"""
         self._select_value(locator.by, locator.value, option_value)
 
-    def select_index(self, locator, index: int) -> None:
+    def select_index(self, locator: Locator, index: int) -> None:
         """Locator の <select> をインデックスで選択する（0始まり）。"""
         self._select_index(locator.by, locator.value, index)
 
-    def wait_visible(self, locator) -> None:
+    def wait_visible(self, locator: Locator) -> None:
         """Locator の要素が表示されるまで待機する（モーダルが開くのを待つ等）。"""
         self._wait.until(EC.visibility_of_element_located(tuple(locator)))
 
-    def wait_invisible(self, locator) -> None:
+    def wait_invisible(self, locator: Locator) -> None:
         """Locator の要素が非表示になるまで待機する（モーダルが閉じるのを待つ等）。"""
         self._wait.until(EC.invisibility_of_element_located(tuple(locator)))
 
-    def scroll_to(self, locator) -> None:
+    def scroll_to(self, locator: Locator) -> None:
         """Locator の要素が見えるようにスクロールする。"""
         el = self._driver.find_element(locator.by, locator.value)
         self._driver.execute_script("arguments[0].scrollIntoView(true);", el)

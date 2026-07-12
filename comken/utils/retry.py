@@ -23,11 +23,17 @@ utils/retry.py — リトライデコレータ
 import functools
 import logging
 import time
+from typing import Callable, ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
 
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
-def retry(times: int = 3, wait: float = 1.0, on: tuple = (Exception,)):
+
+def retry(
+    times: int = 3, wait: float = 1.0, on: tuple = (Exception,)
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """失敗したら wait 秒空けて実行し直すデコレータ。
 
     Args:
@@ -39,9 +45,9 @@ def retry(times: int = 3, wait: float = 1.0, on: tuple = (Exception,)):
     Raises:
         最後の実行で出た例外（times 回すべて失敗した場合）。
     """
-    def decorator(func):
+    def decorator(func: Callable[_P, _R]) -> Callable[_P, _R]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             for attempt in range(1, times + 1):
                 try:
                     return func(*args, **kwargs)

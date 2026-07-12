@@ -2,8 +2,35 @@
 
 業務自動化で使う Python 共通ライブラリ。
 
-- 設計方針・ユースケース: 仕様書.md
-- コーディング規約: CONVENTIONS.md
+## はじめて使う人へ
+
+この README を最初から最後まで読む必要はない。次の順で進めるのが早い:
+
+1. **セットアップ**（下の「セットアップ」節。各 PC で初回1回だけ）
+2. **やりたいことを「モジュール一覧」から探す** → その節のコード例をコピーして動かす
+3. **動くサンプルを見る** → `examples/sample_login/`（ブラウザ自動化の一式）
+4. **エラーが出たら** → ERRORS.md（メッセージに対処法が書いてある）
+
+最初の1本はこれだけで書ける（CSV を読んで Excel レポートを作る例）:
+
+```python
+from comken.csv import CsvReader
+from comken.excel import ExcelFile
+
+rows = CsvReader(r"C:\作業\data.csv").rows()      # CSV を読む（1行 = 1辞書）
+
+with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
+    s = f.sheet("Sheet1")
+    s.write_table(rows)                            # ヘッダー + データをまとめて書く
+    s.auto_width()                                 # 列幅を整える
+    s.freeze_header()                              # 1行目を固定
+    f.save()
+```
+
+**関連ドキュメント**:
+
+- 設計方針・ユースケース: 仕様書.md（管理者・設計を知りたい人向け）
+- コーディング規約: CONVENTIONS.md（コードを書く人向け）
 - エラーが出たときの対応: ERRORS.md（プロジェクトに配る雛形）
 
 ## モジュール一覧
