@@ -42,7 +42,10 @@ import win32crypt
 from ..exceptions import CredentialNotFoundError, InvalidCredentialNameError
 from ..utils.file import cleanup_stale_tmp as _cleanup_stale_tmp
 
-CREDENTIALS_PATH = Path.home() / ".comken" / "credentials.dat"
+# 保存先フォルダ名はパッケージ名に自動追従する（パッケージ名を変更しても書き換え不要）
+_PACKAGE_NAME = __package__.split(".")[0]
+
+CREDENTIALS_PATH = Path.home() / f".{_PACKAGE_NAME}" / "credentials.dat"
 
 # キー名に使える文字（半角英数字とアンダースコアのみ）
 # 漢字・スペース・記号はコードや config.ini に書きにくいため弾く
@@ -169,6 +172,6 @@ def _save_all(data: dict[str, str], path: Path) -> None:
     _cleanup_stale_tmp(path)  # 前回クラッシュ時の .tmp 残骸を掃除
     raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
     encrypted = win32crypt.CryptProtectData(raw, _FILE_DESCRIPTION, None, None, None, 0)
-    tmp_path = path.with_suffix(f".dat.{os.getpid()}.tmp")
+    tmp_path = path.with_suffix(f"{path.suffix}.{os.getpid()}.tmp")
     tmp_path.write_bytes(encrypted)
     os.replace(tmp_path, path)

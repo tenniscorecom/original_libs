@@ -240,7 +240,7 @@ def _update_stub(cfg: configparser.ConfigParser, ini_path: str | Path) -> None:
         if stub_path.exists() and stub_path.read_text(encoding="utf-8") == content:
             return
         # 一時ファイル経由で置き換える（複数プロセス同時起動時の書き込み競合対策）
-        tmp_path = stub_path.with_suffix(f".pyi.{os.getpid()}.tmp")
+        tmp_path = stub_path.with_suffix(f"{stub_path.suffix}.{os.getpid()}.tmp")
         tmp_path.write_text(content, encoding="utf-8")
         os.replace(tmp_path, stub_path)
     except OSError:
