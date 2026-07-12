@@ -878,6 +878,22 @@ with RegistryHandler(win32con.HKEY_CURRENT_USER, r"Software\MyApp") as r:
     value = r.read(SETTING_KEY)
 ```
 
+### Excel 孤立プロセスの後始末（is_excel_running / kill_excel）
+
+COM 経由の Excel 自動化は、クラッシュ等で EXCEL.EXE が画面に見えないまま裏に残ることがある。
+残った Excel はファイルをロックし続け、次回実行時の原因不明エラーのもとになる。
+
+```python
+from comken.windows import is_excel_running, kill_excel
+
+# 無人実行の PC: 自動処理の開始前に前回の残骸を片付ける
+kill_excel()   # ※ ユーザーが開いている Excel も終了する（未保存の変更は失われる）
+
+# 人が使う PC: 警告だけ出す（作業中の Excel を殺さない）
+if is_excel_running():
+    logger.warning("Excel が起動中です。前回の処理の残骸の可能性があります")
+```
+
 ---
 
 ## Browser
@@ -1326,6 +1342,7 @@ graph LR
     comken --> salesforce_std["salesforce_std\nSalesforce（標準）"]
     comken --> salesforce_requests["salesforce_requests\nSalesforce（requests）"]
     comken --> teams["teams\nTeams 通知"]
+    comken --> pdf["pdf\nPDF（pypdf）"]
 ```
 
 ---

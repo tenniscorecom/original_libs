@@ -2,7 +2,7 @@
 login_page.py — ログイン画面
 
 【Page Object の書き方】
-  - 画面に存在する要素のセレクターは定数（大文字）でクラス上部に定義する
+  - 画面に存在する要素のセレクターは Locator のクラス変数としてクラス上部に定義する
   - メソッドは「この画面でできること」だけを書く
   - 別の画面に移動するメソッドは、遷移先のページクラスを返す
 
@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from comken.browser import Locator
+
 from .app_page import AppPage
 
 if TYPE_CHECKING:
@@ -26,12 +28,12 @@ if TYPE_CHECKING:
 class LoginPage(AppPage):
     """ログイン画面（/login）。"""
 
-    # ── セレクター定数（F12 で確認した値をここに書く） ──
+    # ── セレクター（F12 で確認した値をここに書く。画面変更時はここだけ直す） ──
     PATH = "/login"
-    USERNAME_ID = "username"
-    PASSWORD_ID = "password"
-    LOGIN_BTN_CSS = ".radius"
-    ERROR_CSS = "#flash.error"
+    USERNAME = Locator.id("username")
+    PASSWORD = Locator.id("password")
+    LOGIN_BTN = Locator.css(".radius")
+    ERROR_MSG = Locator.css("#flash.error")
 
     def open(self) -> LoginPage:
         """ログイン画面を開き、自分自身を返す（メソッドチェーンできる）。
@@ -52,11 +54,11 @@ class LoginPage(AppPage):
         """
         from .secure_page import SecurePage  # ランタイム用（循環参照を避けるためここでインポート）
 
-        self.input_id(self.USERNAME_ID, username)
-        self.input_id(self.PASSWORD_ID, password)
-        self.click_css(self.LOGIN_BTN_CSS)
+        self.input(self.USERNAME, username)
+        self.input(self.PASSWORD, password)
+        self.click(self.LOGIN_BTN)
         return SecurePage(self._driver)
 
     def get_error_message(self) -> str:
         """ログイン失敗時のエラーメッセージを返す。"""
-        return self.text_css(self.ERROR_CSS)
+        return self.text(self.ERROR_MSG)

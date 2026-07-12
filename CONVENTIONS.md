@@ -669,7 +669,11 @@ if __name__ == "__main__":  # pragma: no cover
 ## Page Object Model
 
 ブラウザ操作は必ず Page Object パターンで書く。
-selenium を直接 import しない。要素の操作・待機はすべて `BasePage` のメソッド（`click_id`, `input_css`, `wait_visible_id` 等）を使う。
+selenium を直接 import しない。要素の操作・待機はすべて `BasePage` のメソッドを使う。
+
+セレクターは **`Locator` のクラス変数としてクラス上部にまとめ、`click(locator)` / `input(locator, text)` 等に渡す**（推奨）。
+画面変更でセレクターが変わったとき、直す場所がクラスの先頭に集まる。
+従来のセレクター種別入りメソッド（`click_id`, `input_css`, `wait_visible_id` 等）もそのまま使える。
 
 | ルール | 理由 |
 |---|---|
@@ -709,10 +713,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .dashboard_page import DashboardPage
 
+from comken.browser import Locator
+
 class LoginPage(AppPage):
     PATH = "/login"
-    USERNAME_ID = "username"  # セレクターは定数（大文字）でクラス上部にまとめる
-    LOGIN_BTN_CSS = ".radius"
+    USERNAME = Locator.id("username")   # セレクターは Locator のクラス変数でクラス上部にまとめる
+    LOGIN_BTN = Locator.css(".radius")
 
     def open(self) -> LoginPage:
         """自分の画面を開くメソッドは self を返す（チェーンできる）。"""
@@ -723,8 +729,8 @@ class LoginPage(AppPage):
         """クリックで別画面に遷移するメソッドは、遷移先のページクラスを返す。"""
         from .dashboard_page import DashboardPage  # 循環インポート対策
 
-        self.input_id(self.USERNAME_ID, username)
-        self.click_css(self.LOGIN_BTN_CSS)
+        self.input(self.USERNAME, username)
+        self.click(self.LOGIN_BTN)
         return DashboardPage(self._driver)
 ```
 

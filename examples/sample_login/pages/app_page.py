@@ -21,10 +21,14 @@ app_page.py — このサンプルサイト共通の SitePage
   どの画面に移ったかをコードで追えるようにする:
 
     class LoginPage(AppPage):
+        USERNAME = Locator.id("username")     # セレクターはクラス上部にまとめる
+        PASSWORD = Locator.id("password")
+        LOGIN_BTN = Locator.id("login-btn")
+
         def login(self, username, password) -> "SecurePage":   # 戻り値の型を書く
-            self.input_id("username", username)
-            self.input_id("password", password)
-            self.click_id("login-btn")
+            self.input(self.USERNAME, username)
+            self.input(self.PASSWORD, password)
+            self.click(self.LOGIN_BTN)
             return SecurePage(self._driver)   # 遷移先クラスのインスタンスを返す
 
     # 呼び出し側
