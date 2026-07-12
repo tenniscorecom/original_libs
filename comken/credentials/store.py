@@ -33,6 +33,7 @@ Windows ログオンユーザーに紐付けて暗号化し、ユーザープロ
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -158,8 +159,14 @@ def _load_all(path: Path) -> dict[str, str]:
 
 
 def _save_all(data: dict[str, str], path: Path) -> None:
-    """全キーの辞書を暗号化してファイルに書き込む。"""
+    """全キーの辞書を暗号化してファイルに書き込む。
+
+    一時ファイル経由でアトミックに置き換える（同時書き込みや書き込み中の
+    クラッシュで暗号化ファイルが半端に壊れ、全キーが読めなくなるのを防ぐ）。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
     encrypted = win32crypt.CryptProtectData(raw, _FILE_DESCRIPTION, None, None, None, 0)
-    path.write_bytes(encrypted)
+    tmp_path = path.with_suffix(f".dat.{os.getpid()}.tmp")
+    tmp_path.write_bytes(encrypted)
+    os.replace(tmp_path, path)
