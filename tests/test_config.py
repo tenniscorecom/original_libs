@@ -5,6 +5,8 @@ Config クラスのテスト。
     リポジトリのルートで python -m pytest tests/ -v
 """
 
+from pathlib import Path
+
 import pytest
 
 from comken.config import Config
@@ -55,6 +57,16 @@ class TestConfigBasic:
         (tmp_path / "config.ini").write_text("[s]\nk = v\n", encoding="utf-8")
         config = Config()
         assert config.S.K == "v"
+
+    def test_reads_bom_utf8(self, tmp_path):
+        """BOM 付き UTF-8 の config.ini も読めることを確認する。
+
+        （メモ帳や PowerShell で保存すると BOM 付きになるため。
+        BOM を素通しすると1つ目のセクションが MissingSectionHeaderError になる）
+        """
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nk = 日本語\n", encoding="utf-8-sig")
+        assert Config(ini).S.K == "日本語"
 
 
 class TestConfigBoolConversion:
@@ -125,34 +137,129 @@ class TestConfigTypeConversion:
         assert isinstance(Config(ini).S.NAME, str)
 
 
-class TestConfigParseList:
-    """parse_list のテスト。"""
+class TestConfigListConversion:
+    """LIST(...) 記法の自動変換のテスト。"""
 
     def test_comma_separated(self, tmp_path):
-        """カンマ区切りの文字列をリストに変換することを確認する。"""
+        """LIST(a, b, c) が自動でリストに変換されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = a, b, c\n", encoding="utf-8")
-        config = Config(ini)
-        assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
+        ini.write_text("[s]\nitems = LIST(a, b, c)\n", encoding="utf-8")
+        assert Config(ini).S.ITEMS == ["a", "b", "c"]
+
+    def test_japanese_values(self, tmp_path):
+        """日本語の値も変換されることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nsheets = LIST(東日本, 西日本, 集計)\n", encoding="utf-8")
+        assert Config(ini).S.SHEETS == ["東日本", "西日本", "集計"]
 
     def test_empty_values_excluded(self, tmp_path):
         """空文字列はリストから除外されることを確認する。"""
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = a, , b\n", encoding="utf-8")
-        config = Config(ini)
-        assert config.parse_list(config.S.ITEMS) == ["a", "b"]
+        ini.write_text("[s]\nitems = LIST(a, , b)\n", encoding="utf-8")
+        assert Config(ini).S.ITEMS == ["a", "b"]
 
     def test_newline_separated(self, tmp_path):
-        """改行区切りの複数行値もリストに変換することを確認する。
+        """改行区切りの複数行 LIST も変換されることを確認する。
 
         config.ini で複数行値を書く場合は、2行目以降を字下げ（スペースまたはタブ）する。
 
         [REPORT]
-        TARGET_SHEETS = 東日本
+        TARGET_SHEETS = LIST(東日本
             西日本
-            集計
+            集計)
         """
         ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = a\n\tb\n\tc\n", encoding="utf-8")
+        ini.write_text("[s]\nitems = LIST(a\n\tb\n\tc)\n", encoding="utf-8")
+        assert Config(ini).S.ITEMS == ["a", "b", "c"]
+
+    def test_empty_list(self, tmp_path):
+        """LIST() は空リストになることを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nitems = LIST()\n", encoding="utf-8")
+        assert Config(ini).S.ITEMS == []
+
+    def test_lowercase_list_stays_string(self, tmp_path):
+        """小文字の list(...) は変換されず文字列のままを確認する（誤変換防止）。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nitems = list(a, b)\n", encoding="utf-8")
+        assert Config(ini).S.ITEMS == "list(a, b)"
+
+    def test_parse_list_still_works_with_warning(self, tmp_path):
+        """旧方式の parse_list は FutureWarning 付きで動くことを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nitems = a, b, c\n", encoding="utf-8")
         config = Config(ini)
-        assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
+
+        with pytest.warns(FutureWarning, match="LIST"):
+            assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
+
+
+class TestGenerateStub:
+    """generate_stub（エディタ補完用スタブ生成）のテスト。"""
+
+    @pytest.fixture
+    def ini(self, tmp_path):
+        path = tmp_path / "config.ini"
+        path.write_text(
+            "[browser]\nwait_seconds = 10\nheadless = false\n"
+            "[files]\ninput_folder = C:\\work\\input\nratio = 1.5\n"
+            "[report]\nsheets = LIST(a, b)\nname = T_data\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_generates_typed_sections(self, ini, tmp_path):
+        """セクションごとのクラスと型注釈が生成されることを確認する。"""
+        from comken.config import generate_stub
+
+        out = generate_stub(ini, tmp_path / "config.pyi")
+        text = out.read_text(encoding="utf-8")
+
+        assert "class _BROWSER:" in text
+        assert "    WAIT_SECONDS: int" in text
+        assert "    HEADLESS: bool" in text
+        assert "    INPUT_FOLDER: Path" in text
+        assert "    RATIO: float" in text
+        assert "    SHEETS: list[str]" in text
+        assert "    NAME: str" in text
+
+    def test_config_class_references_sections(self, ini, tmp_path):
+        """Config クラスが各セクションクラスを属性に持つことを確認する。"""
+        from comken.config import generate_stub
+
+        text = generate_stub(ini, tmp_path / "config.pyi").read_text(encoding="utf-8")
+
+        assert "class Config:" in text
+        assert "    BROWSER: _BROWSER" in text
+        assert "config: Config" in text
+
+    def test_default_output_is_src_config_pyi(self, ini, tmp_path, monkeypatch):
+        """src/config.py があるプロジェクトでは src/config.pyi に出力されることを確認する。"""
+        from comken.config import generate_stub
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "config.py").write_text(
+            "from comken.config import Config\nconfig = Config()\n", encoding="utf-8"
+        )
+
+        out = generate_stub(ini)
+
+        assert out == Path("src/config.pyi")
+        assert (tmp_path / "src" / "config.pyi").exists()
+
+    def test_missing_ini_raises(self, tmp_path):
+        """config.ini がない場合は ConfigError になることを確認する。"""
+        from comken.config import generate_stub
+
+        with pytest.raises(ConfigError):
+            generate_stub(tmp_path / "config.ini", tmp_path / "config.pyi")
+
+    def test_stub_is_valid_python(self, ini, tmp_path):
+        """生成されたスタブが Python として構文エラーにならないことを確認する。"""
+        import ast
+
+        from comken.config import generate_stub
+
+        text = generate_stub(ini, tmp_path / "config.pyi").read_text(encoding="utf-8")
+        ast.parse(text)  # 構文エラーなら例外になる

@@ -105,6 +105,7 @@ config.REPORT.TEMPLATE_PATH # → str
 |---|---|
 | `true` / `false`（大文字小文字問わず） | bool に自動変換 |
 | `yes` / `no` / `on` / `off` | **変換しない**（str のまま） |
+| `LIST(a, b, c)` | list[str] に自動変換 |
 | 整数（`10` など） | int に自動変換 |
 | 小数（`1.5` など） | float に自動変換 |
 | 絶対パス（`C:\...` / `\\...` / `/...`） | Path に自動変換 |
@@ -113,6 +114,29 @@ config.REPORT.TEMPLATE_PATH # → str
 `true` / `false` 以外の `yes` / `on` / `1` / `0` を bool に変換しないのは、
 `1` が「数値の1」なのか「ON の意味」なのか曖昧になる事故を避けるため。
 数値を文字列として使いたい場合（シート名 `"2024"` など）はコード側で `str()` に変換する。
+
+**リスト値は `LIST(...)` で書く**（カンマ区切り。改行区切りも可）:
+
+```ini
+[REPORT]
+TARGET_SHEETS = LIST(東日本, 西日本, 集計)
+```
+
+```python
+config.REPORT.TARGET_SHEETS   # → ["東日本", "西日本", "集計"]
+```
+
+**エディタの補完候補を出す（型スタブの生成）:**
+
+属性は実行時に動的に作られるため、そのままではエディタが `config.REPORT.` の先を補完できない。
+プロジェクトのフォルダで以下を実行すると補完用スタブ（`src/config.pyi`）が生成され、
+セクション・キーが型付きで補完されるようになる（実行時の動作には影響しない）。
+
+```
+python -m comken.config
+```
+
+config.ini のセクション・キーを変更したら再実行する。生成された `.pyi` は手で編集しない。
 
 **プロジェクト固有の設定を追加する場合は `src/config.py` でシングルトンを作る:**
 
@@ -1190,3 +1214,4 @@ flowchart LR
 | 2026-07-12 | ExcelFile・ExcelComHandler に `headers` 引数追加（ヘッダーなし Excel 対応）。EdgeDriver のダウンロードフォルダ管理を内部化（デフォルト一時フォルダ・with 終了時自動削除）。`ExcelFile.transfer_by_key`（openpyxl 版）追加。`diff_row` 追加・`diff_rows` を列単位の差分付きに改良。ExcelComHandler の初期化失敗時に Excel プロセスが残るバグ等を修正 |
 | 2026-07-12 | Teams 通知（TeamsNotifier。Power Automate Webhook / Adaptive Card 形式）・テキスト正規化（normalize / strip_spaces / remove_spaces）・待機（wait）・特殊フォルダ取得（Paths）を追加。Paths は OneDrive リダイレクトに追従、通知失敗は TeamsError |
 | 2026-07-12 | Salesforce を salesforce_std（標準ライブラリのみ）と salesforce_requests（requests 版）の2フォルダ構成に分割（同じクラス名・同じ API。import 行だけで切り替え）。credentials に GUI 版を追加（python -m comken.credentials --gui） |
+| 2026-07-12 | Config: LIST(a, b, c) 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |
