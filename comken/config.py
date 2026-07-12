@@ -34,6 +34,7 @@ import warnings
 from pathlib import Path
 
 from .exceptions import ConfigError
+from .utils.file import cleanup_stale_tmp as _cleanup_stale_tmp
 
 
 def _split_list_items(text: str) -> list[str]:
@@ -233,6 +234,7 @@ def _update_stub(cfg: configparser.ConfigParser, ini_path: str | Path) -> None:
     stub_path = _resolve_stub_path(ini_path)
     if stub_path is None:
         return
+    _cleanup_stale_tmp(stub_path)  # 前回クラッシュ時の .tmp 残骸を掃除
     content = _build_stub_content(cfg)
     try:
         if stub_path.exists() and stub_path.read_text(encoding="utf-8") == content:

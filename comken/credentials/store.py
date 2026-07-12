@@ -40,6 +40,7 @@ from pathlib import Path
 import win32crypt
 
 from ..exceptions import CredentialNotFoundError, InvalidCredentialNameError
+from ..utils.file import cleanup_stale_tmp as _cleanup_stale_tmp
 
 CREDENTIALS_PATH = Path.home() / ".comken" / "credentials.dat"
 
@@ -165,6 +166,7 @@ def _save_all(data: dict[str, str], path: Path) -> None:
     クラッシュで暗号化ファイルが半端に壊れ、全キーが読めなくなるのを防ぐ）。
     """
     path.parent.mkdir(parents=True, exist_ok=True)
+    _cleanup_stale_tmp(path)  # 前回クラッシュ時の .tmp 残骸を掃除
     raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
     encrypted = win32crypt.CryptProtectData(raw, _FILE_DESCRIPTION, None, None, None, 0)
     tmp_path = path.with_suffix(f".dat.{os.getpid()}.tmp")

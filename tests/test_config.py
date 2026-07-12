@@ -336,3 +336,59 @@ class TestAutoStub:
 
         assert not (tmp_path / "config.pyi").exists()
         assert not (tmp_path / "src" / "config.pyi").exists()
+
+
+class TestCleanupStaleTmp:
+    """一時ファイル残骸の自動掃除のテスト。"""
+
+    def test_old_tmp_removed_fresh_tmp_kept(self, tmp_path):
+        """古い .tmp は削除され、新しい .tmp（並行実行中の可能性）は残ることを確認する。"""
+        import os
+
+        from comken.utils.file import cleanup_stale_tmp
+
+        target = tmp_path / "config.pyi"
+        stale = tmp_path / "config.pyi.99999.tmp"
+        stale.write_text("残骸", encoding="utf-8")
+        os.utime(stale, (0, 0))  # 大昔の更新日時にする
+        fresh = tmp_path / "config.pyi.88888.tmp"
+        fresh.write_text("書き込み中かもしれない", encoding="utf-8")
+
+        cleanup_stale_tmp(target)
+
+        assert not stale.exists()
+        assert fresh.exists()
+
+    def test_unrelated_files_not_touched(self, tmp_path):
+        """対象と無関係のファイルは削除されないことを確認する。"""
+        import os
+
+        from comken.utils.file import cleanup_stale_tmp
+
+        target = tmp_path / "config.pyi"
+        other = tmp_path / "data.csv"
+        other.write_text("業務データ", encoding="utf-8")
+        os.utime(other, (0, 0))
+
+        cleanup_stale_tmp(target)
+
+        assert other.exists()
+
+    def test_config_cleans_stale_stub_tmp(self, tmp_path):
+        """Config() 実行時にスタブの .tmp 残骸が掃除されることを確認する。"""
+        import os
+
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nk = v\n", encoding="utf-8")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "config.py").write_text(
+            "from comken.config import Config\nconfig = Config()\n", encoding="utf-8"
+        )
+        stale = tmp_path / "src" / "config.pyi.12345.tmp"
+        stale.write_text("残骸", encoding="utf-8")
+        os.utime(stale, (0, 0))
+
+        Config(ini)
+
+        assert not stale.exists()
+        assert (tmp_path / "src" / "config.pyi").exists()
