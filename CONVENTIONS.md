@@ -293,7 +293,7 @@ path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
 | デコレーター | 方針 |
 |---|---|
 | `@property` | 使わない（[getter/setter は書かない](#getter--setter-は書かない) 参照） |
-| `@staticmethod` | 使わない。`self` が不要なら**モジュールレベル関数**にする |
+| `@staticmethod` | 原則モジュールレベル関数にする。クラスと概念的に切り離せない場合は使ってよい |
 | `@classmethod` | ファクトリメソッド（別コンストラクタ）にだけ使う |
 | `@cache` / `@lru_cache` | 使わない。状態はインスタンスで持つ |
 | カスタムデコレーター | 書かない |
@@ -315,20 +315,21 @@ class ExcelFile:
 f = ExcelFile.from_template(TEMPLATE_PATH, output_path)
 ```
 
-### @staticmethod を使わない理由
+### @staticmethod の使いどき
 
-`self` も `cls` も使わないなら、クラスに属している必要がない。モジュールレベル関数の方がシンプルで import しやすい。
+`self` も `cls` も使わない場合、**原則はモジュールレベル関数**にする。
+ただし、そのクラスと概念的に切り離せないヘルパー（呼び出し元クラス以外からは使わない等）は `@staticmethod` でよい。
 
 ```python
-# 悪い（クラスに入れる必要がない）
-class CsvUtils:
-    @staticmethod
-    def normalize_key(key: str) -> str:
-        return key.strip().upper()
-
-# 良い（モジュールレベル関数）
+# 原則：クラスに属している必要がないならモジュールレベル関数
 def normalize_key(key: str) -> str:
     return key.strip().upper()
+
+# 例外：CsvReader 専用のバリデーションはクラス内に置く
+class CsvReader:
+    @staticmethod
+    def _validate_columns(rows: list[dict], columns: list[str]) -> None:
+        ...  # CsvReader 以外から呼ばれることを想定していない
 ```
 
 ---

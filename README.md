@@ -101,28 +101,33 @@ config.REPORT.TEMPLATE_PATH # → str
 | config.ini の値 | 返る型 |
 |---|---|
 | `true` / `false`（大文字小文字問わず） | bool に自動変換 |
-| `yes` / `no` / `on` / `off` / `1` / `0` | **変換しない**（str のまま） |
-| 数値（`10` など） | str のまま。必要なら呼び出し側で変換: `int(config.BROWSER.WAIT_SECONDS)` |
+| `yes` / `no` / `on` / `off` | **変換しない**（str のまま） |
+| 整数（`10` など） | int に自動変換 |
+| 小数（`1.5` など） | float に自動変換 |
+| 絶対パス（`C:\...` / `\\...` / `/...`） | Path に自動変換 |
 | その他の文字列 | str のまま |
 
-bool 変換を `true` / `false` に限定しているのは、`1` が「数値の1」なのか「ON の意味」なのか
-曖昧になる事故を避けるため。
+`true` / `false` 以外の `yes` / `on` / `1` / `0` を bool に変換しないのは、
+`1` が「数値の1」なのか「ON の意味」なのか曖昧になる事故を避けるため。
+数値を文字列として使いたい場合（シート名 `"2024"` など）はコード側で `str()` に変換する。
 
-**プロジェクト固有の設定を追加する場合は Config を継承する:**
+**プロジェクト固有の設定を追加する場合は `src/config.py` でシングルトンを作る:**
 
 ```python
-from pathlib import Path
+# src/config.py
+from comken.config import Config
 
-class AppConfig(Config):
-    @property
-    def template_path(self) -> Path:
-        # 複数の設定値からパスを組み立てる等、読み取り時の加工に @property を使う
-        return Path(self.REPORT.OUTPUT_FOLDER) / self.REPORT.TEMPLATE_NAME
-
-config = AppConfig()
+config = Config()
 ```
 
-なお**ブラウザの設定は config.ini には書かない**。`BrowserOptions` のサブクラス
+```python
+# 各モジュールからはここからインポートする
+from .config import config
+
+path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
+```
+
+なお**ブラウザの設定は config.ini には書かない**。`BrowserOptions` のインスタンス
 （`src/browser_options.py`）で行う（Browser を参照）。
 
 ---
@@ -611,22 +616,24 @@ with EdgeDriver() as d:
 **ブラウザオプションのカスタマイズ:**
 
 デフォルト設定は `comken/browser/options.py` の `BrowserOptions` を参照。
-変更したい項目だけサブクラスで上書きする。`DRIVER_PATH` と `WAIT_SECONDS` もここで変更する。
+変更したい項目をインスタンスに直接上書きする。
 
 ```python
-# browser_options.py（プロジェクト側）
+# src/browser_options.py（プロジェクト側）
 from comken.browser.options import BrowserOptions
 
-class MyOptions(BrowserOptions):
-    DRIVER_PATH = r"C:\tools\msedgedriver.exe" # ドライバーパスを変更する場合
-    WAIT_SECONDS = 15 # 待機秒数を変更する場合
-    INCOGNITO = False # シークレットモードを無効
-    START_MAXIMIZED = False # 最大化を無効（WINDOW_SIZE と併用不可）
-    WINDOW_SIZE = "1600,1024"
+options = BrowserOptions()
+options.DRIVER_PATH = r"C:\tools\msedgedriver.exe"  # ドライバーパスを変更する場合
+options.WAIT_SECONDS = 15  # 待機秒数を変更する場合
+options.INCOGNITO = False  # シークレットモードを無効
+options.START_MAXIMIZED = False  # 最大化を無効（WINDOW_SIZE と併用不可）
+options.WINDOW_SIZE = "1600,1024"
 ```
 
 ```python
-with EdgeDriver(browser_options=MyOptions()) as d:
+from src.browser_options import options
+
+with EdgeDriver(browser_options=options) as d:
     ...
 ```
 
