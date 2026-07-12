@@ -15,12 +15,17 @@ from comken.exceptions import ColumnNotFoundError
 from comken.utils import (
     FileFinder,
     FileNameBuilder,
+    Paths,
     SortBy,
     col_to_num,
     copy_file,
     diff_row,
     diff_rows,
     move_file,
+    normalize,
+    remove_spaces,
+    strip_spaces,
+    wait,
 )
 
 
@@ -501,3 +506,105 @@ class TestDiffRows:
 
         with pytest.raises(ColumnNotFoundError, match="キー列"):
             diff_rows(rows, rows, key="社員番号")
+
+
+class TestNormalize:
+    """normalize（NFKC テキスト正規化）のテスト。"""
+
+    def test_zenkaku_alphanumeric_to_hankaku(self):
+        """全角英数字が半角に変換されることを確認する。"""
+        assert normalize("ＡＢＣ１２３") == "ABC123"
+
+    def test_zenkaku_symbol_to_hankaku(self):
+        """全角括弧・句点が半角に変換されることを確認する。"""
+        assert normalize("（株）") == "(株)"
+        assert normalize("１．２") == "1.2"
+
+    def test_hankaku_kana_to_zenkaku(self):
+        """半角カタカナが全角カタカナに変換されることを確認する。"""
+        assert normalize("ｱｲｳｴｵ") == "アイウエオ"
+
+    def test_hankaku_dakuten_merged(self):
+        """半角の濁点付き文字（ｶﾞ）が全角（ガ）に変換されることを確認する。"""
+        assert normalize("ｶﾞｷﾞ") == "ガギ"
+
+    def test_already_normalized_unchanged(self):
+        """すでに正規化済みの文字列はそのまま返ることを確認する。"""
+        assert normalize("ABC山田太郎") == "ABC山田太郎"
+
+
+class TestStripSpaces:
+    """strip_spaces（前後スペース除去）のテスト。"""
+
+    def test_strips_zenkaku_spaces(self):
+        """前後の全角スペースが除去されることを確認する。"""
+        assert strip_spaces("　山田　太郎　") == "山田　太郎"
+
+    def test_strips_hankaku_spaces(self):
+        """前後の半角スペースが除去されることを確認する。"""
+        assert strip_spaces("  山田  ") == "山田"
+
+    def test_empty_string(self):
+        """空文字列はそのまま空文字列になることを確認する。"""
+        assert strip_spaces("") == ""
+
+
+class TestRemoveSpaces:
+    """remove_spaces（全スペース除去）のテスト。"""
+
+    def test_removes_all_spaces(self):
+        """半角・全角スペースがすべて除去されることを確認する。"""
+        assert remove_spaces("０３－１２３４　５６７８") == "０３－１２３４５６７８"
+
+    def test_removes_tabs(self):
+        """タブも除去されることを確認する。"""
+        assert remove_spaces("A\tB") == "AB"
+
+
+class TestWait:
+    """wait（待機ユーティリティ）のテスト。"""
+
+    def test_seconds_waits(self):
+        """seconds() が指定した秒数だけ待つことを確認する（短い値で）。"""
+        import time
+        start = time.monotonic()
+        wait.seconds(0.05)
+        assert time.monotonic() - start >= 0.04
+
+    def test_until_returns_true_when_condition_met(self):
+        """until() は条件が満たされると True を返すことを確認する。"""
+        counter = [0]
+
+        def condition():
+            counter[0] += 1
+            return counter[0] >= 3
+
+        assert wait.until(condition, timeout=5, interval=0.01) is True
+
+    def test_until_returns_false_on_timeout(self):
+        """until() はタイムアウトすると False を返すことを確認する（エラーではない）。"""
+        result = wait.until(lambda: False, timeout=0.05, interval=0.01)
+        assert result is False
+
+
+class TestPaths:
+    """Paths（パス定数）のテスト。"""
+
+    def test_downloads_is_path(self):
+        """downloads() が Path オブジェクトを返すことを確認する。"""
+        from pathlib import Path
+        assert isinstance(Paths.downloads(), Path)
+
+    def test_desktop_is_path(self):
+        """desktop() が Path オブジェクトを返すことを確認する。"""
+        from pathlib import Path
+        assert isinstance(Paths.desktop(), Path)
+
+    def test_temp_dir_is_path(self):
+        """temp_dir() が Path オブジェクトを返すことを確認する。"""
+        from pathlib import Path
+        assert isinstance(Paths.temp_dir(), Path)
+
+    def test_temp_dir_exists(self):
+        """temp_dir() が実在するディレクトリを返すことを確認する。"""
+        assert Paths.temp_dir().is_dir()

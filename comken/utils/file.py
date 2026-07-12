@@ -29,6 +29,33 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+class Paths:
+    """よく使うフォルダのパスを返す定数クラス。インスタンス化せず静的メソッドで使う。
+
+    使い方:
+        from comken.utils import Paths
+
+        Paths.downloads()   # → C:\\Users\\xxx\\Downloads
+        Paths.desktop()     # → C:\\Users\\xxx\\Desktop
+        Paths.temp_dir()    # → C:\\Users\\xxx\\AppData\\Local\\Temp
+    """
+
+    @staticmethod
+    def downloads() -> Path:
+        """ダウンロードフォルダのパスを返す。"""
+        return Path.home() / "Downloads"
+
+    @staticmethod
+    def desktop() -> Path:
+        """デスクトップのパスを返す。"""
+        return Path.home() / "Desktop"
+
+    @staticmethod
+    def temp_dir() -> Path:
+        """システムの一時フォルダのパスを返す。"""
+        return Path(tempfile.gettempdir())
+
+
 @contextmanager
 def local_copy(path: str | Path):
     """ネットワーク上のファイルをローカルにコピーし、処理後に自動削除する。
