@@ -18,8 +18,8 @@ import csv
 import io
 from pathlib import Path
 
-from ..utils.timer import measure
 from ..exceptions import ColumnNotFoundError, CsvError
+from ..utils.timer import measure
 
 
 class Encoding:
@@ -118,7 +118,9 @@ class CsvReader:
         missing = [col for col in columns if col not in rows[0]]
         if missing:
             raise ColumnNotFoundError(
-                ColumnNotFoundError.MSG_CSV.format(columns=", ".join(missing), existing=", ".join(rows[0].keys()))
+                ColumnNotFoundError.MSG_CSV.format(
+                    columns=", ".join(missing), existing=", ".join(rows[0].keys())
+                )
             )
 
     def _read_text(self) -> str:

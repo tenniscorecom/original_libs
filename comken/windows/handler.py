@@ -61,7 +61,9 @@ class ExcelComHandler:
             h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
     """
 
-    def __init__(self, path: str | Path, password: str = "", headers: list[str] | None = None) -> None:
+    def __init__(
+        self, path: str | Path, password: str = "", headers: list[str] | None = None
+    ) -> None:
         """
         Args:
             path: Excel ファイルのパス。
@@ -159,13 +161,19 @@ class ExcelComHandler:
         if self._headers is not None:
             if last_col > len(self._headers):
                 raise ExcelError(
-                    ExcelError.MSG_HEADERS_TOO_FEW.format(expected=len(self._headers), actual=last_col)
+                    ExcelError.MSG_HEADERS_TOO_FEW.format(
+                        expected=len(self._headers), actual=last_col
+                    )
                 )
             rows = [
                 tuple(ws.Cells(row, col).Value for col in range(1, last_col + 1))
                 for row in range(1, last_row + 1)
             ]
-            return [dict(zip(self._headers, row)) for row in rows if not all(c is None for c in row)]
+            return [
+                dict(zip(self._headers, row))
+                for row in rows
+                if not all(c is None for c in row)
+            ]
         header_row = int(header_row)
         file_headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
         if all(h is None for h in file_headers):

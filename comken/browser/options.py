@@ -13,7 +13,6 @@ BrowserOptions: Edge/Chrome 起動オプションの定義クラス。
         WINDOW_SIZE = "1600,1024"
 """
 
-from pathlib import Path
 
 
 class BrowserOptions:

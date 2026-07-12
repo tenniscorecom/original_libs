@@ -178,7 +178,9 @@ class ExcelFile:
         """
         name = _warn_coerce(name, str, "sheet_name", stacklevel=3)
         if name not in self._wb.sheetnames:
-            raise SheetNotFoundError(SheetNotFoundError.MSG.format(name=name, sheets=self._wb.sheetnames))
+            raise SheetNotFoundError(
+                SheetNotFoundError.MSG.format(name=name, sheets=self._wb.sheetnames)
+            )
         return self._wb[name]
 
     @measure
@@ -222,7 +224,11 @@ class ExcelFile:
                         expected=len(self._headers), actual=len(all_rows[0])
                     )
                 )
-            return [dict(zip(self._headers, row)) for row in all_rows if not all(c is None for c in row)]
+            return [
+                dict(zip(self._headers, row))
+                for row in all_rows
+                if not all(c is None for c in row)
+            ]
         all_rows = list(ws.iter_rows(min_row=int(header_row), values_only=True))
         if not all_rows:
             return []
@@ -234,7 +240,9 @@ class ExcelFile:
             raise ExcelError(ExcelError.MSG_HEADER_NONE.format(cols=none_cols))
         return [dict(zip(file_headers, row)) for row in all_rows[1:]]
 
-    def iter_rows(self, sheet_name: str, min_row: int = 2) -> Generator[tuple[Any, ...], None, None]:
+    def iter_rows(
+        self, sheet_name: str, min_row: int = 2
+    ) -> Generator[tuple[Any, ...], None, None]:
         """大量データ向け。行をジェネレータで1行ずつ返す（メモリ効率優先）。
 
         read_rows はファイル全体をメモリに乗せるため、数万行以上のファイルでは
@@ -410,7 +418,8 @@ class ExcelFile:
             col: 列番号（1始まり）。
             color: 16進数カラーコード（"RRGGBB" 形式、# なし）。
         """
-        fill = PatternFill(fill_type="solid", fgColor=_warn_coerce(color, str, "color", stacklevel=2))
+        color = _warn_coerce(color, str, "color", stacklevel=2)
+        fill = PatternFill(fill_type="solid", fgColor=color)
         self._sheet(sheet_name).cell(row=int(row), column=int(col)).fill = fill
 
     def set_column_width(self, sheet_name: str, col: int, width: float) -> None:
@@ -454,7 +463,8 @@ class ExcelFile:
             col: 列番号（1始まり）。
             fmt: Excel の書式文字列。
         """
-        self._sheet(sheet_name).cell(row=int(row), column=int(col)).number_format = _warn_coerce(fmt, str, "fmt", stacklevel=2)
+        fmt = _warn_coerce(fmt, str, "fmt", stacklevel=2)
+        self._sheet(sheet_name).cell(row=int(row), column=int(col)).number_format = fmt
 
     def set_bold(self, sheet_name: str, row: int, col: int, bold: bool = True) -> None:
         """セルの太字を設定する。

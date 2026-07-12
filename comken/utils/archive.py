@@ -19,7 +19,6 @@ utils/archive.py — zip 圧縮・展開ユーティリティ
     unzip(r"C:\\作業\\data.zip", r"C:\\作業\\展開先")
 """
 
-import os
 import zipfile
 from pathlib import Path
 

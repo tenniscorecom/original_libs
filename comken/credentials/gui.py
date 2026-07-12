@@ -42,7 +42,9 @@ def validate_and_build_name(prefix: str, item: str) -> tuple[str | None, str | N
     if not prefix:
         return None, "システム名を入力してください（例: salesforce）。"
     if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
-        return None, "システム名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。"
+        return None, (
+            "システム名に使えるのは半角英数字とアンダースコアだけです（例: salesforce, oju_sys）。"
+        )
     if not item:
         return None, "項目名を入力してください（例: username / password / token）。"
     if not CREDENTIAL_NAME_PATTERN.fullmatch(item):
@@ -92,7 +94,9 @@ class CredentialsApp:
         self.listbox.pack(fill=tk.BOTH, expand=True)
         self.listbox.bind("<Double-Button-1>", self._on_listbox_double_click)
 
-        ttk.Label(left, text="ダブルクリックでフォームに読み込み（上書き用）").pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(left, text="ダブルクリックでフォームに読み込み（上書き用）").pack(
+            anchor=tk.W, pady=(4, 0)
+        )
         ttk.Button(left, text="選択したキーを削除", command=self._on_delete).pack(
             anchor=tk.W, pady=(8, 0)
         )
@@ -214,7 +218,9 @@ class CredentialsApp:
             return
         name = self.listbox.get(selection[0])
 
-        ok = messagebox.askyesno("削除の確認", f"{name} を削除します。よろしいですか？", parent=self.root)
+        ok = messagebox.askyesno(
+            "削除の確認", f"{name} を削除します。よろしいですか？", parent=self.root
+        )
         if not ok:
             return
 

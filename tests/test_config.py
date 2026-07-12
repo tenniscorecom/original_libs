@@ -119,14 +119,12 @@ class TestConfigTypeConversion:
         """Windows 絶対パス（C:\\）が Path に変換されることを確認する。"""
         ini = tmp_path / "config.ini"
         ini.write_text("[s]\nfolder = C:\\work\\input\n", encoding="utf-8")
-        from pathlib import Path
         assert Config(ini).S.FOLDER == Path("C:\\work\\input")
 
     def test_unc_path_becomes_path(self, tmp_path):
         """UNC パス（\\\\server\\...）が Path に変換されることを確認する。"""
         ini = tmp_path / "config.ini"
         ini.write_text("[s]\nfolder = \\\\nas\\reports\n", encoding="utf-8")
-        from pathlib import Path
         assert isinstance(Config(ini).S.FOLDER, Path)
 
     def test_plain_string_stays_string(self, tmp_path):

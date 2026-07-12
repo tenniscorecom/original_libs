@@ -82,7 +82,9 @@ class Sheet:
         """最終行の下に1行追記する（空シートなら1行目に書く）。"""
         self.write_row(self.last_row + 1 if not self.is_empty else 1, values)
 
-    def write_table(self, rows: list[dict], start_row: int = 1, headers: list[str] | None = None) -> None:
+    def write_table(
+        self, rows: list[dict], start_row: int = 1, headers: list[str] | None = None
+    ) -> None:
         """ヘッダー行 + データ行をまとめて書き込む（CSV → Excel レポート等）。
 
         CsvReader.rows() や read_rows_as_dicts() の結果をそのまま渡せる。

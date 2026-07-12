@@ -11,9 +11,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Salesforce の外部ライブラリ版クライアントを使う場合のみ
-# （標準の SalesforceApiClient は追加インストール不要）
+# salesforce_requests（requests 版クライアント）を使う場合のみ
+# （salesforce_std の SalesforceApiClient は追加インストール不要）
 salesforce = ["simple-salesforce>=1.12", "requests>=2.28"]
+# comken.pdf（PDF の結合・分割・テキスト抽出）を使う場合のみ
+pdf = ["pypdf>=4.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

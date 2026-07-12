@@ -79,7 +79,9 @@ class Credentials:
             path: 保存先ファイル。省略時は CREDENTIALS_PATH（通常は省略する）。
         """
         if not CREDENTIAL_NAME_PATTERN.fullmatch(prefix):
-            raise InvalidCredentialNameError(InvalidCredentialNameError.MSG_PREFIX.format(name=prefix))
+            raise InvalidCredentialNameError(
+                InvalidCredentialNameError.MSG_PREFIX.format(name=prefix)
+            )
         self._prefix = prefix
         self._path = path
 

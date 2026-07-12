@@ -8,7 +8,7 @@ import pytest
 
 import comken
 from comken.csv.writer import CsvWriter
-from comken.utils import Timer, measure, move_file
+from comken.utils import measure, move_file
 
 
 @pytest.fixture(autouse=True)

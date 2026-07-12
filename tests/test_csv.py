@@ -231,7 +231,10 @@ class TestCsvWriter:
         assert result == [{"注文番号": "A001"}]
 
     def test_creates_parent_folder(self, tmp_path):
-        """親フォルダがなくても自動作成して書き込めることを確認する（ExcelFile.save と同じ挙動）。"""
+        """親フォルダがなくても自動作成して書き込めることを確認する。
+
+        （ExcelFile.save と同じ挙動）
+        """
         path = tmp_path / "reports" / "2026" / "output.csv"
 
         CsvWriter(path, fieldnames=["注文番号"]).write_rows([{"注文番号": "A001"}])

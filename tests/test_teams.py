@@ -14,7 +14,6 @@ import pytest
 from comken.exceptions import TeamsError
 from comken.teams import CardColor, TeamsNotifier
 
-
 DUMMY_URL = "https://prod-xx.japaneast.logic.azure.com/workflows/xxx"
 
 

@@ -275,7 +275,9 @@ def generate_stub(
     if output_path is None:
         output_path = _resolve_stub_path(ini_path)
         if output_path is None:
-            raise ConfigError(ConfigError.MSG_STUB_TARGET.format(path=Path(ini_path).resolve().parent))
+            raise ConfigError(
+                ConfigError.MSG_STUB_TARGET.format(path=Path(ini_path).resolve().parent)
+            )
     output_path = Path(output_path)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
