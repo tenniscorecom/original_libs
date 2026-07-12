@@ -28,6 +28,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from ..exceptions import ExcelError, SheetNotFoundError, _warn_coerce
 from ..utils.data import col_to_num
+from .sheet import Sheet
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +114,56 @@ class ExcelFile:
         self._headers = headers
         self._wb: Workbook = load_workbook(self._path, data_only=data_only, read_only=read_only)
 
+    @classmethod
+    def create(cls, path: str | Path, sheet_name: str = "Sheet1") -> "ExcelFile":
+        """新規ブックを作る（ファイルはまだ作られず、save() で path に保存される）。
+
+        使い方:
+            rows = CsvReader("data.csv").rows()
+            with ExcelFile.create(r"C:\\作業\\report.xlsx") as f:
+                s = f.sheet("Sheet1")
+                s.write_table(rows)
+                s.auto_width()
+                f.save()
+
+        Args:
+            path: save() で保存されるパス。親フォルダがなければ保存時に自動作成される。
+            sheet_name: 最初のシートの名前（デフォルト: "Sheet1"）。
+        """
+        instance = cls.__new__(cls)
+        instance._original_path = Path(path)
+        instance._tmp = None
+        instance._path = instance._original_path
+        instance._headers = None
+        instance._wb = Workbook()
+        instance._wb.active.title = sheet_name
+        return instance
+
     def __enter__(self) -> "ExcelFile":
         return self
 
     def __exit__(self, *args) -> None:
         self.close()
+
+    def sheet(self, name: str) -> Sheet:
+        """シートの高レベルラッパーを返す（シート単位でセル・行を書き込む）。
+
+        使い方:
+            with ExcelFile("report.xlsx") as f:
+                s = f.sheet("Sheet1")
+                s["A1"] = "タイトル"
+                s.write_row(3, ["日付", "金額"])
+                s.auto_width()
+                s.freeze_header()
+                f.save()
+
+        Args:
+            name: シート名。
+
+        Raises:
+            SheetNotFoundError: 指定したシートが存在しない場合。
+        """
+        return Sheet(self._sheet(name))
 
     def _sheet(self, name: str) -> Worksheet:
         """シートオブジェクトを返す。

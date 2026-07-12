@@ -1,0 +1,57 @@
+"""
+utils/retry.py — リトライデコレータ
+
+一時的な失敗（クリックが要素に遮られた、ネットワークが一瞬切れた等）を
+自動でやり直すためのデコレータ。
+
+使い方:
+    from comken.utils import retry
+
+    # 3回まで試す（間隔1秒）。3回とも失敗したら最後の例外がそのまま出る
+    @retry()
+    def download_report():
+        ...
+
+    # 対象の例外を絞る（それ以外の例外は即座に出る）
+    from selenium.common.exceptions import ElementClickInterceptedException
+
+    @retry(times=5, wait=2, on=(ElementClickInterceptedException,))
+    def click_submit():
+        page.click(page.SUBMIT_BTN)
+"""
+
+import functools
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
+
+def retry(times: int = 3, wait: float = 1.0, on: tuple = (Exception,)):
+    """失敗したら wait 秒空けて実行し直すデコレータ。
+
+    Args:
+        times: 合計の実行回数（デフォルト: 3。「3回試して全部失敗ならエラー」）。
+        wait: 失敗から次の実行までの待機秒数（デフォルト: 1秒）。
+        on: リトライ対象の例外のタプル（デフォルト: すべての例外）。
+            ここに含まれない例外は即座にそのまま出る。
+
+    Raises:
+        最後の実行で出た例外（times 回すべて失敗した場合）。
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, times + 1):
+                try:
+                    return func(*args, **kwargs)
+                except on as e:
+                    if attempt == times:
+                        raise
+                    logger.warning(
+                        "%s が失敗しました（%d/%d回目）。%s秒後に再実行します: %s",
+                        func.__name__, attempt, times, wait, e,
+                    )
+                    time.sleep(wait)
+        return wrapper
+    return decorator

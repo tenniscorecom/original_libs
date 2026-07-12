@@ -267,3 +267,104 @@ class TestTransferByKey:
         with ExcelFile(transfer_excel) as f:
             with pytest.raises(SheetNotFoundError):
                 f.transfer_by_key("存在しない", key_col="A", lookup={}, column_mapping={})
+
+
+class TestSheetWrapper:
+    """Sheet（シート単位の高レベルラッパー）のテスト。"""
+
+    def test_create_and_cell_access(self, tmp_path):
+        """ExcelFile.create で新規ブックを作り、セル参照で読み書きできることを確認する。"""
+        path = tmp_path / "new.xlsx"
+        with ExcelFile.create(path) as f:
+            s = f.sheet("Sheet1")
+            s["A1"] = "タイトル"
+
+            assert s["A1"] == "タイトル"
+            f.save()
+
+        assert path.exists()
+
+    def test_write_row_and_rows(self, tmp_path):
+        """write_row / write_rows で横並びに書き込まれることを確認する。"""
+        path = tmp_path / "rows.xlsx"
+        with ExcelFile.create(path) as f:
+            s = f.sheet("Sheet1")
+            s.write_row(1, ["日付", "金額"])
+            s.write_rows(2, [["7/1", 100], ["7/2", 200]])
+            f.save()
+
+        with ExcelFile(path) as f:
+            rows = f.read_rows_as_dicts("Sheet1")
+            assert rows == [{"日付": "7/1", "金額": 100}, {"日付": "7/2", "金額": 200}]
+
+    def test_append_row_on_empty_sheet_starts_at_row1(self, tmp_path):
+        """空シートへの append_row は1行目から書かれることを確認する（2行目から始まらない）。"""
+        with ExcelFile.create(tmp_path / "a.xlsx") as f:
+            s = f.sheet("Sheet1")
+            assert s.is_empty
+
+            s.append_row(["ヘッダー"])
+            s.append_row(["データ"])
+
+            assert s["A1"] == "ヘッダー"
+            assert s["A2"] == "データ"
+            assert not s.is_empty
+
+    def test_write_table_writes_header_and_rows(self, tmp_path):
+        """write_table で辞書のリストがヘッダー付きで書かれることを確認する。"""
+        rows = [{"注文番号": "A001", "金額": 1000}, {"注文番号": "A002", "金額": 2000}]
+        path = tmp_path / "table.xlsx"
+        with ExcelFile.create(path) as f:
+            f.sheet("Sheet1").write_table(rows)
+            f.save()
+
+        with ExcelFile(path) as f:
+            assert f.read_rows_as_dicts("Sheet1") == rows
+
+    def test_write_table_respects_header_order(self, tmp_path):
+        """headers 指定で列の並び順を制御できることを確認する。"""
+        rows = [{"金額": 1000, "注文番号": "A001"}]
+        with ExcelFile.create(tmp_path / "t.xlsx") as f:
+            s = f.sheet("Sheet1")
+            s.write_table(rows, headers=["注文番号", "金額"])
+
+            assert s["A1"] == "注文番号"
+            assert s["B1"] == "金額"
+
+    def test_auto_width_considers_japanese(self, tmp_path):
+        """auto_width で全角文字が2文字ぶんとして幅計算されることを確認する。"""
+        with ExcelFile.create(tmp_path / "w.xlsx") as f:
+            s = f.sheet("Sheet1")
+            s["A1"] = "日本語のタイトル"  # 8文字 → 表示幅16
+            s["B1"] = "abc"
+
+            s.auto_width()
+
+            assert s.ws.column_dimensions["A"].width >= 16
+            assert s.ws.column_dimensions["B"].width == 8  # min_width
+
+    def test_auto_width_caps_at_max(self, tmp_path):
+        """長文があっても max_width を超えないことを確認する。"""
+        with ExcelFile.create(tmp_path / "w.xlsx") as f:
+            s = f.sheet("Sheet1")
+            s["A1"] = "あ" * 100
+
+            s.auto_width(max_width=60)
+
+            assert s.ws.column_dimensions["A"].width == 60
+
+    def test_freeze_header(self, tmp_path):
+        """freeze_header で1行目（指定行数）が固定されることを確認する。"""
+        with ExcelFile.create(tmp_path / "f.xlsx") as f:
+            s = f.sheet("Sheet1")
+            s.freeze_header()
+            assert s.ws.freeze_panes == "A2"
+
+            s.freeze_header(rows=2)
+            assert s.ws.freeze_panes == "A3"
+
+    def test_sheet_raises_on_missing_sheet(self, tmp_path):
+        """存在しないシート名は SheetNotFoundError になることを確認する。"""
+        with ExcelFile.create(tmp_path / "e.xlsx") as f:
+            with pytest.raises(SheetNotFoundError):
+                f.sheet("存在しないシート")

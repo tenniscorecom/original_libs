@@ -7,9 +7,11 @@ EdgeDriver の委譲と BasePage の EdgeDriver 受け入れのテスト。
 from unittest.mock import MagicMock
 
 import pytest
+from selenium.webdriver.common.by import By
 
 from comken.browser.base_page import BasePage
 from comken.browser.driver import EdgeDriver
+from comken.browser.locator import Locator
 
 
 def _make_edge_driver(mock_webdriver) -> EdgeDriver:
@@ -102,3 +104,53 @@ class TestBasePageAcceptsEdgeDriver:
         page = BasePage(mock, wait_seconds=1)
 
         assert page._driver is mock
+
+
+class TestLocator:
+    """Locator（セレクターの宣言的管理）のテスト。"""
+
+    def test_factories_build_correct_by(self):
+        """各ファクトリが正しい By 種別を持つことを確認する。"""
+        assert Locator.id("x") == (By.ID, "x")
+        assert Locator.name("x") == (By.NAME, "x")
+        assert Locator.css(".x") == (By.CSS_SELECTOR, ".x")
+        assert Locator.xpath("//x") == (By.XPATH, "//x")
+
+    def test_unpacks_into_selenium_call(self):
+        """find_element(*locator) の形でそのまま展開できることを確認する。"""
+        loc = Locator.css("#login-btn")
+        by, value = loc
+        assert (by, value) == (By.CSS_SELECTOR, "#login-btn")
+
+    def test_base_page_click_uses_locator(self):
+        """BasePage.click(locator) が by / value に分解して配線されることを確認する。"""
+        mock = MagicMock(spec=[])
+        page = BasePage(mock, wait_seconds=1)
+        captured = {}
+        page._click_at = lambda by, value, index: captured.update(by=by, value=value, index=index)
+
+        page.click(Locator.id("login-btn"), index=1)
+
+        assert captured == {"by": By.ID, "value": "login-btn", "index": 1}
+
+    def test_base_page_input_uses_locator(self):
+        """BasePage.input(locator, text) の配線を確認する。"""
+        mock = MagicMock(spec=[])
+        page = BasePage(mock, wait_seconds=1)
+        captured = {}
+        page._input = lambda by, value, text: captured.update(by=by, value=value, text=text)
+
+        page.input(Locator.name("username"), "yamada")
+
+        assert captured == {"by": By.NAME, "value": "username", "text": "yamada"}
+
+    def test_count_uses_find_elements(self):
+        """BasePage.count(locator) が find_elements の件数を返すことを確認する。"""
+        mock = MagicMock()
+        mock.find_elements.return_value = [1, 2, 3]
+        page = BasePage(mock, wait_seconds=1)
+        # MagicMock は .driver 属性を自動生成するため、unwrap されている
+        page._driver = mock
+
+        assert page.count(Locator.css("table tr")) == 3
+        mock.find_elements.assert_called_with(By.CSS_SELECTOR, "table tr")

@@ -19,7 +19,8 @@
 | Browser（Edge） | Edge ブラウザ操作 |
 | Salesforce | CRUD・SOQL・レポート・Bulk（salesforce_std: 標準ライブラリのみ / salesforce_requests: requests 版） |
 | Teams | Teams チャンネルへの通知（Power Automate Webhook。標準ライブラリのみ） |
-| utils | ファイル操作・データ比較・テキスト正規化・待機・特殊フォルダ取得 |
+| PDF | PDF の結合・分割・テキスト抽出（pypdf。導入できない環境では使わない） |
+| utils | ファイル操作・データ比較・テキスト正規化・待機・リトライ・時間計測・zip・特殊フォルダ取得 |
 
 ## 定数クラス一覧
 
@@ -577,6 +578,58 @@ lookup = {normalize(k): v for k, v in lookup.items()}
 row = lookup.get(normalize(key))
 ```
 
+### リトライ（retry）
+
+一時的な失敗（クリックが要素に遮られた、ネットワークが一瞬切れた等）を自動でやり直す。
+
+```python
+from comken.utils import retry
+
+@retry()                     # 3回まで試す（間隔1秒）。全部失敗なら最後の例外が出る
+def download_report():
+    ...
+
+# 対象の例外を絞る（それ以外は即座にエラー）
+from selenium.common.exceptions import ElementClickInterceptedException
+
+@retry(times=5, wait=2, on=(ElementClickInterceptedException,))
+def click_submit():
+    page.click(page.SUBMIT_BTN)
+```
+
+### 処理時間の計測（Timer）
+
+「どこが遅いのか」を調べる。結果は INFO ログに出る。
+
+```python
+from comken.utils import Timer
+
+with Timer("CSV読み込み"):
+    rows = CsvReader("data.csv").rows()
+# ログ: CSV読み込み: 3.21秒
+
+@Timer("売上集計")            # デコレータでも使える
+def aggregate():
+    ...
+
+t = Timer("転記処理")
+with t:
+    ...
+print(t.elapsed)              # 経過秒数を値として使える
+```
+
+### zip 圧縮・展開（zip_folder / zip_files / unzip）
+
+Windows のエクスプローラーで作られた zip（日本語ファイル名）も文字化けせず展開できる。
+
+```python
+from comken.utils import unzip, zip_files, zip_folder
+
+zip_folder(r"C:\作業\reports")                       # → C:\作業\reports.zip
+zip_files(["a.xlsx", "b.csv"], r"C:\作業\提出用.zip")
+unzip(r"C:\作業\data.zip")                           # → C:\作業\data\ に展開
+```
+
 ---
 
 ## ネットワーク・NAS ファイルの読み込み
@@ -1122,6 +1175,23 @@ rows = sf.run(REPORT_ID, filters=[
 
 レポート ID は Salesforce でレポートを開いたときの URL から確認できる:
 `https://xxx.salesforce.com/00O000000000001`
+
+---
+
+## PDF
+
+PDF の結合・分割・テキスト抽出・ページ数取得。
+**pypdf（外部ライブラリ）が必要**。導入できない環境では `comken/pdf` フォルダは使わない
+（import した時点で対処法つきのエラーになる。他のモジュールには影響しない）。
+
+```python
+from comken.pdf import extract_text, merge_pdfs, page_count, split_pdf
+
+merge_pdfs(["表紙.pdf", "本文.pdf"], r"C:\作業\提出用.pdf")   # 結合
+paths = split_pdf(r"C:\作業\請求書まとめ.pdf")                # 1ページずつ分割（_001.pdf, _002.pdf ...）
+text = extract_text("報告書.pdf")                             # テキスト抽出
+n = page_count("報告書.pdf")                                  # ページ数
+```
 
 ---
 

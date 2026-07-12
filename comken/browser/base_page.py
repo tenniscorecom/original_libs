@@ -2,39 +2,44 @@
 browser/base_page.py — Page Object の基底クラス
 
 画面ごとに BasePage を継承したクラスを作り、その画面でできる操作をメソッドとして定義する。
-セレクター種別（ID / name / CSS / XPath）をメソッド名に含めるため、By のインポートが不要。
+セレクターは Locator のクラス変数として先頭にまとめる（画面変更時に直す場所が一箇所になる）。
 
 使い方:
     1. 画面クラスを作る
-        from comken.browser.base_page import BasePage
+        from comken.browser import BasePage, Locator
 
         class LoginPage(BasePage):
             URL = "https://example.com/login"
 
-            def open(self) -> None:
-                self._driver.get(self.URL)
+            # セレクターはクラス変数として宣言する
+            USERNAME = Locator.id("username")
+            PASSWORD = Locator.id("password")
+            LOGIN_BTN = Locator.css("#login-btn")
+            ERROR_MSG = Locator.css(".error-message")
 
             def login(self, username: str, password: str) -> None:
-                self.input_id("username", username) # id="username" に入力
-                self.input_id("password", password)
-                self.click_id("login-btn") # id="login-btn" をクリック
+                self.input(self.USERNAME, username)
+                self.input(self.PASSWORD, password)
+                self.click(self.LOGIN_BTN)
 
             def get_error(self) -> str:
-                return self.text_css(".error-message") # CSS セレクターでテキスト取得
+                return self.text(self.ERROR_MSG)
 
     2. EdgeDriver と組み合わせて使う（EdgeDriver をそのまま渡せる）
-        from comken.browser.driver import EdgeDriver
+        from comken.browser import EdgeDriver
 
         with EdgeDriver() as d:
             page = LoginPage(d)
-            page.open()
+            page.open(page.URL)
             page.login("yamada", "password123")
 
-セレクターの優先順位:
-    1. ID（click_id / input_id / text_id）
-    2. name 属性（click_name / input_name / text_name）
-    3. CSS セレクター（click_css / input_css / text_css）
-    4. XPath（click_xpath / input_xpath / text_xpath）← 最終手段。絶対パスは使わない
+セレクターの優先順位（Locator のファクトリも同じ順で選ぶ）:
+    1. ID（Locator.id）
+    2. name 属性（Locator.name）
+    3. CSS セレクター（Locator.css）
+    4. XPath（Locator.xpath）← 最終手段。絶対パスは使わない
+
+従来のセレクター種別入りメソッド（click_id / input_css / text_xpath 等）もそのまま使える。
 """
 
 import datetime
@@ -90,6 +95,64 @@ class BasePage:
         path.parent.mkdir(exist_ok=True)
         self._driver.save_screenshot(str(path))
         return path
+
+    # -------------------------------------------------- Locator 版（推奨）
+    # セレクターを Locator のクラス変数として宣言し、これらのメソッドに渡す。
+    # （従来の click_id / input_css 等もそのまま使える）
+
+    def click(self, locator, index: int = 0) -> None:
+        """Locator で指定した要素をクリックする。
+
+        Args:
+            locator: Locator（例: Locator.id("login-btn")）。
+            index: 複数一致する場合に何番目をクリックするか（0始まり）。
+        """
+        self._click_at(locator.by, locator.value, index)
+
+    def input(self, locator, text: str) -> None:
+        """Locator で指定した入力欄にテキストを入力する（既存の値はクリアされる）。"""
+        self._input(locator.by, locator.value, text)
+
+    def text(self, locator) -> str:
+        """Locator で指定した要素のテキストを返す。"""
+        return self._text(locator.by, locator.value)
+
+    def texts(self, locator) -> list[str]:
+        """Locator に一致する全要素のテキストをリストで返す。"""
+        return self._texts(locator.by, locator.value)
+
+    def has(self, locator) -> bool:
+        """Locator の要素が DOM 上に存在するか返す（表示非表示は問わない）。"""
+        return self._has(locator.by, locator.value)
+
+    def count(self, locator) -> int:
+        """Locator に一致する要素の数を返す（0件なら 0。待機しない）。"""
+        return len(self._driver.find_elements(locator.by, locator.value))
+
+    def select_text(self, locator, text: str) -> None:
+        """Locator の <select> をテキストで選択する。"""
+        self._select_text(locator.by, locator.value, text)
+
+    def select_value(self, locator, option_value: str) -> None:
+        """Locator の <select> を value 属性で選択する。"""
+        self._select_value(locator.by, locator.value, option_value)
+
+    def select_index(self, locator, index: int) -> None:
+        """Locator の <select> をインデックスで選択する（0始まり）。"""
+        self._select_index(locator.by, locator.value, index)
+
+    def wait_visible(self, locator) -> None:
+        """Locator の要素が表示されるまで待機する（モーダルが開くのを待つ等）。"""
+        self._wait.until(EC.visibility_of_element_located(tuple(locator)))
+
+    def wait_invisible(self, locator) -> None:
+        """Locator の要素が非表示になるまで待機する（モーダルが閉じるのを待つ等）。"""
+        self._wait.until(EC.invisibility_of_element_located(tuple(locator)))
+
+    def scroll_to(self, locator) -> None:
+        """Locator の要素が見えるようにスクロールする。"""
+        el = self._driver.find_element(locator.by, locator.value)
+        self._driver.execute_script("arguments[0].scrollIntoView(true);", el)
 
     # ------------------------------------------------------------------ click
     def click_id(self, value: str, index: int = 0) -> None:
