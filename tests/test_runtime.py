@@ -23,9 +23,8 @@ def reset_modes():
 
 class TestVersion:
     def test_version_returns_string(self):
-        """comken.version() がバージョン文字列を返すことを確認する。"""
-        assert comken.version() == comken.__version__
-        assert comken.version().count(".") == 2  # "X.Y.Z" 形式
+        """comken.__version__ がバージョン文字列であることを確認する。"""
+        assert comken.__version__.count(".") == 2  # "X.Y.Z" 形式
 
 
 class TestDebugMode:

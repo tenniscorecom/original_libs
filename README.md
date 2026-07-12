@@ -98,12 +98,12 @@ main にマージしたら `templates\リリース.bat` で配布フォルダへ
 
 ---
 
-## 実行モード（version / デバッグ / dry-run）
+## 実行モード（バージョン / デバッグ / dry-run）
 
 ```python
 import comken
 
-comken.version()          # → "0.2.0"
+comken.__version__        # → "0.2.0"
 
 # デバッグモード: ライブラリ主要処理（Excel 読み込み・転記・保存、CSV 読み書き、zip 等）の
 # 所要時間が DEBUG ログ（日別ログファイル）に残る。どこが遅いかの調査に使う
@@ -1428,4 +1428,4 @@ flowchart LR
 | 2026-07-12 | Salesforce を salesforce_std（標準ライブラリのみ）と salesforce_requests（requests 版）の2フォルダ構成に分割（同じクラス名・同じ API。import 行だけで切り替え）。credentials に GUI 版を追加（python -m comken.credentials --gui） |
 | 2026-07-12 | Config: [a, b, c] 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |
 | 2026-07-12 | Locator（セレクターのクラス変数管理）・retry・Timer / measure・zip・PDF（pypdf）・Excel の Sheet ラッパー（セル参照 / write_table / auto_width / freeze_header）・ExcelFile.create を追加 |
-| 2026-07-12 | comken.version() / set_debug()（主要処理の時間を DEBUG ログに記録）/ set_dry_run()（外部に影響する操作をスキップ）を追加。EdgeDriver がエラー時に画面を logs/ に自動保存。Excel 孤立プロセス対策（is_excel_running / kill_excel）。リリース.bat で git tag を打つ運用に。スタブ書き込みをアトミック化 |
+| 2026-07-12 | comken.__version__ / set_debug()（主要処理の時間を DEBUG ログに記録）/ set_dry_run()（外部に影響する操作をスキップ）を追加。EdgeDriver がエラー時に画面を logs/ に自動保存。Excel 孤立プロセス対策（is_excel_running / kill_excel）。リリース.bat で git tag を打つ運用に。スタブ書き込みをアトミック化 |
