@@ -115,7 +115,7 @@ class ExcelFile:
             name: シート名。
 
         Raises:
-            ValueError: 指定したシートが存在しない場合。
+            SheetNotFoundError: 指定したシートが存在しない場合。
         """
         name = _warn_coerce(name, str, "sheet_name", stacklevel=3)
         if name not in self._wb.sheetnames:
@@ -143,6 +143,10 @@ class ExcelFile:
 
         Returns:
             [{"列名": 値, ...}, ...] の形式のリスト。
+
+        Raises:
+            SheetNotFoundError: 指定したシートが存在しない場合。
+            ExcelError: ヘッダー行に空のセルがある場合。
         """
         ws = self._sheet(sheet_name)
         all_rows = list(ws.iter_rows(min_row=int(header_row), values_only=True))
@@ -191,6 +195,9 @@ class ExcelFile:
 
         Returns:
             各行を値のタプルにしたリスト。数式は計算後の値になっている。
+
+        Raises:
+            SheetNotFoundError: 指定したシートが存在しない場合。
         """
         self._sheet(sheet_name)  # シート名の存在チェック（間違いを分かりやすいエラーにする）
         try:

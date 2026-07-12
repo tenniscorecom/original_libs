@@ -134,6 +134,9 @@ class ExcelComHandler:
 
         Returns:
             [{"列名": 値, ...}, ...] の形式のリスト。
+
+        Raises:
+            ExcelError: ヘッダー行に空のセルがある場合。
         """
         ws = self._sheet(sheet_name)
         last_row = self.used_last_row(sheet_name)
