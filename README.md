@@ -1,23 +1,23 @@
-# original_libs
+﻿# original_libs
 
 業務自動化で使う Python 共通ライブラリ。
 
-- 設計方針・ユースケース: [仕様書.md](仕様書.md)
-- コーディング規約: [CONVENTIONS.md](CONVENTIONS.md)
-- エラーが出たときの対応: [ERRORS.md](ERRORS.md)（プロジェクトに配る雛形）
+- 設計方針・ユースケース: 仕様書.md
+- コーディング規約: CONVENTIONS.md
+- エラーが出たときの対応: ERRORS.md（プロジェクトに配る雛形）
 
 ## モジュール一覧
 
 | モジュール | 概要 |
 |---|---|
-| [Config](#config) | INI ファイルの読み込み |
-| [Logger](#logger) | ロガーの初期化（日別ファイル + コンソール） |
-| [認証情報（credentials）](#認証情報credentials) | パスワード等の暗号化保存（Windows DPAPI） |
-| [CSV](#csv) | CSV の読み込み・検索・抽出 |
-| [Excel（openpyxl）](#excel) | Excel の読み書き（数式・マクロは自動で win32com を使用） |
-| [Windows（pywin32）](#windows) | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
-| [Browser（Edge）](#browser) | Edge ブラウザ操作 |
-| [Salesforce](#salesforce) | CRUD・SOQL・レポート・Bulk（標準ライブラリのみで動く API クライアント） |
+| Config | INI ファイルの読み込み |
+| Logger | ロガーの初期化（日別ファイル + コンソール） |
+| 認証情報（credentials） | パスワード等の暗号化保存（Windows DPAPI） |
+| CSV | CSV の読み込み・検索・抽出 |
+| Excel（openpyxl） | Excel の読み書き（数式・マクロは自動で win32com を使用） |
+| Windows（pywin32） | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
+| Browser（Edge） | Edge ブラウザ操作 |
+| Salesforce | CRUD・SOQL・レポート・Bulk（標準ライブラリのみで動く API クライアント） |
 
 ## 定数クラス一覧
 
@@ -38,13 +38,13 @@
 
 以後の更新は不要。各ツールの `実行.bat`（雛形: `templates\実行.bat`。コピーするだけで書き換え不要）が
 環境変数 `COMKEN_SHARE` を参照して起動のたびに差分同期するため、常に最新版で実行される。
-詳しい仕組みは [仕様書.md](仕様書.md) の「配布・運用」を参照。
+詳しい仕組みは 仕様書.md の「配布・運用」を参照。
 
 ライブラリ自体の開発は**開発フォルダ**（配布フォルダとは別。git 管理）で行い、
 main にマージしたら `templates\リリース.bat` で配布フォルダへ反映する。
 反映した変更は各 PC の次回起動時に自動で行き渡る。
 （配布フォルダを直接 git 管理しないのは、ブランチを切り替えた瞬間に
-開発途中のコードが配られてしまうため。詳細は [仕様書.md](仕様書.md)）
+開発途中のコードが配られてしまうため。詳細は 仕様書.md）
 
 ---
 
@@ -104,7 +104,7 @@ config = AppConfig()
 ```
 
 なお**ブラウザの設定は config.ini には書かない**。`BrowserOptions` のサブクラス
-（`src/browser_options.py`）で行う（[Browser](#browser) を参照）。
+（`src/browser_options.py`）で行う（Browser を参照）。
 
 ---
 
