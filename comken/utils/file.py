@@ -21,6 +21,7 @@ utils/file.py — ファイル操作ユーティリティ
 
 import datetime
 import logging
+import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -28,27 +29,51 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# レジストリ「User Shell Folders」の Downloads の値名（固定 GUID）
+_DOWNLOADS_GUID = "{374DE290-123F-4565-9164-39C4925E467B}"
+
+
+def _shell_folder(value_name: str, default: Path) -> Path:
+    """Windows の特殊フォルダの実際の場所をレジストリから取得する。
+
+    OneDrive の「既知のフォルダーの移動」やユーザーによる場所変更で
+    Desktop / Downloads が C:\\Users\\xxx 直下にないことがあるため、
+    Path.home() 決め打ちではなくレジストリを見る。取得できなければ default を返す。
+    """
+    try:
+        import winreg
+
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            raw, _ = winreg.QueryValueEx(key, value_name)
+        return Path(os.path.expandvars(raw))
+    except (OSError, ImportError):
+        return default
+
 
 class Paths:
-    """よく使うフォルダのパスを返す定数クラス。インスタンス化せず静的メソッドで使う。
+    """よく使うフォルダのパスを返すユーティリティ。インスタンス化せず静的メソッドで使う。
+
+    Desktop / Downloads は OneDrive の「既知のフォルダーの移動」で
+    C:\\Users\\xxx 直下にないことがあるため、レジストリから実際の場所を取得する。
 
     使い方:
         from comken.utils import Paths
 
         Paths.downloads()   # → C:\\Users\\xxx\\Downloads
-        Paths.desktop()     # → C:\\Users\\xxx\\Desktop
+        Paths.desktop()     # → C:\\Users\\xxx\\OneDrive\\Desktop（リダイレクトされている場合）
         Paths.temp_dir()    # → C:\\Users\\xxx\\AppData\\Local\\Temp
     """
 
     @staticmethod
     def downloads() -> Path:
         """ダウンロードフォルダのパスを返す。"""
-        return Path.home() / "Downloads"
+        return _shell_folder(_DOWNLOADS_GUID, Path.home() / "Downloads")
 
     @staticmethod
     def desktop() -> Path:
-        """デスクトップのパスを返す。"""
-        return Path.home() / "Desktop"
+        """デスクトップのパスを返す（OneDrive リダイレクトにも追従する）。"""
+        return _shell_folder("Desktop", Path.home() / "Desktop")
 
     @staticmethod
     def temp_dir() -> Path:

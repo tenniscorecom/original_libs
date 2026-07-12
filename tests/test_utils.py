@@ -586,19 +586,31 @@ class TestWait:
         result = wait.until(lambda: False, timeout=0.05, interval=0.01)
         assert result is False
 
+    def test_until_checks_at_least_once(self):
+        """timeout=0 でも条件は最低1回確認されることを確認する。"""
+        assert wait.until(lambda: True, timeout=0) is True
+
 
 class TestPaths:
     """Paths（パス定数）のテスト。"""
 
-    def test_downloads_is_path(self):
-        """downloads() が Path オブジェクトを返すことを確認する。"""
-        from pathlib import Path
-        assert isinstance(Paths.downloads(), Path)
+    def test_downloads_is_absolute_and_exists(self):
+        """downloads() が実在する絶対パスを返すことを確認する（レジストリから解決）。"""
+        result = Paths.downloads()
+        assert result.is_absolute()
+        assert result.is_dir()
 
-    def test_desktop_is_path(self):
-        """desktop() が Path オブジェクトを返すことを確認する。"""
-        from pathlib import Path
-        assert isinstance(Paths.desktop(), Path)
+    def test_desktop_is_absolute_and_exists(self):
+        """desktop() が実在する絶対パスを返すことを確認する（OneDrive リダイレクト対応）。"""
+        result = Paths.desktop()
+        assert result.is_absolute()
+        assert result.is_dir()
+
+    def test_shell_folder_falls_back_on_missing_value(self, tmp_path):
+        """レジストリに値がない場合はデフォルトにフォールバックすることを確認する。"""
+        from comken.utils.file import _shell_folder
+
+        assert _shell_folder("存在しない値名", tmp_path) == tmp_path
 
     def test_temp_dir_is_path(self):
         """temp_dir() が Path オブジェクトを返すことを確認する。"""

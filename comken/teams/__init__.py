@@ -1,3 +1,3 @@
-from .webhook import TeamsNotifier
+from .webhook import CardColor, TeamsNotifier
 
-__all__ = ["TeamsNotifier"]
+__all__ = ["CardColor", "TeamsNotifier"]

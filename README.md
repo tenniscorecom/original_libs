@@ -18,6 +18,8 @@
 | Windows（pywin32） | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
 | Browser（Edge） | Edge ブラウザ操作 |
 | Salesforce | CRUD・SOQL・レポート・Bulk（標準ライブラリのみで動く API クライアント） |
+| Teams | Teams チャンネルへの通知（Power Automate Webhook。標準ライブラリのみ） |
+| utils | ファイル操作・データ比較・テキスト正規化・待機・特殊フォルダ取得 |
 
 ## 定数クラス一覧
 
@@ -28,6 +30,7 @@
 | `Color` | `from comken.excel import Color` | セルの背景色 | `set_fill(color=Color.RED)` |
 | `SortBy` | `from comken.utils import SortBy` | FileFinder.latest の並び順 | `latest(by=SortBy.UPDATED)` |
 | `Encoding` | `from comken.csv import Encoding` | CSV の文字コード | `CsvReader(path, encoding=Encoding.CP932)` |
+| `CardColor` | `from comken.teams import CardColor` | Teams 通知カードのタイトル色 | `send_card("エラー", color=CardColor.RED)` |
 
 ---
 
@@ -464,6 +467,61 @@ for change in result.changed:
     print(change.columns)  # → {"氏名": ("山田", "山田太郎")}（変わった列だけ）
     print(change.before)   # → 変更前の行全体
     print(change.after)    # → 変更後の行全体
+```
+
+### よく使うフォルダ（Paths）
+
+`Path(__file__).parent / ".." / "Downloads"` のような組み立てをしなくてよい。
+Desktop / Downloads は **OneDrive の「既知のフォルダーの移動」にも追従する**
+（レジストリから実際の場所を取得するため、`C:\Users\xxx\OneDrive\Desktop` に
+リダイレクトされている環境でも正しいパスが返る）。
+
+```python
+from comken.utils import Paths
+
+Paths.downloads()   # → C:\Users\xxx\Downloads
+Paths.desktop()     # → C:\Users\xxx\OneDrive\Desktop（リダイレクトされている場合）
+Paths.temp_dir()    # → C:\Users\xxx\AppData\Local\Temp
+```
+
+### 待機（wait）
+
+`time.sleep` の代わりに単位を明示して書ける。「条件が満たされるまで待つ」もループを書かずに済む。
+
+```python
+from comken.utils import wait
+
+wait.seconds(3)     # 3秒待つ
+wait.seconds(0.5)   # 0.5秒待つ
+wait.minutes(1)     # 1分待つ
+
+# 条件が True になるまで待つ（デフォルト: 最大60秒・1秒間隔）
+ok = wait.until(lambda: Path(r"C:\作業\result.xlsx").exists())
+if not ok:
+    raise TimeoutError("ファイルが生成されませんでした")
+
+# タイムアウト・間隔を変える場合
+ok = wait.until(lambda: 条件, timeout=120, interval=2)
+```
+
+### テキスト正規化（normalize / strip_spaces / remove_spaces)
+
+業務データによくある表記揺れ（全角英数・半角カナ・全角スペース）を揃える。
+突合キーの正規化に使うと「見た目は同じなのに一致しない」問題を防げる。
+
+```python
+from comken.utils import normalize, remove_spaces, strip_spaces
+
+normalize("ＡＢＣ１２３")          # → "ABC123"（全角英数 → 半角）
+normalize("ｱｲｳ")                  # → "アイウ"（半角カナ → 全角）
+normalize("（株）")                # → "(株)"（全角記号 → 半角）
+
+strip_spaces("　山田　太郎　")     # → "山田　太郎"（前後のみ除去。全角スペースも対象）
+remove_spaces("０３－１２３４　５６７８")  # → "０３－１２３４５６７８"（全部除去）
+
+# 突合前にキーを正規化する例
+lookup = {normalize(k): v for k, v in lookup.items()}
+row = lookup.get(normalize(key))
 ```
 
 ---
@@ -989,6 +1047,49 @@ rows = sf.run(REPORT_ID, filters=[
 
 ---
 
+## Teams 通知
+
+処理の完了・エラーを Teams チャンネルに通知する。標準ライブラリのみで動く（requests 不要）。
+Power Automate（ワークフロー）の Webhook を使う（旧来の Incoming Webhook コネクタは廃止方向）。
+
+事前設定（チャンネルごとに1回だけ）:
+Teams チャンネル → 「…」メニュー → ワークフロー →
+「**Webhook 要求を受信したらチャネルに投稿する**」テンプレート → URL をコピー。
+URL は認証情報なので config.ini か credentials に保存する（コードに直書きしない）。
+
+```python
+from comken.teams import CardColor, TeamsNotifier
+
+notifier = TeamsNotifier(config.get("TEAMS", "webhook_url"))
+
+# テキストだけ
+notifier.send("売上集計が完了しました")
+
+# タイトル + 本文（カード形式。タイトルが太字・大きめで表示される）
+notifier.send_card("売上集計 完了", body="3,421 件を処理しました")
+
+# エラー通知（タイトルの色を変える）
+try:
+    main()
+except Exception as e:
+    notifier.send_card("売上集計 エラー", body=str(e), color=CardColor.RED)
+    raise
+```
+
+通知に失敗した場合（URL 間違い・ネットワーク断）は `TeamsError` になる。
+通知失敗で本処理を止めたくない場合は try/except で握りつぶす:
+
+```python
+from comken.exceptions import TeamsError
+
+try:
+    notifier.send("完了")
+except TeamsError:
+    logger.warning("Teams への通知に失敗しました（処理は続行）", exc_info=True)
+```
+
+---
+
 ## パッケージ構成
 
 ```mermaid
@@ -1001,6 +1102,7 @@ graph LR
     comken --> windows["windows\nCOM / Window"]
     comken --> browser["browser\nブラウザ"]
     comken --> salesforce["salesforce\nSalesforce"]
+    comken --> teams["teams\nTeams 通知"]
 ```
 
 ---
@@ -1055,3 +1157,4 @@ flowchart LR
 | 2026-07-10 | 全モジュールにドキュメント追加、README 整理 |
 | 2026-07-11 | credentials モジュール追加（認証情報の暗号化保存・管理ツール） |
 | 2026-07-12 | ExcelFile・ExcelComHandler に `headers` 引数追加（ヘッダーなし Excel 対応）。EdgeDriver のダウンロードフォルダ管理を内部化（デフォルト一時フォルダ・with 終了時自動削除）。`ExcelFile.transfer_by_key`（openpyxl 版）追加。`diff_row` 追加・`diff_rows` を列単位の差分付きに改良。ExcelComHandler の初期化失敗時に Excel プロセスが残るバグ等を修正 |
+| 2026-07-12 | Teams 通知（TeamsNotifier。Power Automate Webhook / Adaptive Card 形式）・テキスト正規化（normalize / strip_spaces / remove_spaces）・待機（wait）・特殊フォルダ取得（Paths）を追加。Paths は OneDrive リダイレクトに追従、通知失敗は TeamsError |

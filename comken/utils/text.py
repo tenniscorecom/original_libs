@@ -41,7 +41,7 @@ def normalize(text: str) -> str:
 
 
 def strip_spaces(text: str) -> str:
-    """前後の半角・全角スペアを除去する。
+    """前後の半角・全角スペースを除去する。
 
     str.strip() は全角スペース（U+3000）を除去しないため、
     業務データの氏名・住所フィールドで使うのに向いている。
@@ -56,7 +56,7 @@ def strip_spaces(text: str) -> str:
 
 
 def remove_spaces(text: str) -> str:
-    """文字列中の半角・全角スペアをすべて除去する。
+    """文字列中の半角・全角スペースをすべて除去する。
 
     電話番号・郵便番号など、スペースを含んではいけない値の正規化に使う。
 
@@ -64,6 +64,6 @@ def remove_spaces(text: str) -> str:
         text: 処理する文字列。
 
     Returns:
-        スペアを除去した文字列。
+        スペースを除去した文字列。
     """
     return text.replace("　", "").replace(" ", "").replace("\t", "")

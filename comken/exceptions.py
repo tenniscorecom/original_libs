@@ -118,6 +118,22 @@ class ConfigError(OriginalLibsError):
     )
 
 
+class TeamsError(OriginalLibsError):
+    """Teams への通知に失敗した場合。
+
+    発生箇所: TeamsNotifier.send() / send_card()
+    """
+
+    MSG_HTTP = (
+        "Teams への通知に失敗しました（HTTP {code}）: {detail}\n"
+        "Webhook URL が正しいか、ワークフロー（Power Automate）の設定を確認してください。"
+    )
+    MSG_CONNECTION = (
+        "Teams に接続できませんでした。"
+        "ネットワーク接続を確認してください。（詳細: {reason}）"
+    )
+
+
 class SalesforceError(OriginalLibsError):
     """Salesforce API の呼び出しに失敗した場合。
 

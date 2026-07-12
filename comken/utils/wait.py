@@ -56,9 +56,12 @@ class wait:
             True: 条件が満たされた。
             False: タイムアウトした（条件は満たされなかった）。
         """
+        # 条件確認 → 期限判定 → sleep の順にすることで、
+        # 最後の sleep 中に条件が成立した場合も取りこぼさない
         deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        while True:
             if condition():
                 return True
+            if time.monotonic() >= deadline:
+                return False
             time.sleep(interval)
-        return False
