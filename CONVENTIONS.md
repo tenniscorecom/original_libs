@@ -254,14 +254,15 @@ result.matched  # ← result["matched"] より typo に強い
 
 ## getter / setter は書かない
 
-Java 風の `get_x()` / `set_x()` も Python の `@property` も使わない。
+Java 風の `get_x()` / `set_x()` は使わない。
+`@property` は原則使わない。ただし**外部から上書きさせたくない属性の読み取り専用公開**には使ってよい。
 
 ```python
 # 悪い（Java 風 getter）
 class DownloadDir:
     def get_path(self): return self._path
 
-# 悪い（@property）
+# 悪い（計算値のラップに @property を使う）
 class AppConfig(Config):
     @property
     def csv_east_path(self) -> Path:
@@ -273,16 +274,22 @@ print(dl.path)
 
 # 良い（計算値はインラインで書く）
 path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
+
+# 良い（上書きさせたくない属性の公開に @property を使う）
+class EdgeDriver:
+    @property
+    def driver(self) -> webdriver.Edge:
+        return self._driver  # 外部から driver = xxx と上書きさせない
 ```
 
-`@property` を使わない理由:
+`@property` の使い分け:
 
-| 代替手段 | 場面 |
+| 場面 | 方針 |
 |---|---|
-| インライン計算 | 計算値（パス組み立て等） |
-| モジュールレベル定数 | 複数箇所で使う計算値 |
-| 普通のメソッド | 呼ぶたびに処理が走ることを明示したいとき |
-| `_` プレフィックス | 外から書き換えてほしくない属性 |
+| 計算値（パス組み立て等） | インラインで書く |
+| 複数箇所で使う計算値 | モジュールレベル定数に入れる |
+| 呼ぶたびに処理が走ることを明示したい | 普通のメソッド |
+| 書き換えてほしくない内部属性の公開 | `@property`（読み取り専用として公開）|
 
 ---
 
@@ -292,7 +299,7 @@ path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
 
 | デコレーター | 方針 |
 |---|---|
-| `@property` | 使わない（[getter/setter は書かない](#getter--setter-は書かない) 参照） |
+| `@property` | 原則使わない。外部から上書きさせたくない属性の読み取り専用公開に限り使ってよい |
 | `@staticmethod` | 原則モジュールレベル関数にする。クラスと概念的に切り離せない場合は使ってよい |
 | `@classmethod` | ファクトリメソッド（別コンストラクタ）にだけ使う |
 | `@cache` / `@lru_cache` | 使わない。状態はインスタンスで持つ |

@@ -15,6 +15,9 @@ exceptions.py — ライブラリ共通の例外クラス
 """
 
 import warnings
+from typing import Any, TypeVar
+
+_T = TypeVar("_T")
 
 
 class OriginalLibsError(Exception):
@@ -149,7 +152,7 @@ class Warnings:
     )
 
 
-def _warn_coerce(value, expected: type, param: str, stacklevel: int = 3):
+def _warn_coerce(value: Any, expected: type[_T], param: str, stacklevel: int = 3) -> _T:
     """型が違う場合に警告して変換する。ライブラリ内部用。
 
     型が一致していれば何もしない。違う場合だけ UserWarning を発行して変換する。

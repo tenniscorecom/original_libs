@@ -16,7 +16,9 @@ ExcelFile クラスを通じて Excel ファイルの読み書きを行う。
 
 import shutil
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
@@ -146,7 +148,7 @@ class ExcelFile:
         headers = all_rows[0]
         return [dict(zip(headers, row)) for row in all_rows[1:]]
 
-    def iter_rows(self, sheet_name: str, min_row: int = 2):
+    def iter_rows(self, sheet_name: str, min_row: int = 2) -> Generator[tuple[Any, ...], None, None]:
         """大量データ向け。行をジェネレータで1行ずつ返す（メモリ効率優先）。
 
         read_rows はファイル全体をメモリに乗せるため、数万行以上のファイルでは

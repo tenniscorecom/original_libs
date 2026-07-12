@@ -13,6 +13,7 @@ ExcelComHandler は数式やマクロが必要な場面に限定して使う。
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import win32api
 import win32com.client
@@ -81,11 +82,11 @@ class ExcelComHandler:
     def __exit__(self, *args) -> None:
         self.close()
 
-    def _sheet(self, name):
+    def _sheet(self, name) -> Any:
         """シートオブジェクトを返す。"""
         return self._wb.Sheets(_warn_coerce(name, str, "sheet_name", stacklevel=3))
 
-    def read_cell(self, sheet_name: str, row: int, col: int):
+    def read_cell(self, sheet_name: str, row: int, col: int) -> Any:
         """セルの値を返す（数式の計算結果）。
 
         Args:
