@@ -64,3 +64,35 @@ class Timer:
             with Timer(self._name):
                 return func(*args, **kwargs)
         return wrapper
+
+
+def measure(func):
+    """デバッグモード時だけ処理時間を DEBUG ログに出すデコレータ。
+
+    ライブラリの主要処理に付いており、comken.set_debug(True) にすると
+    「どの処理に何秒かかったか」が日別ログファイルに残る（コンソールには出ない）。
+    プロジェクト側の関数に付けてもよい。
+
+    Timer との使い分け:
+        - Timer: 常にログに出したい・経過秒数を値として使いたい場合
+        - measure: 普段は出さず、調査のときだけ set_debug(True) で出したい場合
+
+    使い方:
+        from comken.utils import measure
+
+        @measure
+        def build_report():
+            ...
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        from ..runtime import is_debug
+
+        if not is_debug():
+            return func(*args, **kwargs)
+        start = time.perf_counter()
+        try:
+            return func(*args, **kwargs)
+        finally:
+            logger.debug("%s: %.3f秒", func.__qualname__, time.perf_counter() - start)
+    return wrapper

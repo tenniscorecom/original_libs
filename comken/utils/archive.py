@@ -23,7 +23,10 @@ import os
 import zipfile
 from pathlib import Path
 
+from .timer import measure
 
+
+@measure
 def zip_folder(folder: str | Path, dst: str | Path | None = None) -> Path:
     """フォルダの中身をまるごと zip に圧縮する（サブフォルダも含む）。
 
@@ -76,6 +79,7 @@ def zip_files(files: list, dst: str | Path) -> Path:
     return dst
 
 
+@measure
 def unzip(src: str | Path, dst: str | Path | None = None) -> Path:
     """zip を展開する。
 

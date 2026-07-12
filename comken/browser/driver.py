@@ -1,3 +1,5 @@
+import datetime
+import logging
 import os
 from pathlib import Path
 
@@ -8,6 +10,8 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from .download import DownloadDir
 from .options import BrowserOptions
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_download_dir(
@@ -107,9 +111,26 @@ class EdgeDriver:
     def __enter__(self) -> "EdgeDriver":
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        # エラーで抜ける場合は、原因調査用にその時点の画面を残す
+        if exc_type is not None:
+            self._save_error_screenshot()
         self.quit()
-        self.download_dir.__exit__(*args)  # 一時フォルダなら自動削除
+        self.download_dir.__exit__(exc_type, exc_value, traceback)  # 一時フォルダなら自動削除
+
+    def _save_error_screenshot(self) -> None:
+        """エラー発生時のスクリーンショットを logs/ に保存する。
+
+        保存に失敗しても本来の例外を邪魔しない（警告ログだけ出して続行）。
+        """
+        try:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = Path("logs") / f"error_{timestamp}.png"
+            path.parent.mkdir(exist_ok=True)
+            self._driver.save_screenshot(str(path))
+            logger.error("エラー発生時のスクリーンショットを保存しました: %s", path.resolve())
+        except Exception:
+            logger.warning("エラー時スクリーンショットの保存に失敗しました", exc_info=True)
 
     @property
     def driver(self) -> webdriver.Edge:

@@ -20,6 +20,7 @@ CsvWriter クラスを通じて CSV ファイルへの書き込みを行う。
 import csv
 from pathlib import Path
 
+from ..runtime import dry_run_log, is_dry_run
 from .handler import Encoding
 
 
@@ -72,6 +73,9 @@ class CsvWriter:
         Args:
             rows: 書き込む行のリスト（辞書のリスト）。
         """
+        if is_dry_run():
+            dry_run_log("CSV に %d 行書き込み（上書き）: %s", len(rows), self._path)
+            return
         with self._open("w") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")
             writer.writeheader()
@@ -85,6 +89,9 @@ class CsvWriter:
         Args:
             row: 追記する行の辞書。
         """
+        if is_dry_run():
+            dry_run_log("CSV に 1 行追記: %s", self._path)
+            return
         is_new = not self._path.exists()
         with self._open("a") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")
@@ -100,6 +107,9 @@ class CsvWriter:
         Args:
             rows: 追記する行のリスト（辞書のリスト）。
         """
+        if is_dry_run():
+            dry_run_log("CSV に %d 行追記: %s", len(rows), self._path)
+            return
         is_new = not self._path.exists()
         with self._open("a") as f:
             writer = csv.DictWriter(f, fieldnames=self._fieldnames, extrasaction="ignore")

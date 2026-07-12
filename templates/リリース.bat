@@ -21,6 +21,15 @@ if /i not "%CONFIRM%"=="y" (
     exit /b 0
 )
 
+rem どのバージョンをいつ配布したか後から追えるように、日時タグを打つ
+rem （バージョン管理は robocopy のタイムスタンプ差分で行うため、タグは記録用）
+for /f "tokens=1-3 delims=/ " %%a in ("%DATE%") do set TAG_DATE=%%a%%b%%c
+set TAG_TIME=%TIME: =0%
+set TAG=release-%TAG_DATE%-%TAG_TIME:~0,2%%TAG_TIME:~3,2%
+pushd "%COMKEN_DEV%"
+git tag %TAG% 2>nul && git push origin %TAG% 2>nul
+popd
+
 robocopy "%COMKEN_DEV%" "%COMKEN_SHARE%" /MIR /XD .git __pycache__ .venv /NJH /NJS /NP /NFL /NDL >nul
 
 echo.

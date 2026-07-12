@@ -71,6 +71,35 @@ main にマージしたら `templates\リリース.bat` で配布フォルダへ
 
 ---
 
+## 実行モード（version / デバッグ / dry-run）
+
+```python
+import comken
+
+comken.version()          # → "0.2.0"
+
+# デバッグモード: ライブラリ主要処理（Excel 読み込み・転記・保存、CSV 読み書き、zip 等）の
+# 所要時間が DEBUG ログ（日別ログファイル）に残る。どこが遅いかの調査に使う
+comken.set_debug(True)
+
+# dry-run モード: 外部に影響する操作を実行せず、内容だけ [DRY-RUN] 付きで INFO ログに出す。
+# 対象: ファイル移動・コピー、Excel/CSV の保存、Teams 送信、Salesforce の書き込み。
+# 読み取り（CSV・Excel の読み込み、SOQL クエリ）は通常どおり実行される
+comken.set_dry_run(True)
+```
+
+自作関数の処理時間も同じ仕組みで計測できる（デバッグモード中だけログに出る）:
+
+```python
+from comken.utils import measure
+
+@measure
+def build_report():
+    ...
+```
+
+---
+
 ## Config
 
 `config.ini` を `config.SECTION.KEY` の形式で読み込む。
@@ -717,6 +746,25 @@ with ExcelFile("data.xlsx") as f:
 # 複数ファイルを同時処理する場合（目安: 10ファイル以上）は
 # concurrent.futures.ThreadPoolExecutor を使うと高速化できる
 
+# シート単位の書き込みは sheet() のラッパーが楽（sheet_name を毎回渡さなくてよい）
+with ExcelFile("report.xlsx") as f:
+    s = f.sheet("Sheet1")
+    s["A1"] = "売上レポート"              # セル参照で読み書き
+    s.write_row(3, ["日付", "金額"])      # 1行を横並びで書く
+    s.append_row(["2026-07-12", 1000])    # 最終行の下に追記
+    s.auto_width()                        # 列幅を内容に合わせる（全角対応）
+    s.freeze_header()                     # 1行目を固定
+    f.save()
+
+# 新規ブックの作成 + 辞書リストの一括書き込み（CSV → Excel レポート）
+rows = CsvReader("data.csv").rows()
+with ExcelFile.create(r"C:\作業\report.xlsx") as f:
+    s = f.sheet("Sheet1")
+    s.write_table(rows)                   # ヘッダー行 + データ行をまとめて書く
+    s.auto_width()
+    s.freeze_header()
+    f.save()
+
 # キー突合で転記（XLOOKUP 的転記。CSV → Excel の更新などに使う）
 lookup = CsvReader("data.csv").index("注文番号")
 MAPPING = {"B": "顧客名", "C": "金額"}  # Excel の列レター → lookup の列名
@@ -859,6 +907,32 @@ d.refresh() / d.back()           # 再読み込み / 戻る
 
 # ここにない WebDriver の機能は d.driver から使う（こちらも補完が効く）
 d.driver.set_window_size(1200, 800)
+```
+
+**エラー時の自動スクリーンショット**: with ブロック内で例外が発生すると、
+その時点の画面が `logs/error_YYYYMMDD_HHMMSS.png` に自動保存される（原因調査用）。
+
+**Page Object のセレクターは Locator でクラス変数にまとめる**（画面変更時に直す場所が一箇所になる）:
+
+```python
+from comken.browser import BasePage, EdgeDriver, Locator
+
+class LoginPage(BasePage):
+    URL = "https://example.com/login"
+
+    USERNAME = Locator.id("username")
+    PASSWORD = Locator.id("password")
+    LOGIN_BTN = Locator.css("#login-btn")
+
+    def login(self, username: str, password: str) -> None:
+        self.input(self.USERNAME, username)
+        self.input(self.PASSWORD, password)
+        self.click(self.LOGIN_BTN)
+
+with EdgeDriver() as d:
+    page = LoginPage(d)          # EdgeDriver をそのまま渡せる
+    page.open(page.URL)
+    page.login("yamada", "password123")
 ```
 
 **ブラウザオプションのカスタマイズ:**
@@ -1309,3 +1383,5 @@ flowchart LR
 | 2026-07-12 | Teams 通知（TeamsNotifier。Power Automate Webhook / Adaptive Card 形式）・テキスト正規化（normalize / strip_spaces / remove_spaces）・待機（wait）・特殊フォルダ取得（Paths）を追加。Paths は OneDrive リダイレクトに追従、通知失敗は TeamsError |
 | 2026-07-12 | Salesforce を salesforce_std（標準ライブラリのみ）と salesforce_requests（requests 版）の2フォルダ構成に分割（同じクラス名・同じ API。import 行だけで切り替え）。credentials に GUI 版を追加（python -m comken.credentials --gui） |
 | 2026-07-12 | Config: [a, b, c] 記法でリストに自動変換（parse_list は警告付きで残存）。エディタ補完用スタブ生成（python -m comken.config）を追加。BOM 付き UTF-8 の config.ini が読めないバグを修正 |
+| 2026-07-12 | Locator（セレクターのクラス変数管理）・retry・Timer / measure・zip・PDF（pypdf）・Excel の Sheet ラッパー（セル参照 / write_table / auto_width / freeze_header）・ExcelFile.create を追加 |
+| 2026-07-12 | comken.version() / set_debug()（主要処理の時間を DEBUG ログに記録）/ set_dry_run()（外部に影響する操作をスキップ）を追加。EdgeDriver がエラー時に画面を logs/ に自動保存。Excel 孤立プロセス対策（is_excel_running / kill_excel）。リリース.bat で git tag を打つ運用に。スタブ書き込みをアトミック化 |

@@ -30,6 +30,7 @@ import urllib.error
 import urllib.request
 
 from ..exceptions import TeamsError
+from ..runtime import dry_run_log, is_dry_run
 
 
 class CardColor:
@@ -123,6 +124,9 @@ class TeamsNotifier:
         Raises:
             TeamsError: HTTP エラー、またはネットワークに接続できない場合。
         """
+        if is_dry_run():
+            dry_run_log("Teams に送信: %s", json.dumps(payload, ensure_ascii=False)[:200])
+            return
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
             self._url,

@@ -11,7 +11,7 @@ from .file import (
 )
 from .retry import retry
 from .text import normalize, remove_spaces, strip_spaces
-from .timer import Timer
+from .timer import Timer, measure
 from .wait import wait
 
 __all__ = [
@@ -33,6 +33,7 @@ __all__ = [
     "remove_spaces",
     "retry",
     "Timer",
+    "measure",
     "zip_folder",
     "zip_files",
     "unzip",

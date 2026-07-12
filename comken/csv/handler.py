@@ -18,6 +18,7 @@ import csv
 import io
 from pathlib import Path
 
+from ..utils.timer import measure
 from ..exceptions import ColumnNotFoundError, CsvError
 
 
@@ -137,6 +138,7 @@ class CsvReader:
                 continue
         raise CsvError(CsvError.MSG_ENCODING.format(path=self._path))
 
+    @measure
     def rows(self, columns: list[str] | None = None) -> list[dict[str, str]]:
         """全行を返す。
 

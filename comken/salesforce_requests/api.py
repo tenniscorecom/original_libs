@@ -48,6 +48,7 @@ from xml.sax.saxutils import escape
 import requests
 
 from ..exceptions import SalesforceError
+from ..runtime import dry_run_log, is_dry_run
 
 # SOAP ログインのレスポンス XML の名前空間
 _SOAP_NS = "{urn:partner.soap.sforce.com}"
@@ -266,6 +267,9 @@ class SalesforceApiClient:
             object_name: オブジェクト API 名。
             data: 作成するレコードのフィールド値の辞書。
         """
+        if is_dry_run():
+            dry_run_log("Salesforce %s に insert: %s", object_name, data)
+            return "DRYRUN00000000000A"
         result, _ = self._request("POST", self._data_path(f"/sobjects/{object_name}/"), body=data)
         return result["id"]
 
@@ -277,6 +281,9 @@ class SalesforceApiClient:
             record_id: 更新するレコードの Id。
             data: 更新するフィールド値の辞書。
         """
+        if is_dry_run():
+            dry_run_log("Salesforce %s (%s) を update: %s", object_name, record_id, data)
+            return
         self._request("PATCH", self._data_path(f"/sobjects/{object_name}/{record_id}"), body=data)
 
     def upsert(self, object_name: str, external_id_field: str, data: dict) -> None:
@@ -287,6 +294,9 @@ class SalesforceApiClient:
             external_id_field: 外部 ID フィールドの API 名（例: "ExternalId__c"）。
             data: フィールド値の辞書。external_id_field の値を含むこと。
         """
+        if is_dry_run():
+            dry_run_log("Salesforce %s を upsert（%s）: %s", object_name, external_id_field, data)
+            return
         external_id = urllib.parse.quote(str(data[external_id_field]))
         body = {k: v for k, v in data.items() if k != external_id_field}
         self._request(
@@ -302,6 +312,9 @@ class SalesforceApiClient:
             object_name: オブジェクト API 名。
             record_id: 削除するレコードの Id。
         """
+        if is_dry_run():
+            dry_run_log("Salesforce %s (%s) を delete", object_name, record_id)
+            return
         self._request("DELETE", self._data_path(f"/sobjects/{object_name}/{record_id}"))
 
     # ----------------------------------------------------------------- report
@@ -434,6 +447,9 @@ class SalesforceApiClient:
     ) -> dict:
         """Bulk API 2.0 の取り込みジョブ（insert / update / upsert / delete）を実行する。"""
         if not records:
+            return {"success": 0, "failed": []}
+        if is_dry_run():
+            dry_run_log("Salesforce %s に bulk %s: %d 件", object_name, operation, len(records))
             return {"success": 0, "failed": []}
 
         job_body = {"object": object_name, "operation": operation, "contentType": "CSV"}

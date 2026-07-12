@@ -27,6 +27,8 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
+from ..runtime import dry_run_log, is_dry_run
+
 logger = logging.getLogger(__name__)
 
 # レジストリ「User Shell Folders」の Downloads の値名（固定 GUID）
@@ -135,6 +137,9 @@ def move_file(src: str | Path, dst: str | Path) -> Path:
     src = Path(src)
     dst = Path(dst)
     target = dst / src.name if dst.is_dir() else dst
+    if is_dry_run():
+        dry_run_log("ファイルを移動: %s → %s", src, target)
+        return target
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         target.unlink()
@@ -160,6 +165,9 @@ def copy_file(src: str | Path, dst: str | Path) -> Path:
     src = Path(src)
     dst = Path(dst)
     target = dst / src.name if dst.is_dir() else dst
+    if is_dry_run():
+        dry_run_log("ファイルをコピー: %s → %s", src, target)
+        return target
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, target)
     return target
@@ -278,6 +286,9 @@ class FileFinder:
         （"20260711_売上.xlsx" のような日付プレフィックス命名で「名前上の最新」を取る用途）。
         コピーや再保存で更新日時が変わっていても影響を受けない。
         更新日時で選びたい場合は by=SortBy.UPDATED を指定する。
+
+        注意: 文字列比較のため、ゼロ埋めしていない連番（report_9.xlsx と report_10.xlsx）は
+        9 の方が「最新」と判定される。連番命名なら by=SortBy.UPDATED を使うこと。
 
         Args:
             pattern: ファイルのパターン（デフォルト: "*.xlsx"）。

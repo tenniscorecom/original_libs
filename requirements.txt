@@ -1,10 +1,12 @@
 ; 社内BO環境（オフライン）では pip install -r は使えない。参照・記録用。
+; --- 必須 ---
 openpyxl
 selenium
 pywin32
-; --- 任意（導入承認が下りた場合のみ。Salesforceの外部ライブラリ版クライアント用）---
-simple-salesforce
-requests
+; --- 任意（導入承認が下りた場合のみ）---
+; requests        … salesforce_requests（requests 版 SalesforceApiClient）を使う場合のみ
+; simple-salesforce … salesforce_requests の SalesforceClient / SalesforceBulkClient を使う場合のみ
+; pypdf           … comken.pdf（PDF の結合・分割・テキスト抽出）を使う場合のみ
 ; --- 開発用 ---
 ruff
 pytest

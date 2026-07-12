@@ -27,7 +27,9 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ..exceptions import ExcelError, SheetNotFoundError, _warn_coerce
+from ..runtime import dry_run_log, is_dry_run
 from ..utils.data import col_to_num
+from ..utils.timer import measure
 from .sheet import Sheet
 
 logger = logging.getLogger(__name__)
@@ -179,6 +181,7 @@ class ExcelFile:
             raise SheetNotFoundError(SheetNotFoundError.MSG.format(name=name, sheets=self._wb.sheetnames))
         return self._wb[name]
 
+    @measure
     def read_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
         """指定シートの行データをタプルのリストで返す。
 
@@ -191,6 +194,7 @@ class ExcelFile:
         """
         return list(self._sheet(sheet_name).iter_rows(min_row=int(min_row), values_only=True))
 
+    @measure
     def read_rows_as_dicts(self, sheet_name: str, header_row: int = 1) -> list[dict]:
         """ヘッダー行をキーとした辞書のリストで返す。
 
@@ -254,6 +258,7 @@ class ExcelFile:
         finally:
             wb.close()
 
+    @measure
     def read_computed_rows(self, sheet_name: str, min_row: int = 2) -> list[tuple]:
         """数式の計算結果を含む行を読む。
 
@@ -300,6 +305,7 @@ class ExcelFile:
         """
         self._sheet(sheet_name).cell(row=int(row), column=int(col)).value = value
 
+    @measure
     def transfer_by_key(
         self,
         sheet_name: str,
@@ -367,6 +373,7 @@ class ExcelFile:
         logger.info("転記完了: %d件一致（シート: %s）", matched, sheet_name)
         return matched
 
+    @measure
     def save(self, path: str | Path | None = None) -> None:
         """ファイルを保存する。
 
@@ -377,6 +384,9 @@ class ExcelFile:
             path: 保存先のパス。省略すると開いた元のファイルに上書き保存する。
         """
         save_path = Path(path) if path else self._original_path
+        if is_dry_run():
+            dry_run_log("Excel を保存: %s", save_path)
+            return
         save_path.parent.mkdir(parents=True, exist_ok=True)
         self._wb.save(save_path)
 
