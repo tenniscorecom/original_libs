@@ -779,7 +779,7 @@ examples/sample_login/
 │   └── secure_page.py # ログイン後の画面
 ├── browser_options.py # BrowserOptions のカスタマイズ
 ├── config.ini.example # 設定ファイルのテンプレート
-├── config.py # AppConfig（Config のサブクラス）
+├── config.py # config のシングルトン（config = Config()）
 └── run.py # 実行スクリプト
 ```
 
