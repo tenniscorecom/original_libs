@@ -33,6 +33,9 @@ with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
 - 設計方針・ユースケース: 仕様書.md（管理者・設計を知りたい人向け）
 - コーディング規約: CONVENTIONS.md（コードを書く人向け）
 - エラーが出たときの対応: ERRORS.md（プロジェクトに配る雛形）
+- 用途別の関数一覧（何が用意されているか）: docs/機能カタログ.md
+- コードレビュー・読解する人向け: docs/コードリーディングガイド.md（全体地図と読む順番）
+- 検討中の設計メモ: docs/Salesforce認証パターン.md、docs/認証情報の公開鍵配布.md
 
 ## モジュール一覧
 
@@ -858,9 +861,18 @@ with ExcelComHandler("data.xlsx") as h:
         print(f"{CHECK_ROW}行目は空行")
 
     h.run_macro(MACRO_NAME)
+
+    # 上書き保存。close() は保存せずに閉じるため、変更を残すなら必ず呼ぶ
+    h.save()
+
+    # 別名保存。保存形式（FileFormat）は元ファイルと同じ形式が自動で使われる
     h.save_as("output.xlsx", read_pw=READ_PW, write_pw=WRITE_PW)
     # パスワードはそれぞれ省略可。読み取りPWだけ・書き込みPWだけの保護もできる
     # h.save_as("output.xlsx", read_pw=READ_PW)  # 読み取り保護のみ
+
+    # 形式を変換して保存する場合だけ file_format を明示する
+    # from comken.windows import FileFormat
+    # h.save_as("output.csv", file_format=FileFormat.CSV)
 ```
 
 **キー突合で転記する（XLOOKUP 的転記）:**
