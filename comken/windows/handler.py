@@ -26,6 +26,29 @@ from ..utils.data import col_to_num
 logger = logging.getLogger(__name__)
 
 
+class FileFormat:
+    """Workbook.SaveAs に渡す FileFormat 定数（Excel の XlFileFormat）。
+
+    save_as() では元ファイルと同じ形式が自動で使われるため、通常は指定不要。
+    形式を変換して保存する場合だけ file_format 引数で渡す。
+    """
+
+    XLSX = 51  # xlOpenXMLWorkbook
+    XLSM = 52  # xlOpenXMLWorkbookMacroEnabled
+    XLSB = 50  # xlExcel12
+    XLS = 56  # xlExcel8
+    CSV = 6  # xlCSV
+
+
+_SUFFIX_TO_FORMAT = {
+    ".xlsx": FileFormat.XLSX,
+    ".xlsm": FileFormat.XLSM,
+    ".xlsb": FileFormat.XLSB,
+    ".xls": FileFormat.XLS,
+    ".csv": FileFormat.CSV,
+}
+
+
 class ExcelComHandler:
     """win32com を使った Excel 操作クラス。
 
@@ -57,7 +80,10 @@ class ExcelComHandler:
             # マクロを実行
             h.run_macro("Module1.UpdateData")
 
-            # パスワードをかけて保存
+            # 上書き保存（close() は保存しないため、変更を残すなら必須）
+            h.save()
+
+            # パスワードをかけて別名保存
             h.save_as("output.xlsx", read_pw="読み取りPW", write_pw="書き込みPW")
     """
 
@@ -298,15 +324,52 @@ class ExcelComHandler:
         """
         self._excel.Run(str(macro_name))
 
-    def save_as(self, path: str | Path, read_pw: str = "", write_pw: str = "") -> None:
+    def save(self) -> None:
+        """元のファイルに上書き保存する。
+
+        close() は保存せずに閉じる（SaveChanges=False）ため、
+        write_cell や transfer_by_key での変更を残す場合は必ず呼ぶこと。
+        """
+        self._wb.Save()
+
+    def save_as(
+        self,
+        path: str | Path,
+        read_pw: str = "",
+        write_pw: str = "",
+        file_format: int | None = None,
+    ) -> None:
         """ファイルを別名で保存する。パスワードを設定できる。
 
         Args:
             path: 保存先のパス。
             read_pw: 読み取りパスワード（省略可）。
             write_pw: 書き込みパスワード（省略可）。
+            file_format: FileFormat 定数（例: FileFormat.CSV）。
+                         省略すると元ファイルと同じ形式で保存する。
+
+        Raises:
+            ExcelError: 保存先の拡張子が元ファイルの形式と食い違う場合
+                        （file_format 未指定時のみ）。
         """
-        self._wb.SaveAs(str(Path(path).resolve()), Password=read_pw, WriteResPassword=write_pw)
+        save_path = Path(path).resolve()
+        if file_format is None:
+            file_format = self._wb.FileFormat
+            # 拡張子と中身の形式がズレたファイルは Excel で開くときに警告が出るため、
+            # 変換の意図がある場合は file_format の明示を必須にする
+            suffix_format = _SUFFIX_TO_FORMAT.get(save_path.suffix.lower())
+            if suffix_format is not None and suffix_format != file_format:
+                raise ExcelError(
+                    ExcelError.MSG_FORMAT_MISMATCH.format(suffix=save_path.suffix)
+                )
+        # NOTE: FileFormat を省略して SaveAs すると Password / WriteResPassword が
+        # 反映されないことがあるため、必ず明示して渡す
+        self._wb.SaveAs(
+            str(save_path),
+            FileFormat=file_format,
+            Password=read_pw,
+            WriteResPassword=write_pw,
+        )
 
     def close(self) -> None:
         """Excel を閉じる。with 文を使う場合は自動で呼ばれる。"""

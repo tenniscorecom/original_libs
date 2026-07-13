@@ -40,6 +40,11 @@ class ExcelError(OriginalLibsError):
         "はみ出した列のデータが失われます。\n"
         "headers にすべての列名を指定してください。"
     )
+    MSG_FORMAT_MISMATCH = (
+        "保存先の拡張子（{suffix}）が元ファイルの形式と一致しません。\n"
+        "形式を変換して保存する場合は file_format 引数で FileFormat 定数を"
+        "指定してください。（例: file_format=FileFormat.CSV）"
+    )
 
 
 class SheetNotFoundError(ExcelError):
