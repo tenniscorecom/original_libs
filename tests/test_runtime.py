@@ -125,7 +125,7 @@ class TestDryRun:
 
     def test_salesforce_insert_returns_dummy_id(self, caplog):
         """dry-run 中の Salesforce insert はダミー ID を返すことを確認する。"""
-        from comken.salesforce_std.api import SalesforceApiClient
+        from comken.salesforce_requests.api import SalesforceApiClient
 
         client = SalesforceApiClient.__new__(SalesforceApiClient)
         client._session_id = "S"

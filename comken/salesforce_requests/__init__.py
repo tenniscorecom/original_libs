@@ -1,12 +1,7 @@
 """
-salesforce_requests — Salesforce API クライアント（requests / 外部ライブラリ版）
+salesforce_requests — Salesforce API クライアント（requests 版）
 
-salesforce_std と同じ API の requests 版。どちらを使うかは import 行で切り替える:
-
-    from comken.salesforce_std import SalesforceApiClient       # 標準ライブラリ版
-    from comken.salesforce_requests import SalesforceApiClient  # requests 版
-
-requests が導入できない環境では、このフォルダ（salesforce_requests）ごと削除してよい。
+    from comken.salesforce_requests import SalesforceApiClient
 
 | クラス | 依存 | 用途 |
 |---|---|---|

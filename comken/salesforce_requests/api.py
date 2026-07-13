@@ -1,13 +1,7 @@
 """
 salesforce_requests/api.py — Salesforce API クライアント（requests 版）
 
-salesforce_std の SalesforceApiClient と**同じクラス名・同じメソッド・同じ戻り値**。
-通信部分だけ requests を使う（Session による接続再利用で連続リクエストが速い）。
-
-標準ライブラリ版と requests 版のどちらを使うかは import 行だけで切り替えられる:
-
-    from comken.salesforce_std import SalesforceApiClient       # 標準ライブラリ版
-    from comken.salesforce_requests import SalesforceApiClient  # requests 版
+通信は requests を使う（Session による接続再利用で連続リクエストが速い）。
 
 対応している操作:
     - ログイン（SOAP ログイン。接続アプリケーション不要）

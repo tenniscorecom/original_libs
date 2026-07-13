@@ -48,7 +48,7 @@ with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
 | Excel（openpyxl） | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | Windows（pywin32） | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
 | Browser（Edge） | Edge ブラウザ操作 |
-| Salesforce | CRUD・SOQL・レポート・Bulk（salesforce_std: 標準ライブラリのみ / salesforce_requests: requests 版） |
+| Salesforce | CRUD・SOQL・レポート・Bulk（salesforce_requests。requests 使用） |
 | Teams | Teams チャンネルへの通知（Power Automate Webhook。標準ライブラリのみ） |
 | PDF | PDF の結合・分割・テキスト抽出（pypdf。導入できない環境では使わない） |
 | utils | ファイル操作・データ比較・テキスト正規化・待機・リトライ・時間計測・zip・特殊フォルダ取得 |
@@ -1161,24 +1161,17 @@ python -m examples.sample_login.run
 
 ## Salesforce
 
-**標準ライブラリ版（salesforce_std）と requests 版（salesforce_requests）の2フォルダ構成。**
-`SalesforceApiClient` はどちらにも同じクラス名・同じメソッドで入っており、
-**import 行の変更だけで切り替えられる**。requests が導入できない環境では
-`salesforce_requests` フォルダごと削除してよい（std 側は影響を受けない）。
-
 ```python
-from comken.salesforce_std import SalesforceApiClient       # 標準ライブラリ版（追加インストール不要）
-from comken.salesforce_requests import SalesforceApiClient  # requests 版（Session で接続再利用・速い）
+from comken.salesforce_requests import SalesforceApiClient
 ```
 
-| フォルダ | クラス | 依存 | 用途 |
-|---|---|---|---|
-| salesforce_std | `SalesforceApiClient` | なし | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
-| salesforce_requests | `SalesforceApiClient` | requests | 同上（requests 版） |
-| salesforce_requests | `SalesforceClient` | simple-salesforce | CRUD・SOQL |
-| salesforce_requests | `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
-| salesforce_requests | `SalesforceRestClient` | requests | REST API 直接操作 |
-| salesforce_requests | `SalesforceReportClient` | requests | レポート取得 |
+| クラス | 依存 | 用途 |
+|---|---|---|
+| `SalesforceApiClient`（推奨） | requests | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
+| `SalesforceClient` | simple-salesforce | CRUD・SOQL |
+| `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
+| `SalesforceRestClient` | requests | REST API 直接操作 |
+| `SalesforceReportClient` | requests | レポート取得 |
 
 旧 import パス `comken.salesforce` は警告付きで動くが、新しいコードでは使わない。
 
@@ -1186,11 +1179,10 @@ from comken.salesforce_requests import SalesforceApiClient  # requests 版（Ses
 
 接続アプリケーション（client_id / client_secret）は不要。
 ユーザー名・パスワード・セキュリティトークンだけでログインする。
-以下の例は std / requests のどちらでも同じように動く。
 
 ```python
 from comken.credentials import Credentials
-from comken.salesforce_std import SalesforceApiClient
+from comken.salesforce_requests import SalesforceApiClient
 
 cred = Credentials("salesforce")
 sf = SalesforceApiClient(
@@ -1379,7 +1371,6 @@ graph LR
     comken --> csv["csv\nCSV"]
     comken --> windows["windows\nCOM / Window"]
     comken --> browser["browser\nブラウザ"]
-    comken --> salesforce_std["salesforce_std\nSalesforce（標準）"]
     comken --> salesforce_requests["salesforce_requests\nSalesforce（requests）"]
     comken --> teams["teams\nTeams 通知"]
     comken --> pdf["pdf\nPDF（pypdf）"]
@@ -1443,3 +1434,5 @@ flowchart LR
 | 2026-07-12 | Locator（セレクターのクラス変数管理）・retry・Timer / measure・zip・PDF（pypdf）・Excel の Sheet ラッパー（セル参照 / write_table / auto_width / freeze_header）・ExcelFile.create を追加 |
 | 2026-07-12 | comken.__version__ / set_debug()（主要処理の時間を DEBUG ログに記録）/ set_dry_run()（外部に影響する操作をスキップ）を追加。EdgeDriver がエラー時に画面を logs/ に自動保存。Excel 孤立プロセス対策（is_excel_running / kill_excel）。リリース.bat で git tag を打つ運用に。スタブ書き込みをアトミック化 |
 | 2026-07-13 | examples を拡充。CSV→Excel レポート・キー突合転記・CSV 差分レポート（オフラインでそのまま動く3本）、Salesforce→Excel、日次バッチ雛形（daily_batch_template。新規プロジェクトのコピー元）と examples/README.md を追加 |
+| 2026-07-13 | ExcelComHandler: 上書き保存 save() 追加、save_as のパスワードが効かない問題を修正（FileFormat を常に明示。形式変換は file_format 引数）、close() でプロセスが残る問題を修正、AskToUpdateLinks=False 追加。CONVENTIONS に「モジュール内の並び順」を追加し全体を整理。docs/（機能カタログ・コードリーディングガイド・設計メモ）を追加 |
+| 2026-07-13 | requests 採用が確定したため salesforce_std を削除（salesforce_requests に一本化。旧 import パス comken.salesforce は警告付きで動作） |

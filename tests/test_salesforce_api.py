@@ -1,8 +1,5 @@
 """SalesforceApiClient のテスト。
 
-標準ライブラリ版（salesforce_std）と requests 版（salesforce_requests）は
-同じ API を持つため、同じテストを両方に適用する（parametrize）。
-
 実際の Salesforce には接続せず、レスポンスの解釈・リクエストの組み立てなど
 純粋なロジック部分をテストする（通信部分は実機で確認する）。
 """
@@ -11,12 +8,8 @@ import pytest
 
 from comken.exceptions import SalesforceError
 from comken.salesforce_requests import api as requests_api
-from comken.salesforce_std import api as std_api
 
-# 両実装に同じテストを適用する（ids はテスト名に表示される）
-IMPLEMENTATIONS = pytest.mark.parametrize(
-    "api", [std_api, requests_api], ids=["std", "requests"]
-)
+IMPLEMENTATIONS = pytest.mark.parametrize("api", [requests_api], ids=["requests"])
 
 LOGIN_OK_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
@@ -40,21 +33,6 @@ LOGIN_FAIL_XML = """<?xml version="1.0" encoding="UTF-8"?>
     </soapenv:Fault>
   </soapenv:Body>
 </soapenv:Envelope>"""
-
-
-class TestPublicApiIsIdentical:
-    """標準版と requests 版の公開 API が一致していることを確認する。
-
-    片方だけにメソッドを追加した場合にこのテストが落ちて気づける。
-    """
-
-    def test_same_public_methods(self):
-        def public_methods(cls):
-            return {n for n in vars(cls) if not n.startswith("_")}
-
-        assert public_methods(std_api.SalesforceApiClient) == public_methods(
-            requests_api.SalesforceApiClient
-        )
 
 
 @IMPLEMENTATIONS
@@ -152,4 +130,4 @@ class TestOldImportPath:
         with pytest.warns(FutureWarning, match="salesforce"):
             cls = comken.salesforce.SalesforceApiClient
 
-        assert cls is std_api.SalesforceApiClient
+        assert cls is requests_api.SalesforceApiClient

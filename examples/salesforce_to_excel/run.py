@@ -21,10 +21,7 @@ import logging
 from comken import setup_logger
 from comken.credentials import Credentials
 from comken.excel import ExcelFile
-
-# requests 版に切り替える場合は import 行を変えるだけ（クラス名・メソッドは同じ）:
-# from comken.salesforce_requests import SalesforceApiClient
-from comken.salesforce_std import SalesforceApiClient
+from comken.salesforce_requests import SalesforceApiClient
 from comken.utils import FileNameBuilder
 
 from .config import config
