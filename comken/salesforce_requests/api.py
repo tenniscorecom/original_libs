@@ -54,49 +54,6 @@ from ..runtime import dry_run_log, is_dry_run
 _SOAP_NS = "{urn:partner.soap.sforce.com}"
 
 
-def _parse_login_response(xml_text: str) -> tuple[str, str]:
-    """SOAP ログインのレスポンスから (セッションID, インスタンスURL) を取り出す。
-
-    Raises:
-        SalesforceError: ログイン失敗（faultstring がある）または形式が不正な場合。
-    """
-    root = ET.fromstring(xml_text)
-
-    fault = root.find(".//faultstring")
-    if fault is not None:
-        raise SalesforceError(
-            f"Salesforce へのログインに失敗しました: {fault.text}\n"
-            f"ユーザー名・パスワード・セキュリティトークンを確認してください。\n"
-            f"（パスワードを変更するとトークンも新しくなります。"
-            f"python -m comken.credentials で登録し直してください）"
-        )
-
-    session_id = root.find(f".//{_SOAP_NS}sessionId")
-    server_url = root.find(f".//{_SOAP_NS}serverUrl")
-    if session_id is None or server_url is None:
-        raise SalesforceError(f"ログインレスポンスを解釈できませんでした: {xml_text[:200]}")
-
-    # serverUrl は https://xxx.my.salesforce.com/services/Soap/u/60.0/00D... の形式。
-    # インスタンス URL 部分（/services より前）だけを使う
-    instance_url = server_url.text.split("/services")[0]
-    return session_id.text, instance_url
-
-
-def _dicts_to_csv(records: list[dict]) -> str:
-    """辞書のリストを Bulk API 用の CSV 文字列に変換する。"""
-    fieldnames = list(records[0].keys())
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=fieldnames, lineterminator="\n")
-    writer.writeheader()
-    writer.writerows(records)
-    return buf.getvalue()
-
-
-def _csv_to_dicts(text: str) -> list[dict]:
-    """Bulk API が返す CSV 文字列を辞書のリストに変換する。"""
-    return list(csv.DictReader(io.StringIO(text)))
-
-
 class SalesforceApiClient:
     """Salesforce API クライアント（requests 版）。
 
@@ -498,3 +455,48 @@ class SalesforceApiClient:
             time.sleep(self.BULK_POLL_INTERVAL)
 
         raise TimeoutError(f"Bulk ジョブがタイムアウトしました（{self.BULK_TIMEOUT}秒）")
+
+
+# ── 内部ヘルパー ──────────────────────────────────────────────────────────────
+
+def _parse_login_response(xml_text: str) -> tuple[str, str]:
+    """SOAP ログインのレスポンスから (セッションID, インスタンスURL) を取り出す。
+
+    Raises:
+        SalesforceError: ログイン失敗（faultstring がある）または形式が不正な場合。
+    """
+    root = ET.fromstring(xml_text)
+
+    fault = root.find(".//faultstring")
+    if fault is not None:
+        raise SalesforceError(
+            f"Salesforce へのログインに失敗しました: {fault.text}\n"
+            f"ユーザー名・パスワード・セキュリティトークンを確認してください。\n"
+            f"（パスワードを変更するとトークンも新しくなります。"
+            f"python -m comken.credentials で登録し直してください）"
+        )
+
+    session_id = root.find(f".//{_SOAP_NS}sessionId")
+    server_url = root.find(f".//{_SOAP_NS}serverUrl")
+    if session_id is None or server_url is None:
+        raise SalesforceError(f"ログインレスポンスを解釈できませんでした: {xml_text[:200]}")
+
+    # serverUrl は https://xxx.my.salesforce.com/services/Soap/u/60.0/00D... の形式。
+    # インスタンス URL 部分（/services より前）だけを使う
+    instance_url = server_url.text.split("/services")[0]
+    return session_id.text, instance_url
+
+
+def _dicts_to_csv(records: list[dict]) -> str:
+    """辞書のリストを Bulk API 用の CSV 文字列に変換する。"""
+    fieldnames = list(records[0].keys())
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(records)
+    return buf.getvalue()
+
+
+def _csv_to_dicts(text: str) -> list[dict]:
+    """Bulk API が返す CSV 文字列を辞書のリストに変換する。"""
+    return list(csv.DictReader(io.StringIO(text)))

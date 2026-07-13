@@ -50,20 +50,6 @@ def col_to_num(letter: str) -> int:
     return result
 
 
-def _normalize(value) -> str:
-    """比較用に値を文字列へ揃える。
-
-    CSV は全部 str、Excel は int / float / None で返ってくるため、
-    そのまま == で比べると「"1000" と 1000」が差分扱いになってしまう。
-    None は ""、整数値の float（1000.0）は int（1000）を経由して文字列にする。
-    """
-    if value is None:
-        return ""
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    return str(value).strip()
-
-
 def diff_row(before: dict, after: dict) -> dict[str, tuple]:
     """1行同士を比較し、値が異なる列だけを {列名: (変更前, 変更後)} で返す。
 
@@ -169,3 +155,17 @@ def diff_rows(
             )
 
     return DiffResult(added=added, removed=removed, changed=changed)
+
+
+def _normalize(value) -> str:
+    """比較用に値を文字列へ揃える。
+
+    CSV は全部 str、Excel は int / float / None で返ってくるため、
+    そのまま == で比べると「"1000" と 1000」が差分扱いになってしまう。
+    None は ""、整数値の float（1000.0）は int（1000）を経由して文字列にする。
+    """
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return str(value).strip()

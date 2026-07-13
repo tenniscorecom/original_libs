@@ -32,11 +32,6 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 
-def _display_width(value) -> int:
-    """列幅計算用の表示幅を返す（全角文字は2文字ぶんとして数える）。"""
-    return sum(2 if ord(ch) > 0xFF else 1 for ch in str(value))
-
-
 class Sheet:
     """1枚のワークシートのラッパー。ExcelFile.sheet() から取得する。
 
@@ -137,3 +132,8 @@ class Sheet:
         if self.ws.max_row > 1 or self.ws.max_column > 1:
             return False
         return self.ws.cell(row=1, column=1).value is None
+
+
+def _display_width(value) -> int:
+    """列幅計算用の表示幅を返す（全角文字は2文字ぶんとして数える）。"""
+    return sum(2 if ord(ch) > 0xFF else 1 for ch in str(value))

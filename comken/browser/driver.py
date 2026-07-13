@@ -14,28 +14,6 @@ from .options import BrowserOptions
 logger = logging.getLogger(__name__)
 
 
-def _resolve_download_dir(
-    download_dir: "str | os.PathLike | DownloadDir | None",
-    options_download_dir: "str | None",
-) -> DownloadDir:
-    """download_dir 引数を DownloadDir に揃える。
-
-    - DownloadDir ならそのまま使う
-    - パス（str / Path）なら固定フォルダの DownloadDir に包む
-    - 未指定かつ BrowserOptions.DOWNLOAD_DIR が設定済み → 固定フォルダ
-    - 未指定かつ BrowserOptions.DOWNLOAD_DIR が None → 一時フォルダを自動作成
-
-    どの指定方法でも d.download_dir.wait() が使える。
-    """
-    if isinstance(download_dir, DownloadDir):
-        return download_dir
-    if download_dir:
-        return DownloadDir(path=download_dir)
-    if options_download_dir:
-        return DownloadDir(path=options_download_dir)
-    return DownloadDir()  # 一時フォルダ（EdgeDriver の with 終了時に自動削除）
-
-
 class EdgeDriver:
     """Edge WebDriver のラッパー。with 文で確実に終了できる。
 
@@ -208,3 +186,25 @@ class EdgeDriver:
             # _driver 未設定時の無限再帰と、copy/pickle 等の内部属性探索を防ぐ
             raise AttributeError(name)
         return getattr(self._driver, name)
+
+
+def _resolve_download_dir(
+    download_dir: "str | os.PathLike | DownloadDir | None",
+    options_download_dir: "str | None",
+) -> DownloadDir:
+    """download_dir 引数を DownloadDir に揃える。
+
+    - DownloadDir ならそのまま使う
+    - パス（str / Path）なら固定フォルダの DownloadDir に包む
+    - 未指定かつ BrowserOptions.DOWNLOAD_DIR が設定済み → 固定フォルダ
+    - 未指定かつ BrowserOptions.DOWNLOAD_DIR が None → 一時フォルダを自動作成
+
+    どの指定方法でも d.download_dir.wait() が使える。
+    """
+    if isinstance(download_dir, DownloadDir):
+        return download_dir
+    if download_dir:
+        return DownloadDir(path=download_dir)
+    if options_download_dir:
+        return DownloadDir(path=options_download_dir)
+    return DownloadDir()  # 一時フォルダ（EdgeDriver の with 終了時に自動削除）

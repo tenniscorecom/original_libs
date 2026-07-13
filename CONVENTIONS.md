@@ -131,6 +131,43 @@ my_project/
 
 > **`src/main.py` にしない理由:** `src/main.py` にすると `Config("../config.ini")` と上の階層を参照する必要が生じる。コードは下の階層（`src/`）だけを参照するのが自然。
 
+### モジュール内の並び順
+
+「上から順に読めば、重要なものから細部へ進む」新聞スタイルで統一する。
+レビューや読解のとき、ファイルの前半だけで全体像がつかめる。
+
+| 順番 | 置くもの |
+|---|---|
+| 1 | モジュール docstring（役割と使い方） |
+| 2 | import |
+| 3 | `logger`・型変数（`TypeVar` / `ParamSpec`） |
+| 4 | 定数・定数クラス（`Color`, `SortBy`, `Encoding` 等の選択肢クラス含む） |
+| 5 | 主役の公開クラス（モジュール名が指すもの） |
+| 6 | その他の公開クラス・公開関数 |
+| 7 | 内部ヘルパー（`_` プレフィックス）— **必ず最後** |
+
+```python
+"""handler.py — ○○ユーティリティ"""   # 1. docstring
+import logging                          # 2. import
+
+logger = logging.getLogger(__name__)    # 3. logger
+
+DEFAULT_TIMEOUT = 30                    # 4. 定数
+
+class CsvReader:                        # 5. 主役の公開クラス
+    ...
+
+def merge_csv(paths: list) -> Path:     # 6. 公開関数
+    ...
+
+def _detect_encoding(path: Path) -> str:  # 7. 内部ヘルパー
+    ...
+```
+
+**例外:** クラス属性の初期化（クラス本体）が import 時に呼ぶヘルパーは、
+Python の実行順の都合でそのクラスより上に置くしかない。
+その場合は `# NOTE:` コメントで「クラス定義時に使うため上に置く」と理由を書く。
+
 ---
 
 ## 公開 API の管理

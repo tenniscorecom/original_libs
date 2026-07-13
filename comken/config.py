@@ -37,53 +37,6 @@ from .exceptions import ConfigError
 from .utils.file import cleanup_stale_tmp as _cleanup_stale_tmp
 
 
-def _split_list_items(text: str) -> list[str]:
-    """カンマまたは改行区切りの文字列をリストに変換する。空文字は除外する。"""
-    items = text.replace("\n", ",").split(",")
-    return [s.strip() for s in items if s.strip()]
-
-
-def _parse_value(
-    cfg: configparser.ConfigParser, section: str, key: str
-) -> bool | int | float | Path | list[str] | str:
-    """ini の値を適切な Python 型に変換して返す。
-
-    変換の優先順位:
-        1. true / false（大文字小文字問わず）→ bool
-        2. [a, b, c] → list[str]（改行区切りも可）
-        3. 絶対パス（C:\\ / \\\\ / / で始まる）→ Path
-        4. 整数に変換できる → int
-        5. 小数に変換できる → float
-        6. それ以外 → str
-
-    文字列として使いたい数値（例: シート名 "2024"）はコード側で str() に変換する。
-    """
-    value = cfg.get(section, key).strip()
-    lower = value.lower()
-
-    if lower == "true":
-        return True
-    if lower == "false":
-        return False
-
-    if value.startswith("[") and value.endswith("]"):
-        return _split_list_items(value[1:-1])
-
-    if len(value) >= 2 and (value[1:3] == ":\\" or value[:2] == "\\\\" or value[0] == "/"):
-        return Path(value)
-
-    try:
-        return int(value)
-    except ValueError:
-        pass
-    try:
-        return float(value)
-    except ValueError:
-        pass
-
-    return value
-
-
 class Config:
     """config.ini を読み込み、config.SECTION.KEY の形式でアクセスできるクラス。
 
@@ -163,7 +116,96 @@ class Config:
         return _split_list_items(value)
 
 
-# ── エディタ補完用スタブの生成 ─────────────────────────────────────────────────
+def generate_stub(
+    ini_path: str | Path = "config.ini", output_path: str | Path | None = None
+) -> Path:
+    """config.ini からエディタ補完用の型スタブ（.pyi）を手動生成する。
+
+    通常は Config() を呼ぶたびに自動更新されるため、手動で実行する必要はない。
+    「コードをまだ書いていないが先にスタブだけ作りたい」場合に使う:
+
+        python -m comken.config
+
+    Args:
+        ini_path: 読み込む config.ini のパス。
+        output_path: スタブの出力先。省略時は config.ini と同じ場所を基準に
+                     src/config.pyi → config.pyi の順に決める。
+
+    Returns:
+        生成したスタブファイルのパス。
+
+    Raises:
+        ConfigError: config.ini が見つからない場合、または出力先を決められない場合
+                     （src/config.py も config.py も存在しない）。
+    """
+    cfg = configparser.ConfigParser()
+    loaded = cfg.read(ini_path, encoding="utf-8-sig")
+    if not loaded:
+        raise ConfigError(ConfigError.MSG.format(path=Path(ini_path).resolve()))
+
+    if output_path is None:
+        output_path = _resolve_stub_path(ini_path)
+        if output_path is None:
+            raise ConfigError(
+                ConfigError.MSG_STUB_TARGET.format(path=Path(ini_path).resolve().parent)
+            )
+    output_path = Path(output_path)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(_build_stub_content(cfg), encoding="utf-8")
+    return output_path
+
+
+# ── 内部ヘルパー：ini 値の型変換 ───────────────────────────────────────────────
+
+def _split_list_items(text: str) -> list[str]:
+    """カンマまたは改行区切りの文字列をリストに変換する。空文字は除外する。"""
+    items = text.replace("\n", ",").split(",")
+    return [s.strip() for s in items if s.strip()]
+
+
+def _parse_value(
+    cfg: configparser.ConfigParser, section: str, key: str
+) -> bool | int | float | Path | list[str] | str:
+    """ini の値を適切な Python 型に変換して返す。
+
+    変換の優先順位:
+        1. true / false（大文字小文字問わず）→ bool
+        2. [a, b, c] → list[str]（改行区切りも可）
+        3. 絶対パス（C:\\ / \\\\ / / で始まる）→ Path
+        4. 整数に変換できる → int
+        5. 小数に変換できる → float
+        6. それ以外 → str
+
+    文字列として使いたい数値（例: シート名 "2024"）はコード側で str() に変換する。
+    """
+    value = cfg.get(section, key).strip()
+    lower = value.lower()
+
+    if lower == "true":
+        return True
+    if lower == "false":
+        return False
+
+    if value.startswith("[") and value.endswith("]"):
+        return _split_list_items(value[1:-1])
+
+    if len(value) >= 2 and (value[1:3] == ":\\" or value[:2] == "\\\\" or value[0] == "/"):
+        return Path(value)
+
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        pass
+
+    return value
+
+
+# ── 内部ヘルパー：エディタ補完用スタブの生成 ───────────────────────────────────
 
 _STUB_HEADER = '''"""config.ini から自動生成されたエディタ補完用スタブ。手で編集しない。
 
@@ -245,46 +287,6 @@ def _update_stub(cfg: configparser.ConfigParser, ini_path: str | Path) -> None:
         os.replace(tmp_path, stub_path)
     except OSError:
         pass  # 読み取り専用フォルダ等。補完が更新されないだけで実行には影響しない
-
-
-def generate_stub(
-    ini_path: str | Path = "config.ini", output_path: str | Path | None = None
-) -> Path:
-    """config.ini からエディタ補完用の型スタブ（.pyi）を手動生成する。
-
-    通常は Config() を呼ぶたびに自動更新されるため、手動で実行する必要はない。
-    「コードをまだ書いていないが先にスタブだけ作りたい」場合に使う:
-
-        python -m comken.config
-
-    Args:
-        ini_path: 読み込む config.ini のパス。
-        output_path: スタブの出力先。省略時は config.ini と同じ場所を基準に
-                     src/config.pyi → config.pyi の順に決める。
-
-    Returns:
-        生成したスタブファイルのパス。
-
-    Raises:
-        ConfigError: config.ini が見つからない場合、または出力先を決められない場合
-                     （src/config.py も config.py も存在しない）。
-    """
-    cfg = configparser.ConfigParser()
-    loaded = cfg.read(ini_path, encoding="utf-8-sig")
-    if not loaded:
-        raise ConfigError(ConfigError.MSG.format(path=Path(ini_path).resolve()))
-
-    if output_path is None:
-        output_path = _resolve_stub_path(ini_path)
-        if output_path is None:
-            raise ConfigError(
-                ConfigError.MSG_STUB_TARGET.format(path=Path(ini_path).resolve().parent)
-            )
-    output_path = Path(output_path)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_build_stub_content(cfg), encoding="utf-8")
-    return output_path
 
 
 if __name__ == "__main__":
