@@ -3,7 +3,7 @@
 作成日: 2026-07-13
 背景: 会社の RPA 環境（WinActor onCloud → 実行PC 8台が順番に稼働）で Salesforce API を使う方針になった。
 どの認証フローを採用するか未確定のため、選択肢を整理しておく。
-関連: [CONVENTIONS.md](../CONVENTIONS.md)、`comken/salesforce_requests`
+関連: [CONVENTIONS.md](../CONVENTIONS.md)、`comken/salesforce`
 
 ---
 
@@ -13,7 +13,7 @@
   → 「管理サーバーで暗号化して8台に配布」は原理的に不可。成立するのは
   「管理サーバー側で復号し、WinActor がシナリオ変数として平文を実行PCに渡す」形。
 - 実行PCはヘッドレス運用（人がブラウザでログイン操作をする前提は置けない）。
-- comken の `salesforce_requests` は現状 **パターン1（SOAP login）のみ対応**。
+- comken の `salesforce` は現状 **パターン1（SOAP login）のみ対応**。
   Connected App 不要で動く設計になっている。
 
 ---
@@ -22,7 +22,7 @@
 
 ### パターン1: ユーザー名 + パスワード + セキュリティトークン（SOAP login）
 
-simple-salesforce と同じ方式。`salesforce_requests` が現在対応しているのはこれ。
+simple-salesforce と同じ方式。`salesforce` が現在対応しているのはこれ。
 
 | 項目 | 内容 |
 |---|---|
@@ -54,7 +54,7 @@ client_id / client_secret だけでアクセストークンを毎回取得する
 - **リフレッシュトークン問題が消える**のが最大の利点。保存するのは client_id/secret だけで、
   パスワード変更・トークン失効と無縁。
 - 8台構成でも配る機密が2つで済み、全台共通でよい。
-- `salesforce_requests` への追加実装が必要（トークンエンドポイントへの POST 1本なので小さい）。
+- `salesforce` への追加実装が必要（トークンエンドポイントへの POST 1本なので小さい）。
 
 #### 仕組み
 
@@ -141,7 +141,7 @@ def get_access_token(client_id: str, client_secret: str) -> tuple[str, str]:
     return body["access_token"], body["instance_url"]
 ```
 
-`salesforce_requests` の `report.py` はすでに `instance_url + access_token` を受け取る設計なので
+`salesforce` の `report.py` はすでに `instance_url + access_token` を受け取る設計なので
 そのまま接続できる。`SimpleSF` / Bulk 側はログイン部分の差し替え
 （SOAP login → 上記 POST）を追加すれば対応完了。実装コストは小さい。
 

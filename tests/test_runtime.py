@@ -109,23 +109,9 @@ class TestDryRun:
         assert not path.exists()
         assert "[DRY-RUN]" in caplog.text
 
-    def test_teams_send_skipped(self, caplog):
-        """dry-run 中は Teams に送信されないことを確認する（通信自体が発生しない）。"""
-        from unittest.mock import patch
-
-        from comken.teams import TeamsNotifier
-
-        comken.set_dry_run(True)
-        with patch("urllib.request.urlopen") as mock_open:
-            with caplog.at_level(logging.INFO):
-                TeamsNotifier("https://dummy/webhook").send("テスト")
-
-        mock_open.assert_not_called()
-        assert "[DRY-RUN]" in caplog.text
-
     def test_salesforce_insert_returns_dummy_id(self, caplog):
         """dry-run 中の Salesforce insert はダミー ID を返すことを確認する。"""
-        from comken.salesforce_requests.api import SalesforceApiClient
+        from comken.salesforce.api import SalesforceApiClient
 
         client = SalesforceApiClient.__new__(SalesforceApiClient)
         client._session_id = "S"

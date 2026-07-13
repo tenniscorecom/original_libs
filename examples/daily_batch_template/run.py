@@ -1,8 +1,8 @@
 """
-雛形: 日次バッチ（当日ファイルの取得 → Excel レポート → Teams 通知）
+雛形: 日次バッチ（当日ファイルの取得 → Excel レポート）
 
 新しい自動化ツールを作るときは、このフォルダをコピーして始めると速い。
-「入力ファイルを探す → 加工する → 出力する → 結果を通知する」という
+「入力ファイルを探す → 加工する → 出力する」という
 実務でいちばん多い形に、ログとエラー処理の書き方をひととおり含めてある。
 
 事前準備:
@@ -16,10 +16,9 @@
 
 import logging
 
-from comken import OriginalLibsError, TeamsError, setup_logger
+from comken import OriginalLibsError, setup_logger
 from comken.csv import CsvReader
 from comken.excel import ExcelFile
-from comken.teams import CardColor, TeamsNotifier
 from comken.utils import FileFinder, FileNameBuilder
 
 from .config import config
@@ -29,18 +28,6 @@ BATCH_NAME = "日次売上レポート"
 INPUT_PATTERN = "*.csv"
 
 logger = logging.getLogger(__name__)
-
-
-def notify(title: str, body: str, color: str = CardColor.DEFAULT) -> None:
-    """Teams に通知する。URL が未設定ならスキップし、送信に失敗しても本処理は止めない。"""
-    if not config.TEAMS.WEBHOOK_URL:
-        logger.info("Teams 通知はスキップ（WEBHOOK_URL 未設定）: %s", title)
-        return
-    try:
-        TeamsNotifier(config.TEAMS.WEBHOOK_URL).send_card(title, body=body, color=color)
-    except TeamsError:
-        # 通知はあくまで付加機能。失敗しても本処理の結果（出力ファイル）は生きている
-        logger.warning("Teams への通知に失敗しました（処理は続行）", exc_info=True)
 
 
 def main() -> None:
@@ -66,22 +53,19 @@ def main() -> None:
         s.freeze_header()
         f.save()
     logger.info("出力: %s", output_path)
-
-    notify(f"{BATCH_NAME} 完了", body=f"{len(rows)} 件を処理しました\n出力: {output_path}")
+    logger.info("%s 完了（%d 件）", BATCH_NAME, len(rows))
 
 
 if __name__ == "__main__":
     setup_logger("main")
     # 動きを確認したいだけのとき: from comken import set_dry_run; set_dry_run(True)
-    # （ファイル出力・Teams 送信をスキップして、流れだけ [DRY-RUN] ログで確認できる）
+    # （ファイル出力をスキップして、流れだけ [DRY-RUN] ログで確認できる）
     try:
         main()
     except OriginalLibsError as e:
-        # comken のエラーはメッセージに対処法が入っている → そのまま通知して調査の起点にする
+        # comken のエラーはメッセージに対処法が入っている → ログを調査の起点にする
         logger.error("処理を中断しました: %s", e)
-        notify(f"{BATCH_NAME} エラー", body=str(e), color=CardColor.RED)
         raise
-    except Exception as e:
+    except Exception:
         logger.error("予期しないエラーが発生しました", exc_info=True)
-        notify(f"{BATCH_NAME} エラー", body=str(e), color=CardColor.RED)
         raise

@@ -1,21 +1,28 @@
 """
-salesforce — 旧 import パスの互換シム
+salesforce — Salesforce API クライアント
 
-Salesforce クライアントは salesforce_requests に移動した。
-このモジュール（comken.salesforce）は旧コードを壊さないための入り口で、
-新しいコードでは使わないこと:
+    from comken.salesforce import SalesforceApiClient
 
-    from comken.salesforce_requests import SalesforceApiClient
+| クラス | 依存 | 用途 |
+|---|---|---|
+| SalesforceApiClient（推奨） | requests | CRUD・SOQL・レポート・Bulk 2.0 |
+| SalesforceClient | simple-salesforce | CRUD・SOQL |
+| SalesforceBulkClient | simple-salesforce | Bulk 一括操作 |
+| SalesforceRestClient | requests | REST API 直接操作 |
+| SalesforceReportClient | requests | レポート取得 |
 """
 
-from ..deprecation import warn_renamed
-from ..salesforce_requests import SalesforceApiClient as _SalesforceApiClient
+from .api import SalesforceApiClient
+from .report import SalesforceReportClient
+from .rest_api import SalesforceRestClient
 
-__all__ = ["SalesforceApiClient"]
+__all__ = ["SalesforceApiClient", "SalesforceRestClient", "SalesforceReportClient"]
 
+# simple-salesforce 版はインストールされている場合だけ使える（未導入でも import エラーにしない）
+try:
+    from .bulk import SalesforceBulkClient
+    from .simple_sf import SalesforceClient
 
-def __getattr__(name):
-    if name == "SalesforceApiClient":
-        warn_renamed("comken.salesforce", "comken.salesforce_requests")
-        return _SalesforceApiClient
-    raise AttributeError(name)
+    __all__ += ["SalesforceClient", "SalesforceBulkClient"]
+except ImportError:  # simple-salesforce 未導入
+    pass

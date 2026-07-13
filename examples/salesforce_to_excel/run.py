@@ -21,7 +21,7 @@ import logging
 from comken import setup_logger
 from comken.credentials import Credentials
 from comken.excel import ExcelFile
-from comken.salesforce_requests import SalesforceApiClient
+from comken.salesforce import SalesforceApiClient
 from comken.utils import FileNameBuilder
 
 from .config import config

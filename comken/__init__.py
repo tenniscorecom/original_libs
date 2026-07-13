@@ -14,7 +14,6 @@ from .exceptions import (
     OriginalLibsError,
     SalesforceError,
     SheetNotFoundError,
-    TeamsError,
 )
 from .logger import setup_logger
 from .runtime import is_debug, is_dry_run, set_debug, set_dry_run
@@ -34,7 +33,6 @@ __all__ = [
     "CsvError",
     "ConfigError",
     "SalesforceError",
-    "TeamsError",
     "CredentialError",
     "CredentialNotFoundError",
     "InvalidCredentialNameError",

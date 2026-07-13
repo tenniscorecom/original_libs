@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# salesforce_requests を使う場合のみ（simple-salesforce 版クライアントは任意）
+# salesforce を使う場合のみ（simple-salesforce 版クライアントは任意）
 salesforce = ["simple-salesforce>=1.12", "requests>=2.28"]
 # comken.pdf（PDF の結合・分割・テキスト抽出）を使う場合のみ
 pdf = ["pypdf>=4.0"]

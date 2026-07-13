@@ -7,7 +7,7 @@
 import pytest
 
 from comken.exceptions import SalesforceError
-from comken.salesforce_requests import api as requests_api
+from comken.salesforce import api as requests_api
 
 IMPLEMENTATIONS = pytest.mark.parametrize("api", [requests_api], ids=["requests"])
 
@@ -118,16 +118,3 @@ class TestUpsert:
         assert captured["method"] == "PATCH"
         assert captured["path"].endswith("/sobjects/Account/ExternalId__c/001")
         assert captured["body"] == {"Name": "取引先"}
-
-
-class TestOldImportPath:
-    """旧 import パス（comken.salesforce）の互換シムのテスト。"""
-
-    def test_old_import_warns_and_returns_client(self):
-        """旧パスからの import は FutureWarning 付きで動くことを確認する。"""
-        import comken.salesforce
-
-        with pytest.warns(FutureWarning, match="salesforce"):
-            cls = comken.salesforce.SalesforceApiClient
-
-        assert cls is requests_api.SalesforceApiClient

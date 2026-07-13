@@ -11,9 +11,3 @@ INPUT_FOLDER = C:\作業\input
 [REPORT]
 ; 出力先はローカルにする（NAS は読み込み元・モジュール置き場。新規出力先にはしない）
 OUTPUT_FOLDER = C:\作業\reports
-
-[TEAMS]
-; Teams チャンネル → 「…」 → ワークフロー →
-; 「Webhook 要求を受信したらチャネルに投稿する」テンプレートで取得した URL を貼る。
-; 空のままなら通知はスキップされる
-WEBHOOK_URL =

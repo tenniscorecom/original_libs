@@ -1,4 +1,4 @@
-﻿# original_libs
+# original_libs
 
 業務自動化で使う Python 共通ライブラリ。
 
@@ -48,8 +48,7 @@ with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
 | Excel（openpyxl） | Excel の読み書き（数式・マクロは自動で win32com を使用） |
 | Windows（pywin32） | Excel COM 操作・ウィンドウ操作・レジストリ読み取り |
 | Browser（Edge） | Edge ブラウザ操作 |
-| Salesforce | CRUD・SOQL・レポート・Bulk（salesforce_requests。requests 使用） |
-| Teams | Teams チャンネルへの通知（Power Automate Webhook。標準ライブラリのみ） |
+| Salesforce | CRUD・SOQL・レポート・Bulk（salesforce。requests 使用） |
 | PDF | PDF の結合・分割・テキスト抽出（pypdf。導入できない環境では使わない） |
 | utils | ファイル操作・データ比較・テキスト正規化・待機・リトライ・時間計測・zip・特殊フォルダ取得 |
 
@@ -62,7 +61,6 @@ with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
 | `Color` | `from comken.excel import Color` | セルの背景色 | `set_fill(color=Color.RED)` |
 | `SortBy` | `from comken.utils import SortBy` | FileFinder.latest の並び順 | `latest(by=SortBy.UPDATED)` |
 | `Encoding` | `from comken.csv import Encoding` | CSV の文字コード | `CsvReader(path, encoding=Encoding.CP932)` |
-| `CardColor` | `from comken.teams import CardColor` | Teams 通知カードのタイトル色 | `send_card("エラー", color=CardColor.RED)` |
 
 ---
 
@@ -114,7 +112,7 @@ comken.__version__        # → "0.2.0"
 comken.set_debug(True)
 
 # dry-run モード: 外部に影響する操作を実行せず、内容だけ [DRY-RUN] 付きで INFO ログに出す。
-# 対象: ファイル移動・コピー、Excel/CSV の保存、Teams 送信、Salesforce の書き込み。
+# 対象: ファイル移動・コピー、Excel/CSV の保存、Salesforce の書き込み。
 # 読み取り（CSV・Excel の読み込み、SOQL クエリ）は通常どおり実行される
 comken.set_dry_run(True)
 ```
@@ -1162,7 +1160,7 @@ python -m examples.sample_login.run
 ## Salesforce
 
 ```python
-from comken.salesforce_requests import SalesforceApiClient
+from comken.salesforce import SalesforceApiClient
 ```
 
 | クラス | 依存 | 用途 |
@@ -1182,7 +1180,7 @@ from comken.salesforce_requests import SalesforceApiClient
 
 ```python
 from comken.credentials import Credentials
-from comken.salesforce_requests import SalesforceApiClient
+from comken.salesforce import SalesforceApiClient
 
 cred = Credentials("salesforce")
 sf = SalesforceApiClient(
@@ -1225,7 +1223,7 @@ big = sf.bulk_query("SELECT Id, Name FROM Account")  # 数万件以上の取得
 
 ```python
 from comken.credentials import Credentials
-from comken.salesforce_requests import SalesforceClient
+from comken.salesforce import SalesforceClient
 
 # 事前に python -m comken.credentials で登録しておく
 cred = Credentials("salesforce") # 本番・テストの切り替えは config.ini のプレフィックスで
@@ -1249,7 +1247,7 @@ sf.delete("Account", record_id=new_id)
 ### SalesforceRestClient（REST API）
 
 ```python
-from comken.salesforce_requests import SalesforceRestClient
+from comken.salesforce import SalesforceRestClient
 
 sf = SalesforceRestClient.from_password(
     username="user@example.com",
@@ -1272,7 +1270,7 @@ sf.delete("Account", record_id=new_id)
 ### SalesforceReportClient（レポート取得）
 
 ```python
-from comken.salesforce_requests import SalesforceReportClient
+from comken.salesforce import SalesforceReportClient
 
 sf = SalesforceReportClient(
     instance_url="https://xxx.salesforce.com",
@@ -1317,49 +1315,6 @@ n = page_count("報告書.pdf")                                  # ページ数
 
 ---
 
-## Teams 通知
-
-処理の完了・エラーを Teams チャンネルに通知する。標準ライブラリのみで動く（requests 不要）。
-Power Automate（ワークフロー）の Webhook を使う（旧来の Incoming Webhook コネクタは廃止方向）。
-
-事前設定（チャンネルごとに1回だけ）:
-Teams チャンネル → 「…」メニュー → ワークフロー →
-「**Webhook 要求を受信したらチャネルに投稿する**」テンプレート → URL をコピー。
-URL は認証情報なので config.ini か credentials に保存する（コードに直書きしない）。
-
-```python
-from comken.teams import CardColor, TeamsNotifier
-
-notifier = TeamsNotifier(config.get("TEAMS", "webhook_url"))
-
-# テキストだけ
-notifier.send("売上集計が完了しました")
-
-# タイトル + 本文（カード形式。タイトルが太字・大きめで表示される）
-notifier.send_card("売上集計 完了", body="3,421 件を処理しました")
-
-# エラー通知（タイトルの色を変える）
-try:
-    main()
-except Exception as e:
-    notifier.send_card("売上集計 エラー", body=str(e), color=CardColor.RED)
-    raise
-```
-
-通知に失敗した場合（URL 間違い・ネットワーク断）は `TeamsError` になる。
-通知失敗で本処理を止めたくない場合は try/except で握りつぶす:
-
-```python
-from comken.exceptions import TeamsError
-
-try:
-    notifier.send("完了")
-except TeamsError:
-    logger.warning("Teams への通知に失敗しました（処理は続行）", exc_info=True)
-```
-
----
-
 ## パッケージ構成
 
 ```mermaid
@@ -1371,8 +1326,7 @@ graph LR
     comken --> csv["csv\nCSV"]
     comken --> windows["windows\nCOM / Window"]
     comken --> browser["browser\nブラウザ"]
-    comken --> salesforce_requests["salesforce_requests\nSalesforce（requests）"]
-    comken --> teams["teams\nTeams 通知"]
+    comken --> salesforce["salesforce\nSalesforce（requests）"]
     comken --> pdf["pdf\nPDF（pypdf）"]
 ```
 
@@ -1436,3 +1390,4 @@ flowchart LR
 | 2026-07-13 | examples を拡充。CSV→Excel レポート・キー突合転記・CSV 差分レポート（オフラインでそのまま動く3本）、Salesforce→Excel、日次バッチ雛形（daily_batch_template。新規プロジェクトのコピー元）と examples/README.md を追加 |
 | 2026-07-13 | ExcelComHandler: 上書き保存 save() 追加、save_as のパスワードが効かない問題を修正（FileFormat を常に明示。形式変換は file_format 引数）、close() でプロセスが残る問題を修正、AskToUpdateLinks=False 追加。CONVENTIONS に「モジュール内の並び順」を追加し全体を整理。docs/（機能カタログ・コードリーディングガイド・設計メモ）を追加 |
 | 2026-07-13 | requests 採用が確定したため salesforce_std を削除（salesforce_requests に一本化。旧 import パス comken.salesforce は警告付きで動作） |
+| 2026-07-14 | teams モジュールを削除（Power Automate 側が OAuth 必須化の方向で Webhook 運用が不安定なため）。salesforce_requests を salesforce に改名（一本化により接尾辞が不要になった） |

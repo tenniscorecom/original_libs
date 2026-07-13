@@ -12,7 +12,7 @@ comken の使い方を「動くコード」で覚えるためのサンプル。
 | 3 | csv_diff_report | 昨日と今日の CSV の差分を色付き Excel レポートに | diff_rows / CsvWriter / set_fill | なし（データを自動生成） |
 | 4 | sample_login | ブラウザ自動化（Page Object Model の一式） | EdgeDriver / BasePage / Locator | Edge + msedgedriver |
 | 5 | salesforce_to_excel | Salesforce のデータを Excel に出力 | Credentials / SalesforceApiClient / Config | Salesforce 環境 + 認証情報の登録 |
-| 6 | daily_batch_template | 日次バッチの雛形（新規プロジェクトのコピー元） | setup_logger / FileFinder / TeamsNotifier | config.ini の作成 |
+| 6 | daily_batch_template | 日次バッチの雛形（新規プロジェクトのコピー元） | setup_logger / FileFinder / ExcelFile | config.ini の作成 |
 
 ## 実行方法
 
@@ -32,7 +32,7 @@ python -m examples.csv_to_excel_report.run
 ## 新しいツールを作るときは
 
 `daily_batch_template` をコピーして始めるのが早い。
-「入力ファイルを探す → 加工する → Excel を出力する → Teams に通知する」という
+「入力ファイルを探す → 加工する → Excel を出力する」という
 実務でいちばん多い構成に、エラー処理・ログ・config.ini の書き方が入っている。
 
 ブラウザ自動化のツールなら `sample_login` の pages/ 構成（Page Object Model）を合わせて使う。
