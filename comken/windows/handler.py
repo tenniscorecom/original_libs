@@ -102,6 +102,9 @@ class ExcelComHandler:
         self._excel = win32com.client.Dispatch("Excel.Application")
         self._excel.Visible = False
         self._excel.DisplayAlerts = False
+        # 外部リンクを持つブックを開いたときの「リンクを更新しますか」ダイアログで
+        # 無人実行が止まるのを防ぐ（DisplayAlerts では抑制されない）
+        self._excel.AskToUpdateLinks = False
         # Open に失敗すると with に入る前に例外で抜けるため、ここで Quit しないと
         # 起動済みの Excel プロセスが残り続ける
         try:
@@ -372,11 +375,20 @@ class ExcelComHandler:
         )
 
     def close(self) -> None:
-        """Excel を閉じる。with 文を使う場合は自動で呼ばれる。"""
-        if self._wb:
-            self._wb.Close(SaveChanges=False)
-        if self._excel:
-            self._excel.Quit()
+        """Excel を閉じる。with 文を使う場合は自動で呼ばれる。
+
+        Close が失敗しても Quit は必ず実行する（Excel プロセスを残さないため）。
+        2回呼んでも安全。
+        """
+        try:
+            if self._wb:
+                self._wb.Close(SaveChanges=False)
+        finally:
+            self._wb = None
+            excel = self._excel
+            self._excel = None
+            if excel:
+                excel.Quit()
 
 
 class WindowHandler:
