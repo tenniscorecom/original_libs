@@ -8,8 +8,9 @@ main.py — エントリポイント
 
 import logging
 
-from comken import OriginalLibsError, config, setup_logger
+from comken import OriginalLibsError, setup_logger
 
+from src.config import config
 from src.run import run
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     # config.SECTION.KEY で config.ini（このフォルダ）の値にアクセスできる。
+    # src/config.py 経由なので、config.REPORT. まで打つとエディタで補完が出る。
     # 例: 出力先フォルダを取り出す（config.ini の [REPORT] OUTPUT_FOLDER）
     output_folder = config.REPORT.OUTPUT_FOLDER
     logger.info("出力先: %s", output_folder)
