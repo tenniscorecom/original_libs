@@ -67,4 +67,9 @@ def setup_logger(name: str = "main", log_dir: str | Path = "logs") -> logging.Lo
     for noisy in ("selenium", "urllib3"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
-    return logging.getLogger(name)
+    app_logger = logging.getLogger(name)
+    # どのバージョンの comken で動いたかをログ先頭に残す（障害調査で効く）
+    from . import __version__
+
+    app_logger.info("comken v%s", __version__)
+    return app_logger

@@ -97,8 +97,9 @@ setx PYTHONPATH \\server\share\tools\comken
 以後、どのプロジェクトからでも `import comken` が共有サーバーの最新版を読む。更新のたびの配布作業はない。
 （共有サーバーの comken を更新すれば、次に import した全プロジェクトが最新になる）
 
-- 共有サーバーが読み取り専用でキャッシュを書けず遅い場合は、各 PC で
-  `setx PYTHONPYCACHEPREFIX %LOCALAPPDATA%\comken-pycache` を足す。
+- **バイトコードキャッシュは自動でローカルに逃がす**: 共有サーバーが読み取り専用でも
+  遅くならないよう、comken は import 時に `.pyc` の出力先を `%LOCALAPPDATA%\comken-pycache`
+  に向ける（`sys.pycache_prefix`）。環境変数 `PYTHONPYCACHEPREFIX` を設定済みの場合はそちらを尊重する。
 - **代償**: import のたびにネットワークを読むので起動が遅く、共有サーバーが落ちると動かない。
   詳しい仕組み・運用（更新/ロールバック/開発との分離）は 仕様書.md の「参照・運用」を参照。
 
@@ -142,12 +143,31 @@ def build_report():
 
 `config.ini` を `config.SECTION.KEY` の形式で読み込む。
 
+**いちばん簡単な使い方**（プロジェクトに `src/config.py` を作らなくてよい）:
+
+```python
+from comken import config
+
+# 初回アクセス時にカレントディレクトリの config.ini を1度だけ読む（遅延読み込み）
+folder = config.REPORT.OUTPUT_FOLDER
+path = config.FILES.INPUT_FOLDER / "東日本.csv"
+
+# config.ini が別の場所にある場合は、最初に使う前に読む場所を指定する
+config.read(r"C:\作業\config.ini")
+```
+
+明示的にインスタンスを持ちたい場合（従来どおり。テストや複数 ini の読み分けに）:
+
 ```python
 from comken.config import Config
 
-config = Config() # カレントディレクトリの config.ini
-config = Config("path/to/config.ini") # パスを指定する場合
+config = Config()                      # カレントディレクトリの config.ini
+config = Config("path/to/config.ini")  # パスを指定する場合
 ```
+
+> **補完（.pyi スタブ）について:** `Config()` を明示的に呼ぶ構成（`src/config.py` を作る）だと
+> エディタ補完用スタブが自動生成される。`from comken import config` の手軽な方式は
+> スタブ生成の起点（`src/config.py`）を持たないため、補完より手軽さを優先する場合に使う。
 
 ```ini
 ; config.ini（プロジェクト固有の非機密設定を書く）

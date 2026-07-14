@@ -213,6 +213,45 @@ class TestConfigListConversion:
         assert Config(ini).S.QUERY == "SELECT Id, Name FROM Account"
 
 
+class TestModuleSingleton:
+    """`from comken import config` の遅延シングルトンのテスト。"""
+
+    @pytest.fixture(autouse=True)
+    def reset_singleton(self):
+        """テスト間でグローバルなシングルトンを持ち越さない。"""
+        import comken.config as config_mod
+
+        config_mod._singleton = None
+        yield
+        config_mod._singleton = None
+
+    def test_read_points_at_given_ini(self, tmp_path):
+        """config.read(path) で指定した config.ini のセクションにアクセスできる。"""
+        import comken.config as config_mod
+
+        ini = tmp_path / "myconf.ini"
+        ini.write_text("[FILES]\nINPUT_FOLDER = C:\\work\\input\n", encoding="utf-8")
+
+        config_mod.read(ini)
+        assert config_mod.FILES.INPUT_FOLDER == Path("C:\\work\\input")
+
+    def test_lazy_default_reads_cwd(self, tmp_path, monkeypatch):
+        """read を呼ばない場合、初回アクセス時にカレントの config.ini を読む。"""
+        import comken.config as config_mod
+
+        (tmp_path / "config.ini").write_text("[REPORT]\nMAX = 5\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+
+        assert config_mod.REPORT.MAX == 5
+
+    def test_unknown_lowercase_attr_raises(self):
+        """大文字でない未知の属性は通常の AttributeError（config.ini を読みに行かない）。"""
+        import comken.config as config_mod
+
+        with pytest.raises(AttributeError):
+            config_mod.nonexistent
+
+
 class TestGenerateStub:
     """generate_stub（エディタ補完用スタブ生成）のテスト。"""
 
@@ -229,7 +268,7 @@ class TestGenerateStub:
 
     def test_generates_typed_sections(self, ini, tmp_path):
         """セクションごとのクラスと型注釈が生成されることを確認する。"""
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         out = generate_stub(ini, tmp_path / "config.pyi")
         text = out.read_text(encoding="utf-8")
@@ -244,7 +283,7 @@ class TestGenerateStub:
 
     def test_config_class_references_sections(self, ini, tmp_path):
         """Config クラスが各セクションクラスを属性に持つことを確認する。"""
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         text = generate_stub(ini, tmp_path / "config.pyi").read_text(encoding="utf-8")
 
@@ -257,7 +296,7 @@ class TestGenerateStub:
 
         出力先は config.ini の場所基準なので、どこから実行しても同じ場所に生成される。
         """
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "config.py").write_text(
@@ -274,14 +313,14 @@ class TestGenerateStub:
 
         （.pyi は同名の .py の隣にないとエディタに認識されないため、置き場がない）
         """
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         with pytest.raises(ConfigError, match="src/config.py"):
             generate_stub(ini)
 
     def test_missing_ini_raises(self, tmp_path):
         """config.ini がない場合は ConfigError になることを確認する。"""
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         with pytest.raises(ConfigError):
             generate_stub(tmp_path / "config.ini", tmp_path / "config.pyi")
@@ -290,7 +329,7 @@ class TestGenerateStub:
         """生成されたスタブが Python として構文エラーにならないことを確認する。"""
         import ast
 
-        from comken.config import generate_stub
+        from comken.config_stub import generate_stub
 
         text = generate_stub(ini, tmp_path / "config.pyi").read_text(encoding="utf-8")
         ast.parse(text)  # 構文エラーなら例外になる
