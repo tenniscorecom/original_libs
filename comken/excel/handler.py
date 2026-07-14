@@ -233,9 +233,7 @@ class ExcelFile:
                     )
                 )
             return [
-                dict(zip(self._headers, row))
-                for row in all_rows
-                if not all(c is None for c in row)
+                dict(zip(self._headers, row)) for row in all_rows if not all(c is None for c in row)
             ]
         all_rows = list(ws.iter_rows(min_row=int(header_row), values_only=True))
         if not all_rows:

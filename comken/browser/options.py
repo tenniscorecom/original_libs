@@ -14,7 +14,6 @@ BrowserOptions: Edge/Chrome 起動オプションの定義クラス。
 """
 
 
-
 class BrowserOptions:
     # ── ドライバー設定 ──
     DRIVER_PATH: str = r"C:\Users\Public\Documents\msedgedriver.exe"

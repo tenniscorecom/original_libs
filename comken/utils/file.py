@@ -295,6 +295,7 @@ class FileFinder:
 
 # ── 内部ヘルパー ──────────────────────────────────────────────────────────────
 
+
 def cleanup_stale_tmp(target: str | Path, max_age_seconds: float = 3600) -> None:
     """アトミック書き込みで残った一時ファイルの残骸を削除する（ライブラリ内部用）。
 

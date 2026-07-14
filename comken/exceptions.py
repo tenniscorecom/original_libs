@@ -95,10 +95,7 @@ class ColumnNotFoundError(OriginalLibsError):
         "存在する列: {existing}\n"
         "CSVのヘッダー（1行目）が変更されていないか確認してください。"
     )
-    MSG_KEY = (
-        "キー列が見つかりません: {key}\n"
-        "存在する列: {existing}"
-    )
+    MSG_KEY = "キー列が見つかりません: {key}\n存在する列: {existing}"
 
 
 class CsvError(OriginalLibsError):
@@ -175,13 +172,11 @@ class InvalidCredentialNameError(CredentialError):
 
 # ── 型変換の警告 ──────────────────────────────────────────────────────────────
 
+
 class Warnings:
     """ライブラリが発行する UserWarning のメッセージテンプレート。"""
 
-    COERCION = (
-        "{param} に {type_name}（{value!r}）が渡されました。"
-        "{expected} に変換します。"
-    )
+    COERCION = "{param} に {type_name}（{value!r}）が渡されました。{expected} に変換します。"
 
 
 def _warn_coerce(value: Any, expected: type[_T], param: str, stacklevel: int = 3) -> _T:
@@ -192,9 +187,7 @@ def _warn_coerce(value: Any, expected: type[_T], param: str, stacklevel: int = 3
     stacklevel はユーザーコードの行番号を警告に表示するために調整する。
     """
     if value is None:
-        raise TypeError(
-            f"{param} に None が渡されました。{expected.__name__} を渡してください。"
-        )
+        raise TypeError(f"{param} に None が渡されました。{expected.__name__} を渡してください。")
     if not isinstance(value, expected):
         warnings.warn(
             Warnings.COERCION.format(

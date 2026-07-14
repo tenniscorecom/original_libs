@@ -62,11 +62,13 @@ class Timer:
 
     def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]:
         """デコレータとして使う（@Timer("処理名")）。"""
+
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             # 呼び出しごとに独立して計測する（同じ Timer を使い回さない）
             with Timer(self._name):
                 return func(*args, **kwargs)
+
         return wrapper
 
 
@@ -88,6 +90,7 @@ def measure(func: Callable[_P, _R]) -> Callable[_P, _R]:
         def build_report():
             ...
     """
+
     @functools.wraps(func)
     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         from ..runtime import is_debug
@@ -99,4 +102,5 @@ def measure(func: Callable[_P, _R]) -> Callable[_P, _R]:
             return func(*args, **kwargs)
         finally:
             logger.debug("%s: %.3f秒", func.__qualname__, time.perf_counter() - start)
+
     return wrapper

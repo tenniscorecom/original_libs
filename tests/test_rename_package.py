@@ -28,9 +28,7 @@ def mini_repo(tmp_path):
     )
     pkg = tmp_path / "comken"
     pkg.mkdir()
-    (pkg / "__init__.py").write_text(
-        "from comken.config import Config\n", encoding="utf-8"
-    )
+    (pkg / "__init__.py").write_text("from comken.config import Config\n", encoding="utf-8")
     (tmp_path / "README.md").write_text(
         "# comken\n\nfrom comken.excel import ExcelFile\n", encoding="utf-8"
     )
@@ -86,9 +84,7 @@ class TestRenamePackage:
         """追加で渡したプロジェクトフォルダの import も置換されることを確認する。"""
         project = tmp_path / "my_project"
         project.mkdir()
-        (project / "main.py").write_text(
-            "from comken.csv import CsvReader\n", encoding="utf-8"
-        )
+        (project / "main.py").write_text("from comken.csv import CsvReader\n", encoding="utf-8")
 
         rename_package("mylib", [project], dry_run=False, root=mini_repo)
 

@@ -468,7 +468,7 @@ class TestDiffRows:
         ]
         after = [
             {"社員番号": "001", "氏名": "山田太郎"},  # 変更
-            {"社員番号": "003", "氏名": "鈴木"},      # 追加（002 は削除）
+            {"社員番号": "003", "氏名": "鈴木"},  # 追加（002 は削除）
         ]
 
         result = diff_rows(before, after, key="社員番号")
@@ -492,7 +492,7 @@ class TestDiffRows:
     def test_key_matches_across_csv_and_excel(self):
         """CSV の "1001" と Excel の 1001.0 がキーとして突合できることを確認する。"""
         before = [{"注文番号": "1001", "金額": "1000"}]  # CSV（全部 str）
-        after = [{"注文番号": 1001.0, "金額": 2000}]     # Excel（数値）
+        after = [{"注文番号": 1001.0, "金額": 2000}]  # Excel（数値）
 
         result = diff_rows(before, after, key="注文番号")
 
@@ -567,6 +567,7 @@ class TestWait:
     def test_seconds_waits(self):
         """seconds() が指定した秒数だけ待つことを確認する（短い値で）。"""
         import time
+
         start = time.monotonic()
         wait.seconds(0.05)
         assert time.monotonic() - start >= 0.04
@@ -615,6 +616,7 @@ class TestPaths:
     def test_temp_dir_is_path(self):
         """temp_dir() が Path オブジェクトを返すことを確認する。"""
         from pathlib import Path
+
         assert isinstance(Paths.temp_dir(), Path)
 
     def test_temp_dir_exists(self):

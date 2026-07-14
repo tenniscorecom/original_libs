@@ -202,9 +202,7 @@ class ExcelComHandler:
                 for row in range(1, last_row + 1)
             ]
             return [
-                dict(zip(self._headers, row))
-                for row in rows
-                if not all(c is None for c in row)
+                dict(zip(self._headers, row)) for row in rows if not all(c is None for c in row)
             ]
         header_row = int(header_row)
         file_headers = [ws.Cells(header_row, col).Value for col in range(1, last_col + 1)]
@@ -365,9 +363,7 @@ class ExcelComHandler:
             # 変換の意図がある場合は file_format の明示を必須にする
             suffix_format = _SUFFIX_TO_FORMAT.get(save_path.suffix.lower())
             if suffix_format is not None and suffix_format != file_format:
-                raise ExcelError(
-                    ExcelError.MSG_FORMAT_MISMATCH.format(suffix=save_path.suffix)
-                )
+                raise ExcelError(ExcelError.MSG_FORMAT_MISMATCH.format(suffix=save_path.suffix))
         # NOTE: FileFormat を省略して SaveAs すると Password / WriteResPassword が
         # 反映されないことがあるため、必ず明示して渡す
         self._wb.SaveAs(

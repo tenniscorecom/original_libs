@@ -45,6 +45,7 @@ def retry(
     Raises:
         最後の実行で出た例外（times 回すべて失敗した場合）。
     """
+
     def decorator(func: Callable[_P, _R]) -> Callable[_P, _R]:
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
@@ -56,8 +57,14 @@ def retry(
                         raise
                     logger.warning(
                         "%s が失敗しました（%d/%d回目）。%s秒後に再実行します: %s",
-                        func.__name__, attempt, times, wait, e,
+                        func.__name__,
+                        attempt,
+                        times,
+                        wait,
+                        e,
                     )
                     time.sleep(wait)
+
         return wrapper
+
     return decorator

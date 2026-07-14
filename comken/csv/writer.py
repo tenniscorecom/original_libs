@@ -80,7 +80,8 @@ class CsvWriter:
             if unknown:
                 logger.warning(
                     "fieldnames にないキーは書き込まれません: %s（fieldnames: %s）",
-                    unknown, self._fieldnames,
+                    unknown,
+                    self._fieldnames,
                 )
                 return  # 全行で同じ構造のことが多いので1回警告すれば十分
 

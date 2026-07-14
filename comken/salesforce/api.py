@@ -467,6 +467,7 @@ class SalesforceApiClient:
 
 # ── 内部ヘルパー ──────────────────────────────────────────────────────────────
 
+
 def _parse_login_response(xml_text: str) -> tuple[str, str]:
     """SOAP ログインのレスポンスから (セッションID, インスタンスURL) を取り出す。
 

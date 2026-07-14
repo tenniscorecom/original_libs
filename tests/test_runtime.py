@@ -139,7 +139,7 @@ class TestDiffLeadingZero:
     """diff の先頭ゼロ保護のテスト（仕様固定）。"""
 
     def test_leading_zero_string_differs_from_number(self):
-        """"0001"（文字列）と 1（数値）は差分として検出されることを確認する。
+        """ "0001"（文字列）と 1（数値）は差分として検出されることを確認する。
 
         社員番号・郵便番号などの先頭ゼロの消失を「差分なし」と誤判定しない。
         """
@@ -148,7 +148,7 @@ class TestDiffLeadingZero:
         assert diff_row({"社員番号": "0001"}, {"社員番号": 1}) == {"社員番号": ("0001", 1)}
 
     def test_leading_zero_strings_match(self):
-        """"0001" 同士は差分にならないことを確認する。"""
+        """ "0001" 同士は差分にならないことを確認する。"""
         from comken.utils import diff_row
 
         assert diff_row({"社員番号": "0001"}, {"社員番号": "0001"}) == {}

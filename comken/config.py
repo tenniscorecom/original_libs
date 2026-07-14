@@ -171,6 +171,7 @@ def generate_stub(
 
 # ── 内部ヘルパー：ini 値の型変換 ───────────────────────────────────────────────
 
+
 def _split_list_items(text: str) -> list[str]:
     """カンマまたは改行区切りの文字列をリストに変換する。空文字は除外する。"""
     items = text.replace("\n", ",").split(",")
