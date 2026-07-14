@@ -31,7 +31,6 @@ import configparser
 import math
 import os
 import types
-import warnings
 from pathlib import Path
 
 from .exceptions import ConfigError
@@ -107,26 +106,6 @@ class Config:
             f"存在するセクション: {sections}\n"
             "セクション名の綴りと、config.ini に定義されているかを確認してください。"
         )
-
-    def parse_list(self, value: str) -> list[str]:
-        """【旧方式】カンマまたは改行区切りの文字列をリストに変換する。
-
-        現在は config.ini 側で [a, b, c] と書けば自動でリストに変換されるため、
-        このメソッドを呼ぶ必要はない。旧コードを壊さないために残している。
-
-        Args:
-            value: カンマまたは改行区切りの文字列。
-
-        Returns:
-            空文字を除いた文字列のリスト。
-        """
-        warnings.warn(
-            "parse_list は不要になりました。config.ini 側で [a, b, c] と書くと"
-            "自動でリストに変換されます（改行区切りも可）。",
-            FutureWarning,
-            stacklevel=2,
-        )
-        return _split_list_items(value)
 
 
 def generate_stub(
@@ -270,7 +249,6 @@ def _build_stub_content(cfg: configparser.ConfigParser) -> str:
     lines.append("class Config:")
     lines.extend(config_attrs or ["    pass"])
     lines.append("    def __init__(self, path: str | Path = ...) -> None: ...")
-    lines.append("    def parse_list(self, value: str) -> list[str]: ...")
     lines.append("")
     lines.append("config: Config")
     return "\n".join(lines) + "\n"

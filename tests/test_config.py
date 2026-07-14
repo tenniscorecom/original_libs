@@ -212,15 +212,6 @@ class TestConfigListConversion:
         ini.write_text("[s]\nquery = SELECT Id, Name FROM Account\n", encoding="utf-8")
         assert Config(ini).S.QUERY == "SELECT Id, Name FROM Account"
 
-    def test_parse_list_still_works_with_warning(self, tmp_path):
-        """旧方式の parse_list は FutureWarning 付きで動くことを確認する。"""
-        ini = tmp_path / "config.ini"
-        ini.write_text("[s]\nitems = a, b, c\n", encoding="utf-8")
-        config = Config(ini)
-
-        with pytest.warns(FutureWarning, match="不要"):
-            assert config.parse_list(config.S.ITEMS) == ["a", "b", "c"]
-
 
 class TestGenerateStub:
     """generate_stub（エディタ補完用スタブ生成）のテスト。"""
