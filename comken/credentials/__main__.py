@@ -144,7 +144,8 @@ def _read_declared_credentials(project_root: str | Path = ".") -> list[str]:
     files = sorted(root.glob("*.py")) + sorted(root.glob("src/**/*.py"))
 
     cfg = configparser.ConfigParser()
-    cfg.read(root / "config.ini", encoding="utf-8")
+    # utf-8-sig: メモ帳保存の BOM 付き config.ini でも [CREDENTIALS] を読めるようにする
+    cfg.read(root / "config.ini", encoding="utf-8-sig")
 
     def resolve_prefix(key: str) -> str:
         """宣言のキー名を config.ini の [CREDENTIALS] からプレフィックスに解決する。"""

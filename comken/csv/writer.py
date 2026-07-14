@@ -18,10 +18,13 @@ CsvWriter クラスを通じて CSV ファイルへの書き込みを行う。
 """
 
 import csv
+import logging
 from pathlib import Path
 
 from ..runtime import dry_run_log, is_dry_run
 from .handler import Encoding
+
+logger = logging.getLogger(__name__)
 
 
 class CsvWriter:
@@ -65,6 +68,22 @@ class CsvWriter:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         return open(self._path, mode, encoding=self._encoding, newline="")
 
+    def _warn_unknown_keys(self, rows: list[dict]) -> None:
+        """fieldnames にないキーがあれば警告する（黙って列が欠落するのを防ぐ）。
+
+        extrasaction="ignore" は fieldnames 外のキーを無言で捨てるため、
+        列名の typo やソース変更に気づけるよう1回だけ警告を出す。
+        """
+        known = set(self._fieldnames)
+        for row in rows:
+            unknown = [k for k in row if k not in known]
+            if unknown:
+                logger.warning(
+                    "fieldnames にないキーは書き込まれません: %s（fieldnames: %s）",
+                    unknown, self._fieldnames,
+                )
+                return  # 全行で同じ構造のことが多いので1回警告すれば十分
+
     def write_rows(self, rows: list[dict]) -> None:
         """ファイルを新規作成（または上書き）して全行を書き込む。
 
@@ -73,6 +92,7 @@ class CsvWriter:
         Args:
             rows: 書き込む行のリスト（辞書のリスト）。
         """
+        self._warn_unknown_keys(rows)
         if is_dry_run():
             dry_run_log("CSV に %d 行書き込み（上書き）: %s", len(rows), self._path)
             return
@@ -89,6 +109,7 @@ class CsvWriter:
         Args:
             row: 追記する行の辞書。
         """
+        self._warn_unknown_keys([row])
         if is_dry_run():
             dry_run_log("CSV に 1 行追記: %s", self._path)
             return
@@ -107,6 +128,7 @@ class CsvWriter:
         Args:
             rows: 追記する行のリスト（辞書のリスト）。
         """
+        self._warn_unknown_keys(rows)
         if is_dry_run():
             dry_run_log("CSV に %d 行追記: %s", len(rows), self._path)
             return

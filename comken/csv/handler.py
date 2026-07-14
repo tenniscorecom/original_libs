@@ -87,6 +87,7 @@ class CsvReader:
         self._path = Path(path)
         self._encoding = encoding
         self._headers = headers
+        self._cache: list[dict[str, str]] | None = None
 
     def _load(self) -> list[dict[str, str]]:
         """
@@ -94,6 +95,10 @@ class CsvReader:
             CsvError: headers の列数が CSV の実際の列数より少ない場合
                       （はみ出した列が黙って失われるのを防ぐ）。
         """
+        # 同じインスタンスで複数メソッドを呼んでもファイルを読むのは1回だけにする
+        # （rows() の後に index() を呼ぶ等で毎回 IO するのを防ぐ）
+        if self._cache is not None:
+            return self._cache
         # headers 指定時は1行目をヘッダーではなくデータとして扱う
         rows = list(csv.DictReader(io.StringIO(self._read_text()), fieldnames=self._headers))
         # DictReader は headers より多い列を None キーに押し込む。無音のデータ落ちを防ぐ
@@ -101,6 +106,7 @@ class CsvReader:
             raise CsvError(
                 CsvError.MSG_HEADERS_TOO_FEW.format(expected=len(self._headers), path=self._path)
             )
+        self._cache = rows
         return rows
 
     @staticmethod
@@ -168,8 +174,10 @@ class CsvReader:
         """
         data = self._load()
         self._validate_columns(data, [key_col])
+        target = str(value)
         for row in data:
-            if row.get(key_col) == value:
+            # CSV の値は常に文字列。int 等を渡されても取りこぼさないよう文字列で比較する
+            if str(row.get(key_col, "")) == target:
                 return row
         return None
 
@@ -185,7 +193,9 @@ class CsvReader:
         """
         data = self._load()
         self._validate_columns(data, [key_col])
-        return [row for row in data if row.get(key_col) == value]
+        target = str(value)
+        # CSV の値は常に文字列。int 等を渡されても取りこぼさないよう文字列で比較する
+        return [row for row in data if str(row.get(key_col, "")) == target]
 
     def column(self, col_name: str) -> list[str]:
         """指定列の値一覧を返す。

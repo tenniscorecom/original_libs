@@ -98,6 +98,16 @@ class SalesforceApiClient:
             }
         )
 
+    def __enter__(self) -> "SalesforceApiClient":
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """HTTP セッションを閉じる。with 文を使う場合は自動で呼ばれる。"""
+        self._session.close()
+
     # ------------------------------------------------------------------ login
     def _login(
         self, username: str, password: str, security_token: str, domain: str
@@ -191,13 +201,16 @@ class SalesforceApiClient:
         """
         records: list[dict] = []
         result, _ = self._request("GET", self._data_path(f"/query?q={urllib.parse.quote(soql)}"))
-        while True:
-            for record in result["records"]:
+        # 想定外のレスポンス形（dict 以外）でも素の KeyError を出さず安全に抜ける
+        while isinstance(result, dict):
+            for record in result.get("records", []):
                 record.pop("attributes", None)  # メタ情報は業務データに不要なので除く
                 records.append(record)
-            if result.get("done"):
-                return records
-            result, _ = self._request("GET", result["nextRecordsUrl"])
+            next_url = result.get("nextRecordsUrl")
+            if result.get("done", True) or not next_url:
+                break
+            result, _ = self._request("GET", next_url)
+        return records
 
     # ------------------------------------------------------------------- CRUD
     def get(self, object_name: str, record_id: str) -> dict:
@@ -384,7 +397,8 @@ class SalesforceApiClient:
             if locator:
                 path += f"?locator={locator}"
             text, headers = self._request("GET", path)
-            records.extend(_csv_to_dicts(text))
+            if text:  # 0 件のページでは本文が空になり得るので None/空をガードする
+                records.extend(_csv_to_dicts(text))
             locator = headers.get("Sforce-Locator", "")
             if not locator or locator == "null":
                 return records
