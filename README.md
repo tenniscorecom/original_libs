@@ -147,7 +147,7 @@ def build_report():
 
 `config.ini` を `config.SECTION.KEY` の形式で読み込む。
 
-**いちばん簡単な使い方**（プロジェクトに `src/config.py` を作らなくてよい）:
+**基本の使い方**（`src/config.py` は不要。エディタ補完も効く）:
 
 ```python
 from comken import config
@@ -160,7 +160,12 @@ path = config.FILES.INPUT_FOLDER / "東日本.csv"
 config.read(r"C:\作業\config.ini")
 ```
 
-明示的にインスタンスを持ちたい場合（従来どおり。テストや複数 ini の読み分けに）:
+> **補完（Pylance）:** config を初めて読むと、config.ini から補完用スタブ
+> `typings/comken/`（config.pyi + __init__.pyi）が自動生成される。VS Code + Pylance で
+> `config.SECTION.KEY` が型付き補完される（typings/ は .gitignore 推奨）。
+> ツール実行前にスタブだけ先に作りたいときは `python -m comken.config`。
+
+明示的にインスタンスを持ちたい場合（テストや複数 ini の読み分けに）:
 
 ```python
 from comken.config import Config
@@ -168,10 +173,6 @@ from comken.config import Config
 config = Config()                      # カレントディレクトリの config.ini
 config = Config("path/to/config.ini")  # パスを指定する場合
 ```
-
-> **補完（.pyi スタブ）について:** `Config()` を明示的に呼ぶ構成（`src/config.py` を作る）だと
-> エディタ補完用スタブが自動生成される。`from comken import config` の手軽な方式は
-> スタブ生成の起点（`src/config.py`）を持たないため、補完より手軽さを優先する場合に使う。
 
 ```ini
 ; config.ini（プロジェクト固有の非機密設定を書く）

@@ -13,7 +13,8 @@ venv/
 dist/
 build/
 
-# Config の補完スタブ（自動生成）
+# Config の補完スタブ（自動生成。エディタ補完専用なので git に含めない）
+typings/
 config.pyi
 src/config.pyi
 

@@ -25,7 +25,7 @@ def run(output_folder: Path) -> None:
     #   from comken.excel import ExcelFile
     #   from comken.utils import FileNameBuilder
     #
-    #   from .config import config   # config.FILES. まで打つと補完が出る
+    #   from comken import config   # config.FILES. まで打つと補完が出る
     #
     #   rows = CsvReader(config.FILES.INPUT_CSV).rows()
     #   out = output_folder / FileNameBuilder("レポート").prefix()

@@ -36,48 +36,76 @@ def generate_stub(
 
     Args:
         ini_path: 読み込む config.ini のパス。
-        output_path: スタブの出力先。省略時は config.ini と同じ場所を基準に
-                     src/config.pyi → config.pyi の順に決める。
+        output_path: スタブの出力先。省略時は config.ini と同じ場所を基準に決める
+                     （src/config.py があれば src/config.pyi、無ければ
+                     typings/comken/ に from comken import config 用のスタブ）。
 
     Returns:
-        生成したスタブファイルのパス。
+        生成したスタブファイルのパス（typings 方式では config.pyi のパス）。
 
     Raises:
-        ConfigError: config.ini が見つからない場合、または出力先を決められない場合
-                     （src/config.py も config.py も存在しない）。
+        ConfigError: config.ini が見つからない場合。
     """
     cfg = configparser.ConfigParser()
     loaded = cfg.read(ini_path, encoding="utf-8-sig")
     if not loaded:
         raise ConfigError(ConfigError.MSG.format(path=Path(ini_path).resolve()))
 
-    if output_path is None:
-        output_path = _resolve_stub_path(ini_path)
-        if output_path is None:
-            raise ConfigError(
-                ConfigError.MSG_STUB_TARGET.format(path=Path(ini_path).resolve().parent)
-            )
-    output_path = Path(output_path)
+    if output_path is not None:
+        # 出力先を明示した場合は class スタブ（src/config.pyi 形式）を書く
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(_build_stub_content(cfg), encoding="utf-8")
+        return output_path
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_build_stub_content(cfg), encoding="utf-8")
-    return output_path
+    stub_path = _resolve_stub_path(ini_path)
+    if stub_path is not None:
+        # src/config.py（または config.py）がある → その隣に class スタブ
+        stub_path.parent.mkdir(parents=True, exist_ok=True)
+        stub_path.write_text(_build_stub_content(cfg), encoding="utf-8")
+        return stub_path
+
+    # src/config.py が無い → from comken import config 方式の typings スタブ一式
+    project_dir = Path(ini_path).resolve().parent
+    _write_typings_stubs(project_dir, cfg)
+    return project_dir / "typings" / "comken" / "config.pyi"
 
 
 def update_stub(cfg: configparser.ConfigParser, ini_path: str | Path) -> None:
     """スタブを自動更新する（Config() から呼ばれる。失敗しても本処理は止めない）。
 
-    - src/config.py がないプロジェクトでは何もしない
+    - src/config.py（または config.py）がある → その隣に config.pyi（class スタブ）。
+      `from src.config import config` / `from .config import config` の補完に効く
+    - どちらもない → typings/comken/config.pyi（module スタブ）。
+      `from comken import config` の補完に効く（Pylance の typings 上書き機能を利用）
     - 内容が変わっていなければ書き込まない（無駄なファイル更新をしない）
     """
     stub_path = _resolve_stub_path(ini_path)
-    if stub_path is None:
+    if stub_path is not None:
+        _write_stub_atomic(stub_path, _build_stub_content(cfg))
         return
-    _cleanup_stale_tmp(stub_path)  # 前回クラッシュ時の .tmp 残骸を掃除
-    content = _build_stub_content(cfg)
+    _write_typings_stubs(Path(ini_path).resolve().parent, cfg)
+
+
+def _write_typings_stubs(project_dir: Path, cfg: configparser.ConfigParser) -> None:
+    """`from comken import config` 方式向けの補完スタブ一式を書く。
+
+    Pylance の typings 上書きを使う。config.pyi だけだと comken の他のシンボル
+    （setup_logger 等）が解決できなくなるため、__init__.pyi で本物の comken を
+    再エクスポートして両立させる。
+    """
+    comken_typings = project_dir / "typings" / "comken"
+    _write_stub_atomic(comken_typings / "config.pyi", _build_module_stub_content(cfg))
+    _write_stub_atomic(comken_typings / "__init__.pyi", _build_package_init_stub())
+
+
+def _write_stub_atomic(stub_path: Path, content: str) -> None:
+    """スタブを一時ファイル経由でアトミックに書き込む（内容が同じなら何もしない）。"""
     try:
         if stub_path.exists() and stub_path.read_text(encoding="utf-8") == content:
             return
+        stub_path.parent.mkdir(parents=True, exist_ok=True)
+        _cleanup_stale_tmp(stub_path)  # 前回クラッシュ時の .tmp 残骸を掃除
         # 一時ファイル経由で置き換える（複数プロセス同時起動時の書き込み競合対策）
         tmp_path = stub_path.with_suffix(f"{stub_path.suffix}.{os.getpid()}.tmp")
         tmp_path.write_text(content, encoding="utf-8")
@@ -124,6 +152,65 @@ def _build_stub_content(cfg: configparser.ConfigParser) -> str:
     lines.append("    def __init__(self, path: str | Path = ...) -> None: ...")
     lines.append("")
     lines.append("config: Config")
+    return "\n".join(lines) + "\n"
+
+
+def _build_module_stub_content(cfg: configparser.ConfigParser) -> str:
+    """typings/comken/config.pyi 用の module スタブを組み立てる。
+
+    `from comken import config` の config（= comken.config モジュール）の型を
+    プロジェクトの config.ini に合わせて上書きし、config.SECTION.KEY を補完させる。
+    comken.config の公開シンボル（Config / read）も宣言して他の import を壊さない。
+    """
+    section_lines: list[str] = []
+    module_attrs: list[str] = []
+    for section in cfg.sections():
+        class_name = f"_{section.upper()}"
+        module_attrs.append(f"{section.upper()}: {class_name}")
+        section_lines.append(f"class {class_name}:")
+        options = cfg.options(section)
+        if not options:
+            section_lines.append("    pass")
+        for key in options:
+            value = _parse_value(cfg, section, key)
+            section_lines.append(f"    {key.upper()}: {_stub_type_name(value)}")
+        section_lines.append("")
+
+    lines = [_STUB_HEADER, "from pathlib import Path\n", ""]
+    lines.extend(section_lines)
+    lines.append("class Config:")
+    lines.append("    def __init__(self, path: str | Path = ...) -> None: ...")
+    lines.append("    def __getattr__(self, name: str) -> object: ...")
+    lines.append("")
+    lines.append("def read(path: str | Path = ...) -> Config: ...")
+    lines.append("")
+    lines.extend(module_attrs)
+    return "\n".join(lines) + "\n"
+
+
+def _build_package_init_stub() -> str:
+    """typings/comken/__init__.pyi を組み立てる。
+
+    config.pyi で comken.config を上書きすると、そのままでは comken 直下の
+    公開シンボル（setup_logger 等）が解決できなくなる。ここで本物の comken の
+    __all__ を、定義元サブモジュールから再エクスポートして両立させる。
+    comken の公開 API を内省して作るので、comken 側が増えても追従する。
+    """
+    import comken
+
+    by_module: dict[str, list[str]] = {}
+    for name in comken.__all__:
+        module = getattr(getattr(comken, name), "__module__", "")
+        if module.startswith("comken."):
+            by_module.setdefault(module, []).append(name)
+
+    lines = [_STUB_HEADER]
+    for module in sorted(by_module):
+        names = sorted(by_module[module])
+        inner = "".join(f"    {name} as {name},\n" for name in names)
+        lines.append(f"from {module} import (\n{inner})")
+    lines.append("")
+    lines.append("__version__: str")
     return "\n".join(lines) + "\n"
 
 

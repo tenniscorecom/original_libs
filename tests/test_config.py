@@ -308,15 +308,26 @@ class TestGenerateStub:
         assert out == tmp_path / "src" / "config.pyi"
         assert out.exists()
 
-    def test_no_target_module_raises(self, ini, tmp_path):
-        """src/config.py も config.py もない場合は ConfigError になることを確認する。
+    def test_no_src_generates_typings(self, ini, tmp_path, monkeypatch):
+        """src/config.py がない場合は typings/comken/ にスタブ一式が生成される。
 
-        （.pyi は同名の .py の隣にないとエディタに認識されないため、置き場がない）
+        from comken import config 方式（src/config.py なし）でも補完が効くように、
+        Pylance の typings 上書き用スタブ（config.pyi + __init__.pyi）を作る。
         """
         from comken.config_stub import generate_stub
 
-        with pytest.raises(ConfigError, match="src/config.py"):
-            generate_stub(ini)
+        monkeypatch.chdir(tmp_path)
+        out = generate_stub(ini)
+
+        assert out == tmp_path / "typings" / "comken" / "config.pyi"
+        assert out.exists()
+        assert (tmp_path / "typings" / "comken" / "__init__.pyi").exists()
+        # config.pyi は module レベルにセクションを持つ（from comken import config 用）
+        text = out.read_text(encoding="utf-8")
+        assert "BROWSER: _BROWSER" in text
+        # __init__.pyi は comken の公開 API を再エクスポートする
+        init_text = (tmp_path / "typings" / "comken" / "__init__.pyi").read_text(encoding="utf-8")
+        assert "setup_logger as setup_logger" in init_text
 
     def test_missing_ini_raises(self, tmp_path):
         """config.ini がない場合は ConfigError になることを確認する。"""
