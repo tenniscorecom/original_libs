@@ -228,9 +228,9 @@ for ループが文字単位になる事故が起きる）。
 **エディタの補完候補（型スタブの自動生成）:**
 
 属性は実行時に動的に作られるため、そのままではエディタが `config.REPORT.` の先を補完できない。
-そのため **`Config()` を呼ぶたびに補完用スタブ（`src/config.pyi`）が自動更新される**。
-一度スクリプトを実行すれば、以後はセクション・キーが型付きで補完される
-（config.ini を変更しても次の実行でスタブに反映される。実行時の動作には影響しない）。
+そのため config を初めて読むと、config.ini から補完用スタブ `typings/comken/`
+（config.pyi + `__init__.pyi`）が自動生成される。VS Code + Pylance がこれを読み、
+セクション・キーが型付きで補完される（config.ini を変更すると次の実行で更新される）。
 
 まだ一度も実行していない状態で先にスタブだけ作りたい場合は手動で生成できる:
 
@@ -238,23 +238,7 @@ for ループが文字単位になる事故が起きる）。
 python -m comken.config
 ```
 
-生成された `.pyi` は手で編集しない（自動更新で上書きされる）。
-
-**プロジェクト固有の設定を追加する場合は `src/config.py` でシングルトンを作る:**
-
-```python
-# src/config.py
-from comken.config import Config
-
-config = Config()
-```
-
-```python
-# 各モジュールからはここからインポートする
-from .config import config
-
-path = config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST
-```
+生成された `typings/` は手で編集せず、`.gitignore` に含める（自動生成物）。
 
 なお**ブラウザの設定は config.ini には書かない**。`BrowserOptions` のインスタンス
 （`src/browser_options.py`）で行う（Browser を参照）。
