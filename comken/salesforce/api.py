@@ -6,11 +6,12 @@ salesforce/api.py — Salesforce API クライアント（requests 版）
 毎回アクセストークンを取り直す。ユーザー名・パスワード・セキュリティトークンは使わない
 （無人 RPA 向け。リフレッシュトークンの保管・失効も発生しない）。
 
-事前に Salesforce 側で必要な設定（管理者作業）:
+事前に Salesforce 側で必要な設定（管理者作業。詳細は docs/Salesforce認証パターン.md）:
     1. インテグレーション用ユーザーを作る（API 権限のみ）
-    2. Connected App を作り、OAuth 有効化 + スコープ「api」+
+    2. 接続アプリを作り、OAuth 有効化 + スコープ「api」+
        「クライアントクレデンシャルフローを有効化」にチェック
-    3. Connected App のポリシーで「実行ユーザー（Run As）」に 1 のユーザーを指定
+       （新規は External Client App を推奨。旧 Connected App でも可）
+    3. アプリのポリシーで「実行ユーザー（Run As）」に 1 のユーザーを指定
     4. Consumer Key（= client_id）と Consumer Secret（= client_secret）を控える
 
 通信は requests を使う（Session による接続再利用で連続リクエストが速い）。

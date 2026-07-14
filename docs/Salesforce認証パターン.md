@@ -9,6 +9,13 @@
 > comken の `SalesforceApiClient` は client_id / client_secret + My Domain の URL で認証する
 > 実装に変更済み。simple-salesforce ベースのクライアント（`SalesforceClient` /
 > `SalesforceBulkClient`）は廃止・削除した。以下は選択の経緯として残す。
+>
+> **背景の裏付け:** Salesforce は旧認証（ユーザー名+パスワードの OAuth フロー・SOAP login）を
+> 段階的に廃止しており、**2026-06-25 が一つの区切り**（既に経過）。移行先は
+> クライアントクレデンシャル / JWT Bearer フロー。設定コンテナは
+> **外部クライアントアプリ（External Client App）** が Connected App の後継として標準化中。
+> 参考: note.com「2026年6月25日までに迫るSalesforce認証廃止への対応」
+> （https://note.com/hiroshi_mzn/n/n0b3490b35bf7）
 
 ---
 
@@ -79,18 +86,22 @@ client_id / client_secret だけでアクセストークンを毎回取得する
      必要なオブジェクトの参照/更新権限だけに絞る（最小権限）
    - 「API ログインのみのユーザー（API Only User）」にすると画面ログイン不可になり、
      パスワード漏えい時のリスクがさらに下がる
-2. **接続アプリケーション（Connected App）を作成する**
+2. **接続アプリを作成する**
+   > **【重要・新規はこちら】** Salesforce は接続アプリ（Connected App）の後継として
+   > **外部クライアントアプリ（External Client App）** を標準化中。**新規に作るなら
+   > External Client App を推奨**（旧 Connected App も当面は動くが、今後は非推奨方向）。
+   > 用語は 1:1 で対応する（下記の Consumer Key/Secret・クライアントクレデンシャル
+   > 有効化・Run As ユーザーは External Client App でも同じ）。
    - 「OAuth 設定の有効化」にチェック
    - コールバック URL は必須項目だが使わないのでダミーで可（例: `https://login.salesforce.com/services/oauth2/callback`）
    - OAuth 範囲（スコープ）に「API を使用してユーザーデータを管理する（api）」を追加
-   - **「クライアントクレデンシャルフローを有効化」にチェック**（Winter '23 以降で利用可）
+   - **「クライアントクレデンシャルフローを有効化」にチェック**
 3. **実行ユーザーを割り当てる**
-   - Connected App の「Manage（管理）」→「ポリシーを編集」→
-     「クライアントクレデンシャルフロー」の「別のユーザーとして実行（Run As）」に
-     1 で作ったインテグレーションユーザーを指定
+   - アプリの「ポリシーを編集」→「クライアントクレデンシャルフロー」の
+     「別のユーザーとして実行（Run As）」に 1 で作ったインテグレーションユーザーを指定
    - ここを設定しないとフロー自体が動かない（エラー: `invalid_grant`）
 4. **コンシューマ鍵・コンシューマの秘密を取得する**
-   - Connected App の詳細画面から Consumer Key（= client_id）と
+   - アプリの設定画面から Consumer Key（= client_id）と
      Consumer Secret（= client_secret）をコピーして安全に受け渡す
    - 作成直後は反映に数分かかることがある
 
