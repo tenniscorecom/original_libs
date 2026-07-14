@@ -31,7 +31,7 @@ if __name__ == "__main__":
     try:
         main()
     except OriginalLibsError as e:
-        # comken のエラーはメッセージに対処法が入っている（ERRORS.md も参照）
+        # comken のエラーはメッセージに対処法が入っている（docs/ERRORS.md も参照）
         logger.error("処理を中断しました: %s", e)
         raise
     except Exception:

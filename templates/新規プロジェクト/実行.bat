@@ -16,6 +16,6 @@ python main.py
 
 if errorlevel 1 (
   echo.
-  echo [!] エラーで終了しました。上の赤い文字（エラー名）を ERRORS.md で調べてください。
+  echo [!] エラーで終了しました。上の赤い文字（エラー名）を docs\ERRORS.md で調べてください。
   pause
 )
