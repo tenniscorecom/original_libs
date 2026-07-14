@@ -1,0 +1,2 @@
+# cp932(Shift-JIS)の bat は改行・エンコーディング変換で壊さない（cmd.exe が cp932 で読むため）
+*.bat -text
