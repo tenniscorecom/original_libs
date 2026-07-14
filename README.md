@@ -103,7 +103,7 @@ setx PYTHONPATH \\server\share\tools\comken
   詳しい仕組み・運用（更新/ロールバック/開発との分離）は 仕様書.md の「参照・運用」を参照。
 
 > 旧方式（robocopy でローカル同期する `初回セットアップ.bat` / `実行.bat` / `リリース.bat`）は
-> 直接参照への移行で不要になった。`templates/` の同期用 bat は使わない。
+> 直接参照への移行で不要になったため削除済み。
 
 ---
 
@@ -1398,3 +1398,4 @@ flowchart LR
 | 2026-07-13 | ExcelComHandler: 上書き保存 save() 追加、save_as のパスワードが効かない問題を修正（FileFormat を常に明示。形式変換は file_format 引数）、close() でプロセスが残る問題を修正、AskToUpdateLinks=False 追加。CONVENTIONS に「モジュール内の並び順」を追加し全体を整理。docs/（機能カタログ・コードリーディングガイド・設計メモ）を追加 |
 | 2026-07-13 | requests 採用が確定したため salesforce_std を削除（salesforce_requests に一本化。旧 import パス comken.salesforce は警告付きで動作） |
 | 2026-07-14 | teams モジュールを削除（Power Automate 側が OAuth 必須化の方向で Webhook 運用が不安定なため）。salesforce_requests を salesforce に改名（一本化により接尾辞が不要になった） |
+| 2026-07-14 | 監査指摘の修正一式（keep_vba・run_macro 保存・DispatchEx・EdgeDriver/SF のリソース解放・config 型変換・CSV/ログの堅牢化・unzip の 3.10 対応/Zip Slip 対策）。コーディング規約を3層（共通/本体/利用側）に分割。配布方式を廃止し共有サーバー直接参照（PYTHONPATH）に変更、同期用 bat（templates/）を削除 |
