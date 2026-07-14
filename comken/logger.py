@@ -62,4 +62,9 @@ def setup_logger(name: str = "main", log_dir: str | Path = "logs") -> logging.Lo
     root.addHandler(file_handler)
     root.addHandler(console_handler)
 
+    # ルートを DEBUG にすると selenium/urllib3 の DEBUG ログでファイルが氾濫するため、
+    # これらの noisy なライブラリだけ WARNING 以上に抑える
+    for noisy in ("selenium", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
     return logging.getLogger(name)

@@ -83,6 +83,13 @@ class EdgeDriver:
             self._driver = webdriver.Edge(service=service, options=options)
             self._driver.implicitly_wait(opts.WAIT_SECONDS)
         except Exception:
+            # ブラウザが起動済みなら閉じてから、作成済みの一時フォルダを片付ける
+            driver = getattr(self, "_driver", None)
+            if driver is not None:
+                try:
+                    driver.quit()
+                except Exception:
+                    logger.warning("起動失敗後のブラウザ終了に失敗しました", exc_info=True)
             self.download_dir.__exit__(None, None, None)
             raise
 
@@ -93,8 +100,11 @@ class EdgeDriver:
         # エラーで抜ける場合は、原因調査用にその時点の画面を残す
         if exc_type is not None:
             self._save_error_screenshot()
-        self.quit()
-        self.download_dir.__exit__(exc_type, exc_value, traceback)  # 一時フォルダなら自動削除
+        # quit() が失敗しても一時フォルダの後始末は必ず行う（残留防止）
+        try:
+            self.quit()
+        finally:
+            self.download_dir.__exit__(exc_type, exc_value, traceback)  # 一時フォルダなら自動削除
 
     def _save_error_screenshot(self) -> None:
         """エラー発生時のスクリーンショットを logs/ に保存する。

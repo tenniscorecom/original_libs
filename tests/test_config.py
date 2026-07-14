@@ -134,6 +134,30 @@ class TestConfigTypeConversion:
         assert Config(ini).S.NAME == "T_data"
         assert isinstance(Config(ini).S.NAME, str)
 
+    @pytest.mark.parametrize("value", ["007", "0521234567", "-007"])
+    def test_leading_zero_stays_string(self, tmp_path, value):
+        """先頭ゼロの数字（社員番号・電話番号）は桁落ちを避けて文字列のままを確認する。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text(f"[s]\ncode = {value}\n", encoding="utf-8")
+        assert Config(ini).S.CODE == value
+
+    @pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+    def test_nan_inf_stay_string(self, tmp_path, value):
+        """nan / inf は float() が受理してしまうが、設定値としては文字列で返す。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text(f"[s]\nx = {value}\n", encoding="utf-8")
+        assert Config(ini).S.X == value
+
+
+class TestConfigMissingSection:
+    def test_missing_section_raises_config_error(self, tmp_path):
+        """未定義セクションへのアクセスは素の AttributeError ではなく ConfigError になる。"""
+        ini = tmp_path / "config.ini"
+        ini.write_text("[s]\nk = v\n", encoding="utf-8")
+        config = Config(ini)
+        with pytest.raises(ConfigError, match="セクションがありません"):
+            _ = config.NOPE
+
 
 class TestConfigListConversion:
     """[a, b, c] 記法の自動変換のテスト。"""
