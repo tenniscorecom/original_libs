@@ -1,0 +1,23 @@
+# 認証情報・環境設定（絶対に git に含めない。example だけ含める）
+config.ini
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Config の補完スタブ（自動生成）
+config.pyi
+src/config.pyi
+
+# ログ・出力・一時ファイル
+logs/
+output/
+*.log

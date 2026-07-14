@@ -6,7 +6,7 @@
 
 この README を最初から最後まで読む必要はない。次の順で進めるのが早い:
 
-1. **セットアップ**（下の「セットアップ」節。各 PC で初回1回だけ）
+1. **プロジェクトの準備**（下の「プロジェクトの準備」節。起動用バッチに共有ライブラリの場所を設定）
 2. **やりたいことを「モジュール一覧」から探す** → その節のコード例をコピーして動かす
 3. **動くサンプルを見る** → `examples/`（一覧は examples/README.md。CSV→Excel レポート・
    突合転記・差分レポートはインストール直後にそのまま動かせる。新規ツールの雛形もここ）
@@ -85,13 +85,17 @@ with ExcelFile.create(r"C:\作業\report.xlsx") as f:  # 新規 Excel を作る
 
 ---
 
-## セットアップ（各 PC で初回1回だけ）
+## プロジェクトの準備
 
 comken は共有サーバー上の1か所を**直接参照する**（ローカルへのコピー・同期はしない）。
-各 PC で1回、共有サーバーのリポジトリルートを `PYTHONPATH` に登録するだけ。
+各プロジェクトのルートに `templates/実行.bat` をコピーし、先頭の `COMKEN_ROOT` を
+共有サーバー上の comken リポジトリルートに合わせる。バッチは実行中だけ `PYTHONPATH` を設定するため、
+PC の環境変数を変更しない。
 
 ```bat
-setx PYTHONPATH \\server\share\tools\comken
+set "COMKEN_ROOT=\\server\share\tools\comken"
+set "PYTHONPATH=%COMKEN_ROOT%;%PYTHONPATH%"
+python main.py
 ```
 
 以後、どのプロジェクトからでも `import comken` が共有サーバーの最新版を読む。更新のたびの配布作業はない。
