@@ -1,10 +1,22 @@
 """
 salesforce/api.py — Salesforce API クライアント（requests 版）
 
+認証は OAuth 2.0 のクライアントクレデンシャルフローを使う。
+接続アプリケーション（Connected App）の client_id / client_secret だけで、
+毎回アクセストークンを取り直す。ユーザー名・パスワード・セキュリティトークンは使わない
+（無人 RPA 向け。リフレッシュトークンの保管・失効も発生しない）。
+
+事前に Salesforce 側で必要な設定（管理者作業）:
+    1. インテグレーション用ユーザーを作る（API 権限のみ）
+    2. Connected App を作り、OAuth 有効化 + スコープ「api」+
+       「クライアントクレデンシャルフローを有効化」にチェック
+    3. Connected App のポリシーで「実行ユーザー（Run As）」に 1 のユーザーを指定
+    4. Consumer Key（= client_id）と Consumer Secret（= client_secret）を控える
+
 通信は requests を使う（Session による接続再利用で連続リクエストが速い）。
 
 対応している操作:
-    - ログイン（SOAP ログイン。接続アプリケーション不要）
+    - 認証（OAuth 2.0 クライアントクレデンシャル）
     - SOQL クエリ（全件取得・ページネーション自動）
     - レコードの取得・作成・更新・Upsert・削除
     - レポートの実行（同期 / 非同期・絞り込み対応）
@@ -16,10 +28,9 @@ salesforce/api.py — Salesforce API クライアント（requests 版）
 
     cred = Credentials("salesforce")
     sf = SalesforceApiClient(
-        username=cred.username,
-        password=cred.password,
-        security_token=cred.token,
-        # domain="test",  # Sandbox の場合
+        client_id=cred.client_id,
+        client_secret=cred.client_secret,
+        domain_url="https://your-domain.my.salesforce.com",  # 組織の My Domain
     )
 
     records = sf.query("SELECT Id, Name FROM Account")
@@ -37,8 +48,6 @@ import io
 import logging
 import time
 import urllib.parse
-import xml.etree.ElementTree as ET
-from xml.sax.saxutils import escape
 
 import requests
 
@@ -47,21 +56,19 @@ from ..runtime import dry_run_log, is_dry_run
 
 logger = logging.getLogger(__name__)
 
-# SOAP ログインのレスポンス XML の名前空間
-_SOAP_NS = "{urn:partner.soap.sforce.com}"
-
 
 class SalesforceApiClient:
     """Salesforce API クライアント（requests 版）。
 
-    接続アプリケーション（client_id / client_secret）は不要。
-    ユーザー名・パスワード・セキュリティトークンだけでログインする。
+    OAuth 2.0 クライアントクレデンシャルフローで認証する。
+    接続アプリケーションの client_id / client_secret だけを使い、
+    ユーザー名・パスワード・セキュリティトークンは使わない。
 
     使い方:
         sf = SalesforceApiClient(
-            username="user@example.com",
-            password="password",
-            security_token="トークン",
+            client_id="接続アプリの Consumer Key",
+            client_secret="接続アプリの Consumer Secret",
+            domain_url="https://your-domain.my.salesforce.com",
         )
         records = sf.query("SELECT Id, Name FROM Account")
     """
@@ -75,28 +82,29 @@ class SalesforceApiClient:
 
     def __init__(
         self,
-        username: str,
-        password: str,
-        security_token: str,
-        domain: str = "login",
+        client_id: str,
+        client_secret: str,
+        domain_url: str,
     ) -> None:
         """
         Args:
-            username: Salesforce のログインユーザー名（メールアドレス形式）。
-            password: パスワード。
-            security_token: セキュリティトークン（プロフィール設定から取得）。
-            domain: 接続先。本番環境は "login"、Sandbox は "test"。
+            client_id: 接続アプリケーションの Consumer Key。
+            client_secret: 接続アプリケーションの Consumer Secret。
+            domain_url: 組織の My Domain の URL（例: "https://foo.my.salesforce.com"）。
+                        Sandbox は "https://foo--sandbox.sandbox.my.salesforce.com"。
+                        ※ クライアントクレデンシャルフローは My Domain が必須で、
+                          login.salesforce.com では動かない。
 
         Raises:
-            SalesforceError: ログインに失敗した場合。
+            SalesforceError: 認証に失敗した場合。
         """
         self._session = requests.Session()
-        self._session_id, self._instance_url = self._login(
-            username, password, security_token, domain
+        self._access_token, self._instance_url = self._login(
+            client_id, client_secret, domain_url
         )
         self._session.headers.update(
             {
-                "Authorization": f"Bearer {self._session_id}",
+                "Authorization": f"Bearer {self._access_token}",
                 "Accept": "application/json, text/csv",
             }
         )
@@ -112,35 +120,33 @@ class SalesforceApiClient:
         self._session.close()
 
     # ------------------------------------------------------------------ login
-    def _login(
-        self, username: str, password: str, security_token: str, domain: str
-    ) -> tuple[str, str]:
-        """SOAP ログインでセッション ID とインスタンス URL を取得する。"""
-        url = f"https://{domain}.salesforce.com/services/Soap/u/{self.API_VERSION}"
-        body = f"""<?xml version="1.0" encoding="utf-8" ?>
-<env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
-              xmlns:urn="urn:partner.soap.sforce.com">
-  <env:Body>
-    <urn:login>
-      <urn:username>{escape(username)}</urn:username>
-      <urn:password>{escape(password + security_token)}</urn:password>
-    </urn:login>
-  </env:Body>
-</env:Envelope>"""
+    def _login(self, client_id: str, client_secret: str, domain_url: str) -> tuple[str, str]:
+        """クライアントクレデンシャルフローでアクセストークンとインスタンス URL を取得する。"""
+        url = f"{domain_url.rstrip('/')}/services/oauth2/token"
         try:
             resp = self._session.post(
                 url,
-                data=body.encode("utf-8"),
-                headers={"Content-Type": "text/xml; charset=UTF-8", "SOAPAction": "login"},
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
                 timeout=self.TIMEOUT_SECONDS,
             )
         except requests.exceptions.RequestException as e:
             raise SalesforceError(
                 f"Salesforce に接続できませんでした: {url}\n"
-                f"ネットワーク接続を確認してください。（詳細: {e}）"
+                f"ネットワーク接続と My Domain の URL を確認してください。（詳細: {e}）"
             ) from e
-        # ログイン失敗時も SOAP は 500 + fault XML を返すのでパースを試みる
-        return _parse_login_response(resp.text)
+        if resp.status_code >= 400:
+            raise SalesforceError(
+                f"Salesforce の認証に失敗しました（HTTP {resp.status_code}）: {resp.text}\n"
+                "接続アプリの client_id / client_secret、"
+                "クライアントクレデンシャルフローの有効化と実行ユーザー（Run As）の指定、"
+                "My Domain の URL を確認してください。"
+            )
+        body = resp.json()
+        return body["access_token"], body["instance_url"]
 
     # ---------------------------------------------------------------- request
     def _request(
@@ -492,34 +498,6 @@ class SalesforceApiClient:
 
 
 # ── 内部ヘルパー ──────────────────────────────────────────────────────────────
-
-
-def _parse_login_response(xml_text: str) -> tuple[str, str]:
-    """SOAP ログインのレスポンスから (セッションID, インスタンスURL) を取り出す。
-
-    Raises:
-        SalesforceError: ログイン失敗（faultstring がある）または形式が不正な場合。
-    """
-    root = ET.fromstring(xml_text)
-
-    fault = root.find(".//faultstring")
-    if fault is not None:
-        raise SalesforceError(
-            f"Salesforce へのログインに失敗しました: {fault.text}\n"
-            f"ユーザー名・パスワード・セキュリティトークンを確認してください。\n"
-            f"（パスワードを変更するとトークンも新しくなります。"
-            f"python -m comken.credentials で登録し直してください）"
-        )
-
-    session_id = root.find(f".//{_SOAP_NS}sessionId")
-    server_url = root.find(f".//{_SOAP_NS}serverUrl")
-    if session_id is None or server_url is None:
-        raise SalesforceError(f"ログインレスポンスを解釈できませんでした: {xml_text[:200]}")
-
-    # serverUrl は https://xxx.my.salesforce.com/services/Soap/u/60.0/00D... の形式。
-    # インスタンス URL 部分（/services より前）だけを使う
-    instance_url = server_url.text.split("/services")[0]
-    return session_id.text, instance_url
 
 
 def _dicts_to_csv(records: list[dict]) -> str:

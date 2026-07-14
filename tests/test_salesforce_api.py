@@ -11,43 +11,55 @@ from comken.salesforce import api as requests_api
 
 IMPLEMENTATIONS = pytest.mark.parametrize("api", [requests_api], ids=["requests"])
 
-LOGIN_OK_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns="urn:partner.soap.sforce.com">
-  <soapenv:Body>
-    <loginResponse>
-      <result>
-        <serverUrl>https://example.my.salesforce.com/services/Soap/u/60.0/00D123</serverUrl>
-        <sessionId>SESSION123</sessionId>
-      </result>
-    </loginResponse>
-  </soapenv:Body>
-</soapenv:Envelope>"""
 
-LOGIN_FAIL_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
-  <soapenv:Body>
-    <soapenv:Fault>
-      <faultcode>INVALID_LOGIN</faultcode>
-      <faultstring>INVALID_LOGIN: Invalid username, password, security token</faultstring>
-    </soapenv:Fault>
-  </soapenv:Body>
-</soapenv:Envelope>"""
+class _FakeResponse:
+    def __init__(self, status_code=200, payload=None, text=""):
+        self.status_code = status_code
+        self._payload = payload or {}
+        self.text = text
+
+    def json(self):
+        return self._payload
 
 
-@IMPLEMENTATIONS
-class TestParseLoginResponse:
-    def test_extracts_session_and_instance_url(self, api):
-        """成功レスポンスからセッションIDとインスタンスURLを取り出せることを確認する。"""
-        session_id, instance_url = api._parse_login_response(LOGIN_OK_XML)
+class TestClientCredentialsLogin:
+    """OAuth 2.0 クライアントクレデンシャルフローの認証テスト。"""
 
-        assert session_id == "SESSION123"
-        assert instance_url == "https://example.my.salesforce.com"
+    def test_login_obtains_access_token(self, monkeypatch):
+        """トークン応答から access_token と instance_url を取り出せることを確認する。"""
+        captured = {}
 
-    def test_raises_on_login_fault(self, api):
-        """ログイン失敗のレスポンスは対処法つきの SalesforceError になることを確認する。"""
-        with pytest.raises(SalesforceError, match="INVALID_LOGIN"):
-            api._parse_login_response(LOGIN_FAIL_XML)
+        def fake_post(self, url, data=None, **kwargs):
+            captured["url"] = url
+            captured["data"] = data
+            return _FakeResponse(
+                payload={
+                    "access_token": "TOKEN123",
+                    "instance_url": "https://example.my.salesforce.com",
+                }
+            )
+
+        monkeypatch.setattr("requests.Session.post", fake_post)
+
+        sf = requests_api.SalesforceApiClient(
+            "cid", "csecret", "https://example.my.salesforce.com"
+        )
+
+        assert sf._access_token == "TOKEN123"
+        assert sf._instance_url == "https://example.my.salesforce.com"
+        assert captured["url"].endswith("/services/oauth2/token")
+        assert captured["data"]["grant_type"] == "client_credentials"
+        assert captured["data"]["client_id"] == "cid"
+
+    def test_login_failure_raises(self, monkeypatch):
+        """認証失敗（4xx）は対処法つきの SalesforceError になることを確認する。"""
+        monkeypatch.setattr(
+            "requests.Session.post",
+            lambda self, url, **kw: _FakeResponse(status_code=400, text="invalid_client"),
+        )
+
+        with pytest.raises(SalesforceError, match="認証に失敗"):
+            requests_api.SalesforceApiClient("cid", "bad", "https://example.my.salesforce.com")
 
 
 @IMPLEMENTATIONS
@@ -65,7 +77,7 @@ class TestCsvHelpers:
 def _make_client(api):
     """ログインを通さずにクライアントを作る（ロジックのテスト用）。"""
     client = api.SalesforceApiClient.__new__(api.SalesforceApiClient)
-    client._session_id = "SESSION123"
+    client._access_token = "TOKEN123"
     client._instance_url = "https://example.my.salesforce.com"
     return client
 

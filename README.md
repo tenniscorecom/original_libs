@@ -1177,35 +1177,30 @@ python -m examples.sample_login.run
 
 ## Salesforce
 
-```python
-from comken.salesforce import SalesforceApiClient
-```
+認証は **OAuth 2.0 クライアントクレデンシャルフロー**。接続アプリケーション（Connected App）の
+`client_id` / `client_secret` だけで認証し、ユーザー名・パスワード・セキュリティトークンは使わない
+（無人 RPA 向け。リフレッシュトークンの保管・失効も起きない）。事前設定と選択理由は
+[docs/Salesforce認証パターン.md](docs/Salesforce認証パターン.md) を参照。
 
-| クラス | 依存 | 用途 |
-|---|---|---|
-| `SalesforceApiClient`（推奨） | requests | ログイン・CRUD・SOQL・レポート・Bulk 2.0 |
-| `SalesforceClient` | simple-salesforce | CRUD・SOQL |
-| `SalesforceBulkClient` | simple-salesforce | Bulk 一括操作 |
-| `SalesforceRestClient` | requests | REST API 直接操作 |
-| `SalesforceReportClient` | requests | レポート取得 |
+| クラス | 用途 |
+|---|---|
+| `SalesforceApiClient`（推奨） | CRUD・SOQL・レポート・Bulk 2.0 |
+| `SalesforceRestClient` | REST API 直接操作（低レベル） |
+| `SalesforceReportClient` | レポート取得（低レベル） |
 
-旧 import パス `comken.salesforce` は警告付きで動くが、新しいコードでは使わない。
+いずれも requests を使う（`pip install comken[salesforce]` の追加依存は requests のみ）。
 
 ### SalesforceApiClient
-
-接続アプリケーション（client_id / client_secret）は不要。
-ユーザー名・パスワード・セキュリティトークンだけでログインする。
 
 ```python
 from comken.credentials import Credentials
 from comken.salesforce import SalesforceApiClient
 
-cred = Credentials("salesforce")
+cred = Credentials("salesforce")   # client_id / client_secret を暗号化保存しておく
 sf = SalesforceApiClient(
-    username=cred.username,
-    password=cred.password,
-    security_token=cred.token,
-    # domain="test" # Sandbox の場合
+    client_id=cred.client_id,
+    client_secret=cred.client_secret,
+    domain_url="https://your-domain.my.salesforce.com",  # 組織の My Domain
 )
 
 # SOQL クエリ（全件取得・ページネーション自動）
@@ -1235,44 +1230,17 @@ result = sf.bulk_delete("Account", [{"Id": "001..."}, ...])
 big = sf.bulk_query("SELECT Id, Name FROM Account")  # 数万件以上の取得
 ```
 
-エラーはすべて `SalesforceError`（ログイン失敗には対処法がメッセージに入る）。
-
-### SalesforceClient（simple-salesforce。導入承認が下りた場合のみ）
-
-```python
-from comken.credentials import Credentials
-from comken.salesforce import SalesforceClient
-
-# 事前に python -m comken.credentials で登録しておく
-cred = Credentials("salesforce") # 本番・テストの切り替えは config.ini のプレフィックスで
-sf = SalesforceClient(
-    username=cred.username,
-    password=cred.password,
-    security_token=cred.token,
-    # domain="test" # Sandbox の場合
-)
-
-SOQL = "SELECT Id, Name FROM Account WHERE IsDeleted = false"
-EXTERNAL_ID = "001"
-
-records = sf.query(SOQL)
-new_id = sf.insert("Account", {"Name": "新規取引先"})
-sf.update("Account", record_id=new_id, data={"Name": "更新後の名前"})
-sf.upsert("Account", external_id_field="ExternalId__c", data={"ExternalId__c": EXTERNAL_ID, "Name": "取引先"})
-sf.delete("Account", record_id=new_id)
-```
+エラーはすべて `SalesforceError`（認証失敗には対処法がメッセージに入る）。
 
 ### SalesforceRestClient（REST API）
 
 ```python
 from comken.salesforce import SalesforceRestClient
 
-sf = SalesforceRestClient.from_password(
-    username="user@example.com",
-    password="password",
-    security_token="トークン",
-    client_id="クライアントID",
-    client_secret="クライアントシークレット",
+sf = SalesforceRestClient.from_client_credentials(
+    client_id="Consumer Key",
+    client_secret="Consumer Secret",
+    domain_url="https://your-domain.my.salesforce.com",
 )
 
 SOQL = "SELECT Id, Name FROM Account"
@@ -1410,3 +1378,5 @@ flowchart LR
 | 2026-07-13 | requests 採用が確定したため salesforce_std を削除（salesforce_requests に一本化。旧 import パス comken.salesforce は警告付きで動作） |
 | 2026-07-14 | teams モジュールを削除（Power Automate 側が OAuth 必須化の方向で Webhook 運用が不安定なため）。salesforce_requests を salesforce に改名（一本化により接尾辞が不要になった） |
 | 2026-07-14 | 監査指摘の修正一式（keep_vba・run_macro 保存・DispatchEx・EdgeDriver/SF のリソース解放・config 型変換・CSV/ログの堅牢化・unzip の 3.10 対応/Zip Slip 対策）。コーディング規約を3層（共通/本体/利用側）に分割。配布方式を廃止し共有サーバー直接参照（PYTHONPATH）に変更、同期用 bat（templates/）を削除 |
+| 2026-07-15 | `from comken import config` に一本化（src/config.py 不要）。Pylance 補完用 typings スタブを自動生成。setup_logger が comken バージョンを出力。バイトコードキャッシュをローカルに自動退避。examples テスト・README コード構文チェック・CI（GitHub Actions）を追加。新規プロジェクトのひな形 templates/新規プロジェクト/ を追加 |
+| 2026-07-15 | Salesforce 認証を OAuth 2.0 クライアントクレデンシャルフロー（client_id / client_secret + My Domain）に変更（セキュリティトークン廃止対応）。simple-salesforce ベースのクライアント（SalesforceClient / SalesforceBulkClient）を削除 |

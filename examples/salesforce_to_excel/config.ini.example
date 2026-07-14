@@ -9,5 +9,9 @@
 ; salesforce_test に変えるだけで全項目がテスト用に切り替わる
 SALESFORCE = salesforce
 
+[SALESFORCE]
+; 組織の My Domain の URL（非機密）。client_id / client_secret は credentials に登録する
+DOMAIN_URL = https://your-domain.my.salesforce.com
+
 [REPORT]
 OUTPUT_FOLDER = C:\Users\Public\Downloads

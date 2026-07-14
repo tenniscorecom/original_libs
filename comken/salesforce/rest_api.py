@@ -1,25 +1,23 @@
 """
-salesforce/rest_api.py — Salesforce REST API クライアント
+salesforce/rest_api.py — Salesforce REST API クライアント（低レベル）
 
 requests を使って Salesforce REST API を直接叩くクライアント。
-ページネーションを自動で処理する。
+ページネーションを自動で処理する。細かい API 制御が必要な場合に使う。
+通常は api.py の SalesforceApiClient を優先すること。
 
-simple-salesforce が使えない環境や、細かい API 制御が必要な場合に使う。
-通常は src/salesforce/simple_sf.py の SalesforceClient を優先すること。
+認証は OAuth 2.0 クライアントクレデンシャルフロー（client_id / client_secret）。
 
 使い方:
-    # パスワード認証でインスタンスを作る
-    sf = SalesforceRestClient.from_password(
-        username="user@example.com",
-        password="password",
-        security_token="トークン",
-        client_id="接続アプリのクライアントID",
-        client_secret="接続アプリのクライアントシークレット",
+    # クライアントクレデンシャルで認証してインスタンスを作る
+    sf = SalesforceRestClient.from_client_credentials(
+        client_id="接続アプリの Consumer Key",
+        client_secret="接続アプリの Consumer Secret",
+        domain_url="https://your-domain.my.salesforce.com",
     )
 
     # アクセストークンが既にある場合
     sf = SalesforceRestClient(
-        instance_url="https://xxx.salesforce.com",
+        instance_url="https://xxx.my.salesforce.com",
         access_token="アクセストークン",
     )
 """
@@ -36,13 +34,10 @@ class SalesforceRestClient:
     """Salesforce REST API を直接叩くクライアント。
 
     使い方:
-        # パスワード認証
-        sf = SalesforceRestClient.from_password(
-            username="user@example.com",
-            password="password",
-            security_token="トークン",
-            client_id="クライアントID",
-            client_secret="クライアントシークレット",
+        sf = SalesforceRestClient.from_client_credentials(
+            client_id="Consumer Key",
+            client_secret="Consumer Secret",
+            domain_url="https://your-domain.my.salesforce.com",
         )
 
         # SOQL クエリ（2000件超えは自動でページネーション）
@@ -71,47 +66,39 @@ class SalesforceRestClient:
         }
 
     @classmethod
-    def from_password(
+    def from_client_credentials(
         cls,
-        username: str,
-        password: str,
-        security_token: str,
         client_id: str,
         client_secret: str,
-        domain: str = "login",
+        domain_url: str,
     ) -> "SalesforceRestClient":
-        """ユーザー名・パスワードで OAuth 認証してインスタンスを返す。
+        """OAuth 2.0 クライアントクレデンシャルフローで認証してインスタンスを返す。
 
         Args:
-            username: Salesforce ログインユーザー名。
-            password: パスワード。
-            security_token: セキュリティトークン。
-            client_id: 接続アプリケーションのクライアント ID。
-            client_secret: 接続アプリケーションのクライアントシークレット。
-            domain: 接続先ドメイン。本番環境は "login"、Sandbox は "test"。
+            client_id: 接続アプリケーションの Consumer Key。
+            client_secret: 接続アプリケーションの Consumer Secret。
+            domain_url: 組織の My Domain の URL（例: "https://foo.my.salesforce.com"）。
+                        クライアントクレデンシャルフローは My Domain が必須。
 
         Returns:
             認証済みの SalesforceRestClient インスタンス。
         """
-        url = f"https://{domain}.salesforce.com/services/oauth2/token"
+        url = f"{domain_url.rstrip('/')}/services/oauth2/token"
         try:
             response = requests.post(
                 url,
                 data={
-                    "grant_type": "password",
+                    "grant_type": "client_credentials",
                     "client_id": client_id,
                     "client_secret": client_secret,
-                    "username": username,
-                    "password": password + security_token,
                 },
                 timeout=_TIMEOUT_SECONDS,
             )
         except requests.exceptions.RequestException as e:
             raise SalesforceError(f"Salesforce に接続できませんでした: {url}（詳細: {e}）") from e
         if response.status_code >= 400:
-            # エラー本文にパスワードは含まれないが、念のため詳細のみ渡す
             raise SalesforceError(
-                f"Salesforce OAuth 認証に失敗しました"
+                f"Salesforce の認証に失敗しました"
                 f"（HTTP {response.status_code}）: {response.text}"
             )
         data = response.json()

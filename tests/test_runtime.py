@@ -114,7 +114,7 @@ class TestDryRun:
         from comken.salesforce.api import SalesforceApiClient
 
         client = SalesforceApiClient.__new__(SalesforceApiClient)
-        client._session_id = "S"
+        client._access_token = "S"
         client._instance_url = "https://example.my.salesforce.com"
         comken.set_dry_run(True)
 

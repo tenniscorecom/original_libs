@@ -3,13 +3,14 @@ salesforce — Salesforce API クライアント
 
     from comken.salesforce import SalesforceApiClient
 
+認証は OAuth 2.0 クライアントクレデンシャルフロー（client_id / client_secret）。
+ユーザー名・パスワード・セキュリティトークンは使わない。
+
 | クラス | 依存 | 用途 |
 |---|---|---|
 | SalesforceApiClient（推奨） | requests | CRUD・SOQL・レポート・Bulk 2.0 |
-| SalesforceClient | simple-salesforce | CRUD・SOQL |
-| SalesforceBulkClient | simple-salesforce | Bulk 一括操作 |
-| SalesforceRestClient | requests | REST API 直接操作 |
-| SalesforceReportClient | requests | レポート取得 |
+| SalesforceRestClient | requests | REST API 直接操作（低レベル） |
+| SalesforceReportClient | requests | レポート取得（低レベル） |
 """
 
 from .api import SalesforceApiClient
@@ -17,12 +18,3 @@ from .report import SalesforceReportClient
 from .rest_api import SalesforceRestClient
 
 __all__ = ["SalesforceApiClient", "SalesforceRestClient", "SalesforceReportClient"]
-
-# simple-salesforce 版はインストールされている場合だけ使える（未導入でも import エラーにしない）
-try:
-    from .bulk import SalesforceBulkClient
-    from .simple_sf import SalesforceClient
-
-    __all__ += ["SalesforceClient", "SalesforceBulkClient"]
-except ImportError:  # simple-salesforce 未導入
-    pass

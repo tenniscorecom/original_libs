@@ -1,9 +1,14 @@
 # Salesforce 認証パターン整理
 
-作成日: 2026-07-13
+作成日: 2026-07-13（2026-07-15 更新）
 背景: 会社の RPA 環境（WinActor onCloud → 実行PC 8台が順番に稼働）で Salesforce API を使う方針になった。
-どの認証フローを採用するか未確定のため、選択肢を整理しておく。
 関連: [CONVENTIONS.md](../CONVENTIONS.md)、`comken/salesforce`
+
+> **【決定・2026-07-15】** セキュリティトークンの使用が禁止（廃止）方向のため、
+> **パターン2（OAuth 2.0 クライアントクレデンシャルフロー）を採用**。
+> comken の `SalesforceApiClient` は client_id / client_secret + My Domain の URL で認証する
+> 実装に変更済み。simple-salesforce ベースのクライアント（`SalesforceClient` /
+> `SalesforceBulkClient`）は廃止・削除した。以下は選択の経緯として残す。
 
 ---
 
@@ -13,8 +18,7 @@
   → 「管理サーバーで暗号化して8台に配布」は原理的に不可。成立するのは
   「管理サーバー側で復号し、WinActor がシナリオ変数として平文を実行PCに渡す」形。
 - 実行PCはヘッドレス運用（人がブラウザでログイン操作をする前提は置けない）。
-- comken の `salesforce` は現状 **パターン1（SOAP login）のみ対応**。
-  Connected App 不要で動く設計になっている。
+- **セキュリティトークン（パターン1）は使用禁止方向**のため、OAuth 2.0（パターン2）に移行する。
 
 ---
 
