@@ -98,8 +98,7 @@ class SalesforceRestClient:
             raise SalesforceError(f"Salesforce に接続できませんでした: {url}（詳細: {e}）") from e
         if response.status_code >= 400:
             raise SalesforceError(
-                f"Salesforce の認証に失敗しました"
-                f"（HTTP {response.status_code}）: {response.text}"
+                f"Salesforce の認証に失敗しました（HTTP {response.status_code}）: {response.text}"
             )
         data = response.json()
         return cls(data["instance_url"], data["access_token"])

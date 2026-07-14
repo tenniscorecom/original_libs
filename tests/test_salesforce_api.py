@@ -41,9 +41,7 @@ class TestClientCredentialsLogin:
 
         monkeypatch.setattr("requests.Session.post", fake_post)
 
-        sf = requests_api.SalesforceApiClient(
-            "cid", "csecret", "https://example.my.salesforce.com"
-        )
+        sf = requests_api.SalesforceApiClient("cid", "csecret", "https://example.my.salesforce.com")
 
         assert sf._access_token == "TOKEN123"
         assert sf._instance_url == "https://example.my.salesforce.com"

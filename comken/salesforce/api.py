@@ -100,9 +100,7 @@ class SalesforceApiClient:
             SalesforceError: 認証に失敗した場合。
         """
         self._session = requests.Session()
-        self._access_token, self._instance_url = self._login(
-            client_id, client_secret, domain_url
-        )
+        self._access_token, self._instance_url = self._login(client_id, client_secret, domain_url)
         self._session.headers.update(
             {
                 "Authorization": f"Bearer {self._access_token}",
