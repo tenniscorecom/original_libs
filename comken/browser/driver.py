@@ -68,6 +68,8 @@ class EdgeDriver:
             options.add_argument(arg)
 
         self.download_dir = _resolve_download_dir(download_dir, opts.DOWNLOAD_DIR)
+        # BasePage の明示的待機（WebDriverWait）のデフォルト秒数として引き継がせる
+        self.wait_seconds = opts.WAIT_SECONDS
         options.add_experimental_option(
             "prefs",
             {
@@ -81,7 +83,10 @@ class EdgeDriver:
         try:
             service = Service(executable_path=opts.DRIVER_PATH)
             self._driver = webdriver.Edge(service=service, options=options)
-            self._driver.implicitly_wait(opts.WAIT_SECONDS)
+            # 暗黙的待機は 0 にする。待機は BasePage の WebDriverWait（明示的待機）に一本化する。
+            # 暗黙×明示を混在させると待ち時間が予測不能になり、要素の不在確認
+            # （has / count）が毎回 WAIT_SECONDS 分ブロックしてしまうため
+            self._driver.implicitly_wait(0)
         except Exception:
             # ブラウザが起動済みなら閉じてから、作成済みの一時フォルダを片付ける
             driver = getattr(self, "_driver", None)

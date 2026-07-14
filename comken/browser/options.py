@@ -59,12 +59,9 @@ class BrowserOptions:
     DISABLE_EXTENSIONS: bool = True
     DISABLE_POPUP_BLOCKING: bool = True
     DISABLE_TRANSLATE: bool = True
-    IGNORE_CERTIFICATE_ERRORS: bool = True
-    IGNORE_SSL_ERRORS: bool = True
     INCOGNITO: bool = True
     MUTE_AUDIO: bool = True
     NO_DEFAULT_BROWSER_CHECK: bool = True
-    NO_SANDBOX: bool = True
     START_MAXIMIZED: bool = True
     TEST_TYPE_GPU: bool = True
 
@@ -72,6 +69,13 @@ class BrowserOptions:
     HEADLESS: bool = False
     DISABLE_IMAGES: bool = False
     HIDE_SCROLLBARS: bool = False
+    # TLS 証明書の検証は既定で有効にする（無効化は成り済まし・MITM を検出できなくなる）。
+    # 自己署名証明書の社内サイトを扱う場合のみプロジェクト側で True に上書きする
+    IGNORE_CERTIFICATE_ERRORS: bool = False
+    IGNORE_SSL_ERRORS: bool = False
+    # Chromium サンドボックスは既定で有効にする（--no-sandbox はブラウザ側脆弱性の被害を広げる）。
+    # サンドボックスが動かない特殊環境でのみプロジェクト側で True に上書きする
+    NO_SANDBOX: bool = False
 
     # ── 値付き（None = 無効）──
     USER_AGENT: str | None = None

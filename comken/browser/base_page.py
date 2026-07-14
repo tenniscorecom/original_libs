@@ -62,16 +62,21 @@ if TYPE_CHECKING:
 class BasePage:
     """全 Page Object の基底クラス。画面ごとにこのクラスを継承して使う。
 
-    要素が見つかるまで wait_seconds 秒まで自動で待機する（暗黙的待機）。
+    要素が見つかるまで wait_seconds 秒まで自動で待機する（明示的待機・WebDriverWait）。
     """
 
-    def __init__(self, driver: "EdgeDriver | WebDriver", wait_seconds: int = 10) -> None:
+    def __init__(self, driver: "EdgeDriver | WebDriver", wait_seconds: int | None = None) -> None:
         """
         Args:
             driver: EdgeDriver または生の WebDriver。
                     EdgeDriver をそのまま渡せる（LoginPage(d) と書ける）。
-            wait_seconds: 要素待機のタイムアウト秒数。
+            wait_seconds: 要素待機のタイムアウト秒数。省略時は EdgeDriver の
+                          WAIT_SECONDS（BrowserOptions の設定）を引き継ぐ。
+                          生の WebDriver を渡した場合は 10 秒。
         """
+        # EdgeDriver の WAIT_SECONDS を明示的待機の既定にする（unwrap する前に読む）
+        if wait_seconds is None:
+            wait_seconds = getattr(driver, "wait_seconds", 10)
         # EdgeDriver が渡されたら中の WebDriver を取り出す
         # （isinstance にしないのは driver.py との循環 import を避けるため）
         if hasattr(driver, "driver"):
