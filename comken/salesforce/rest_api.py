@@ -26,6 +26,11 @@ simple-salesforce が使えない環境や、細かい API 制御が必要な場
 
 import requests
 
+from ..exceptions import SalesforceError
+
+_API_VERSION = "v60.0"
+_TIMEOUT_SECONDS = 60  # HTTP リクエストのタイムアウト
+
 
 class SalesforceRestClient:
     """Salesforce REST API を直接叩くクライアント。
@@ -59,7 +64,7 @@ class SalesforceRestClient:
             instance_url: Salesforce インスタンス URL（例: "https://xxx.salesforce.com"）。
             access_token: OAuth アクセストークン。
         """
-        self._base_url = f"{instance_url}/services/data/v59.0"
+        self._base_url = f"{instance_url}/services/data/{_API_VERSION}"
         self._headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
@@ -89,17 +94,26 @@ class SalesforceRestClient:
             認証済みの SalesforceRestClient インスタンス。
         """
         url = f"https://{domain}.salesforce.com/services/oauth2/token"
-        response = requests.post(
-            url,
-            data={
-                "grant_type": "password",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "username": username,
-                "password": password + security_token,
-            },
-        )
-        response.raise_for_status()
+        try:
+            response = requests.post(
+                url,
+                data={
+                    "grant_type": "password",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "username": username,
+                    "password": password + security_token,
+                },
+                timeout=_TIMEOUT_SECONDS,
+            )
+        except requests.exceptions.RequestException as e:
+            raise SalesforceError(f"Salesforce に接続できませんでした: {url}（詳細: {e}）") from e
+        if response.status_code >= 400:
+            # エラー本文にパスワードは含まれないが、念のため詳細のみ渡す
+            raise SalesforceError(
+                f"Salesforce OAuth 認証に失敗しました"
+                f"（HTTP {response.status_code}）: {response.text}"
+            )
         data = response.json()
         return cls(data["instance_url"], data["access_token"])
 
@@ -116,9 +130,7 @@ class SalesforceRestClient:
         url = f"{self._base_url}/query"
         params = {"q": soql}
         while url:
-            resp = requests.get(url, headers=self._headers, params=params)
-            resp.raise_for_status()
-            data = resp.json()
+            data = self._request("GET", url, params=params)
             records.extend(data["records"])
             next_url = data.get("nextRecordsUrl")
             url = f"{self._base_url.split('/services')[0]}{next_url}" if next_url else None
@@ -135,13 +147,8 @@ class SalesforceRestClient:
         Returns:
             作成されたレコードの Id。
         """
-        resp = requests.post(
-            f"{self._base_url}/sobjects/{object_name}",
-            headers=self._headers,
-            json=data,
-        )
-        resp.raise_for_status()
-        return resp.json()["id"]
+        result = self._request("POST", f"{self._base_url}/sobjects/{object_name}", json=data)
+        return result["id"]
 
     def update(self, object_name: str, record_id: str, data: dict) -> None:
         """レコードを更新する。
@@ -151,12 +158,7 @@ class SalesforceRestClient:
             record_id: 更新するレコードの Id。
             data: 更新するフィールド値の辞書。
         """
-        resp = requests.patch(
-            f"{self._base_url}/sobjects/{object_name}/{record_id}",
-            headers=self._headers,
-            json=data,
-        )
-        resp.raise_for_status()
+        self._request("PATCH", f"{self._base_url}/sobjects/{object_name}/{record_id}", json=data)
 
     def delete(self, object_name: str, record_id: str) -> None:
         """レコードを削除する。
@@ -165,8 +167,28 @@ class SalesforceRestClient:
             object_name: オブジェクト API 名。
             record_id: 削除するレコードの Id。
         """
-        resp = requests.delete(
-            f"{self._base_url}/sobjects/{object_name}/{record_id}",
-            headers=self._headers,
-        )
-        resp.raise_for_status()
+        self._request("DELETE", f"{self._base_url}/sobjects/{object_name}/{record_id}")
+
+    def _request(self, method: str, url: str, json: dict | None = None, params: dict | None = None):
+        """REST API を呼び、JSON（本文がなければ None）を返す。
+
+        エラーは SalesforceError に変換し、全リクエストにタイムアウトを付ける。
+        """
+        try:
+            resp = requests.request(
+                method,
+                url,
+                headers=self._headers,
+                json=json,
+                params=params,
+                timeout=_TIMEOUT_SECONDS,
+            )
+        except requests.exceptions.RequestException as e:
+            raise SalesforceError(
+                f"Salesforce に接続できませんでした: {method} {url}（詳細: {e}）"
+            ) from e
+        if resp.status_code >= 400:
+            raise SalesforceError(
+                f"Salesforce API エラー（HTTP {resp.status_code}）: {method} {url}\n{resp.text}"
+            )
+        return resp.json() if resp.text else None

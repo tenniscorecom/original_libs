@@ -34,6 +34,7 @@ salesforce/api.py — Salesforce API クライアント（requests 版）
 
 import csv
 import io
+import logging
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -43,6 +44,8 @@ import requests
 
 from ..exceptions import SalesforceError
 from ..runtime import dry_run_log, is_dry_run
+
+logger = logging.getLogger(__name__)
 
 # SOAP ログインのレスポンス XML の名前空間
 _SOAP_NS = "{urn:partner.soap.sforce.com}"
@@ -333,8 +336,31 @@ class SalesforceApiClient:
 
     @staticmethod
     def _parse_report(data: dict) -> list[dict]:
-        """レポート API のレスポンスを [{表示名: 値, ...}] に変換する。"""
-        columns = data["reportMetadata"]["detailColumns"]
+        """レポート API のレスポンスを [{表示名: 値, ...}] に変換する。
+
+        Raises:
+            SalesforceError: 集計（サマリ / マトリックス）形式のレポートの場合。
+                             この整形は明細（TABULAR）形式のみに対応している。
+        """
+        metadata = data.get("reportMetadata", {})
+        report_format = metadata.get("reportFormat")
+        # 集計レポートは factMap が "T!T" ではなくグループ別キーになり、
+        # そのまま "T!T" を読むと無言で空を返してしまうため明示的に弾く
+        if report_format and report_format != "TABULAR":
+            raise SalesforceError(
+                f"このレポートは {report_format} 形式です。"
+                "run_report / run_report_async は明細（TABULAR）形式のみ対応しています。\n"
+                "レポート側を明細形式に変更するか、SOQL（query）で取得してください。"
+            )
+
+        # allData=False は「上限で切り捨てられた」印。全件と誤認させないため警告する
+        if data.get("allData") is False:
+            logger.warning(
+                "レポートの行が上限で切り捨てられました（全件ではありません）。"
+                "2000 行を超えるレポートは run_report_async を使ってください。"
+            )
+
+        columns = metadata.get("detailColumns", [])
         col_info = data.get("reportExtendedMetadata", {}).get("detailColumnInfo", {})
         # 表示名が取れればそちらを使い、なければ内部名をそのまま使う
         labels = [col_info.get(col, {}).get("label", col) for col in columns]
@@ -497,8 +523,13 @@ def _parse_login_response(xml_text: str) -> tuple[str, str]:
 
 
 def _dicts_to_csv(records: list[dict]) -> str:
-    """辞書のリストを Bulk API 用の CSV 文字列に変換する。"""
-    fieldnames = list(records[0].keys())
+    """辞書のリストを Bulk API 用の CSV 文字列に変換する。
+
+    先頭行だけでなく全レコードのキーの和集合をヘッダーにする
+    （先頭行にないキーを持つ行で ValueError にならないようにする）。
+    行ごとに欠けているキーは空欄になる。
+    """
+    fieldnames = list(dict.fromkeys(key for record in records for key in record))
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fieldnames, lineterminator="\n")
     writer.writeheader()

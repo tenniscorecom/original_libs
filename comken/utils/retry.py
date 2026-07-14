@@ -46,24 +46,30 @@ def retry(
         最後の実行で出た例外（times 回すべて失敗した場合）。
     """
 
+    # times=0 以下でも最低1回は実行する（None を黙って返さないため）
+    total = max(int(times), 1)
+
     def decorator(func: Callable[_P, _R]) -> Callable[_P, _R]:
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            for attempt in range(1, times + 1):
+            for attempt in range(1, total + 1):
                 try:
                     return func(*args, **kwargs)
                 except on as e:
-                    if attempt == times:
+                    if attempt == total:
                         raise
                     logger.warning(
                         "%s が失敗しました（%d/%d回目）。%s秒後に再実行します: %s",
                         func.__name__,
                         attempt,
-                        times,
+                        total,
                         wait,
                         e,
                     )
                     time.sleep(wait)
+            # ここには到達しない（total>=1 で必ず return か raise する）が、
+            # 型チェッカーに「None を返さない」ことを保証する
+            raise AssertionError("retry: 到達不能")
 
         return wrapper
 
