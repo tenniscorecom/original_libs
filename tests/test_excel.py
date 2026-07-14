@@ -53,6 +53,13 @@ def excel_header_row2(tmp_path):
     return path
 
 
+class TestOpen:
+    def test_missing_file_raises_excel_error(self, tmp_path):
+        """存在しないファイルは素の FileNotFoundError ではなく ExcelError になる。"""
+        with pytest.raises(ExcelError, match="見つかりません"):
+            ExcelFile(tmp_path / "no_such.xlsx")
+
+
 class TestReadRowsAsDicts:
     """read_rows_as_dicts() の基本動作テスト。"""
 

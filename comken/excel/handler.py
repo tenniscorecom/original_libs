@@ -99,6 +99,10 @@ class ExcelFile:
         self._original_path = Path(path)
         src = self._original_path
 
+        # 素の FileNotFoundError ではなく、対処法つきの ExcelError にする
+        if not src.exists():
+            raise ExcelError(ExcelError.MSG_FILE_NOT_FOUND.format(path=src))
+
         # ── NAS・ネットワークファイルのローカルコピー ──────────────────
         # 社内ルールでローカルへのコピーが不可の場合は、
         # このブロックを丸ごと削除し「self._tmp = None」だけ残す。
@@ -114,7 +118,11 @@ class ExcelFile:
 
         self._path = src
         self._headers = headers
-        self._wb: Workbook = load_workbook(self._path, data_only=data_only, read_only=read_only)
+        # マクロ入りブック（.xlsm/.xlsb）は keep_vba=True で開かないと save() で VBA が消える
+        keep_vba = self._original_path.suffix.lower() in (".xlsm", ".xlsb", ".xltm")
+        self._wb: Workbook = load_workbook(
+            self._path, data_only=data_only, read_only=read_only, keep_vba=keep_vba
+        )
 
     @classmethod
     def create(cls, path: str | Path, sheet_name: str = "Sheet1") -> "ExcelFile":
@@ -483,17 +491,29 @@ class ExcelFile:
         cell = self._sheet(sheet_name).cell(row=int(row), column=int(col))
         cell.font = Font(bold=bool(bold))
 
-    def run_macro(self, macro_name: str) -> None:
+    def run_macro(self, macro_name: str, save: bool = True) -> None:
         """VBA マクロを実行する。内部で win32com（pywin32）を使用する。
+
+        COM は保存せずに閉じる仕様のため、save=True（デフォルト）で実行後に
+        元ファイルへ保存する。マクロがブックを変更しても保存しないと結果は破棄される。
+
+        WARNING: このメソッドは COM で元ファイルを直接編集する。openpyxl 側
+            （write_cell 等）の未保存の変更とは独立で、run_macro の後に f.save() を
+            呼ぶと openpyxl の内容で上書きされマクロの結果が消える。
+            マクロと openpyxl 書き込みを混在させないこと。
 
         Args:
             macro_name: 実行するマクロ名。"モジュール名.プロシージャ名" の形式で指定する。
                         例: "Module1.UpdateData"
+            save: True（デフォルト）ならマクロ実行後に元ファイルへ保存する。
         """
         from ..windows.handler import ExcelComHandler
 
-        with ExcelComHandler(self._path) as com:
+        # local_copy の一時コピーではなく元ファイルに対して実行・保存する
+        with ExcelComHandler(self._original_path) as com:
             com.run_macro(macro_name)
+            if save:
+                com.save()
 
     def close(self) -> None:
         """ワークブックを閉じる。with 文を使う場合は自動で呼ばれる。"""

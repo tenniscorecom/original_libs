@@ -45,6 +45,10 @@ class ExcelError(OriginalLibsError):
         "形式を変換して保存する場合は file_format 引数で FileFormat 定数を"
         "指定してください。（例: file_format=FileFormat.CSV）"
     )
+    MSG_FILE_NOT_FOUND = (
+        "Excel ファイルが見つかりません: {path}\n"
+        "パスが正しいか、ファイルが存在するかを確認してください。"
+    )
 
 
 class SheetNotFoundError(ExcelError):

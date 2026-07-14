@@ -99,7 +99,10 @@ class ExcelComHandler:
         """
         self._headers = headers
         self._wb = None
-        self._excel = win32com.client.Dispatch("Excel.Application")
+        # DispatchEx は常に新規の Excel プロセスを起動する。
+        # Dispatch だとユーザーが開いている Excel に接続してしまい、
+        # Visible=False で画面を消したり close() の Quit で相手のブックを閉じる事故が起きる
+        self._excel = win32com.client.DispatchEx("Excel.Application")
         self._excel.Visible = False
         self._excel.DisplayAlerts = False
         # 外部リンクを持つブックを開いたときの「リンクを更新しますか」ダイアログで
