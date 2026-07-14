@@ -1,7 +1,15 @@
-﻿# コーディング規約
+﻿# Python コーディング規約（共通）
 
-ライブラリ本体と、ライブラリを使うプロジェクトで共通して使うルール。
+comken 本体と、comken を使うプロジェクトの**両方に共通する Python の書き方**を定める。
 **PEP 8**（Python 公式スタイルガイド）に準拠し、矛盾する場合は本規約を優先する。
+
+このリポジトリの規約は3層に分かれる。まず本書を読み、対象に応じて下の2つを見る。
+
+| 規約 | 対象 | 内容 |
+|---|---|---|
+| **本書（CONVENTIONS.md）** | すべての Python コード | 命名・型・定数・例外・ロギング・コメント・テスト等の言語レベルの共通ルール |
+| [docs/ライブラリ開発規約.md](docs/ライブラリ開発規約.md) | **comken 本体**を編集する人 | 公開 API（`__all__`）・カスタム例外の階層設計・互換シム・パッケージ構成 |
+| [docs/プロジェクト規約.md](docs/プロジェクト規約.md) | **comken を使う**プロジェクトを作る人 | プロジェクト構成・設定/認証のパターン・Page Object Model・セットアップファイル |
 
 ---
 
@@ -9,24 +17,23 @@
 
 1. 基本方針
 2. 命名規則
-3. パッケージ・ファイル構成
-4. 公開 API の管理
-5. 型ヒント
-6. 定数とマジックナンバー
-7. デコレーター
-8. 設定パターン
-9. 認証情報の規約
-10. リソース管理（with 文）
-11. 例外
-12. ロギング
-13. Excel（openpyxl）
-14. Windows 操作（pywin32）
-15. コメント
-16. Page Object Model
-17. 循環インポートの解決
-18. テスト
-19. プロジェクトセットアップファイル
-20. 開発環境（VS Code）
+3. モジュール内の並び順
+4. 型ヒント
+5. 定数とマジックナンバー
+6. dataclass・定数クラス・Enum の使い分け
+7. getter / setter は書かない
+8. デコレーター
+9. リソース管理（with 文）
+10. 例外
+11. ロギング
+12. Excel（openpyxl）
+13. Windows 操作（pywin32）
+14. コメント
+15. テスト
+
+> パッケージ構成・設定パターン・認証情報・Page Object Model・循環インポート・
+> プロジェクトセットアップ・VS Code 設定は、対象別に
+> [プロジェクト規約](docs/プロジェクト規約.md) / [ライブラリ開発規約](docs/ライブラリ開発規約.md) へ移動した。
 
 ---
 
@@ -94,44 +101,10 @@ OUTPUT_FOLDER = C:\work\out  ; ← 値は自由
 
 ---
 
-## パッケージ・ファイル構成
+## モジュール内の並び順
 
-### プロジェクトの構造
-
-```
-my_project/
-  実行.bat ← 起動用（ライブラリをローカルに差分同期してから main.py を実行）
-  main.py ← エントリポイント
-  config.ini ← 非機密の設定（.gitignore に追加）
-  config.ini.example ← 設定のテンプレート（git に含める）
-  使い方.md ← 操作マニュアル（非エンジニア向け）
-  仕様書.md ← 処理仕様・ユースケース（エンジニア向け）
-  ERRORS.md ← エラー対応ガイド（非エンジニア向け）
-  src/
-    config.py ← config のシングルトン（config = Config()）
-    browser_options.py ← options のシングルトン（options = BrowserOptions(); options.XX = ...）
-    pages/ ← 画面クラス（SitePage を継承）
-    excel/ ← Excel 処理
-    salesforce/ ← Salesforce 連携
-```
-
-| ファイル | 場所 | 役割 |
-|---|---|---|
-| `実行.bat` | ルート | 非エンジニアはこれをダブルクリック。ライブラリを共有フォルダから差分同期（自動更新）してから main.py を実行する。雛形は templates/実行.bat |
-| `main.py` | ルート | `python main.py` で直接実行できる |
-| `config.ini` | ルート | URL・フォルダパス・フラグ等の**非機密設定**のみ |
-| `config.ini.example` | ルート | 設定テンプレート。git に含めてチームで共有する |
-| `使い方.md` | ルート | 毎日の操作手順・初回準備・FAQ。**非エンジニア向けの言葉**で書く |
-| `仕様書.md` | ルート | ユースケース・処理フロー・入出力/転記仕様・設定仕様。**エンジニア向け** |
-| `ERRORS.md` | ルート | エラー名から対処を引ける表。雛形（ERRORS.md） をコピーし、プロジェクト固有のエラーを追記する |
-| `src/` 以下 | `src/` | コードだけ。エンジニアの管理領域 |
-
-> ドキュメントは読者で分ける: **使い方.md（実行する人）/ 仕様書.md（保守する人）/ ERRORS.md（エラーが出た人）**。
-> README.md は3つへの入口とセットアップ手順だけにする。
-
-> **`src/main.py` にしない理由:** `src/main.py` にすると `Config("../config.ini")` と上の階層を参照する必要が生じる。コードは下の階層（`src/`）だけを参照するのが自然。
-
-### モジュール内の並び順
+> プロジェクトのファイル構成（実行.bat / main.py / src/ / 使い方.md 等）は
+> [プロジェクト規約](docs/プロジェクト規約.md#プロジェクトの構造) を参照。
 
 「上から順に読めば、重要なものから細部へ進む」新聞スタイルで統一する。
 レビューや読解のとき、ファイルの前半だけで全体像がつかめる。
@@ -167,33 +140,6 @@ def _detect_encoding(path: Path) -> str:  # 7. 内部ヘルパー
 **例外:** クラス属性の初期化（クラス本体）が import 時に呼ぶヘルパーは、
 Python の実行順の都合でそのクラスより上に置くしかない。
 その場合は `# NOTE:` コメントで「クラス定義時に使うため上に置く」と理由を書く。
-
----
-
-## 公開 API の管理
-
-### `__all__` で公開範囲を明示する
-
-```python
-# comken/excel/__init__.py
-from .handler import ExcelFile
-
-__all__ = ["ExcelFile"]
-```
-
-`__all__` を書くと内部の実装クラスが外に漏れ出さない。
-
-### 内部ヘルパーには `_` プレフィックスを付ける
-
-```python
-class ExcelFile:
-    def read_rows(self, sheet_name: str) -> list[tuple]:  # 公開メソッド
-        ws = self._sheet(sheet_name)
-        ...
-
-    def _sheet(self, sheet_name: str):  # 外から直接呼ばないという意味
-        ...
-```
 
 ---
 
@@ -257,20 +203,40 @@ if file_size > LOCAL_COPY_THRESHOLD_BYTES:
 
 ## dataclass・定数クラス・Enum の使い分け
 
-| 用途 | 使うもの | 例 |
+まず結論の早見表。迷ったらこれを見る。
+
+| やりたいこと | 使うもの | 例 |
 |---|---|---|
-| 定数の入れ物（インスタンスを作らない） | ただのクラス属性 | `Color.RED`, `SortBy.UPDATED`, `Encoding.CP932` |
+| 決まった値の一覧を名前で持つ（インスタンスを作らない） | ただのクラス属性（**定数クラス**） | `Color.RED`, `SortBy.UPDATED`, `Encoding.CP932` |
 | 複数の値をひとまとまりで持ち運ぶ「データの箱」 | `@dataclass` | 集計結果・検索結果など、名前付きの値のセットを返すとき |
-| 振る舞い（メソッド）を持つもの | 普通のクラス | `ExcelFile`, `FileFinder` |
+| 振る舞い（メソッド）が主役のもの | 普通のクラス | `ExcelFile`, `FileFinder` |
+
+### 定数クラス — 「変わらない値の一覧」を入れる箱
+
+インスタンス（`Color()`）は作らない。クラスにぶら下げた属性を `Color.RED` のように**そのまま読む**だけ。
+選択肢を引数で渡すとき、生の文字列（`"FF0000"`）を書かずに名前で渡すために使う。
 
 ```python
-# 定数の入れ物 → dataclass 不要。クラス属性だけでよい
 class Color:
     RED = "FF0000"
     YELLOW = "FFFF00"
 
-# データの箱 → dataclass が最適（__init__ / __repr__ / __eq__ を書かなくて済む）
+cell.fill = Color.RED   # ← "FF0000" と書くより意味が明確。typo は AttributeError で即発覚
+```
+
+- 中身は「振る舞い」ではなく「値の表」。だから `@dataclass` も `__init__` も要らない。
+- `enum.Enum` を使う手もあるが、値を取り出すのに `Color.RED.value` と `.value` が要るなど
+  初学者に一手間多い。**この規約ではプレーンなクラス属性を使う**（typo が即エラーになる Enum の利点は
+  クラス属性でも同じ）。
+
+### dataclass — 「名前付きの値のセット」を持ち運ぶ箱
+
+`@dataclass` を付けると、`__init__`（初期化）・`__repr__`（print 表示）・`__eq__`（== 比較）を
+**自動で書いてくれる**。「3個以上の値をまとめて返したい」ときに、dict やタプルより型が明確で読みやすい。
+
+```python
 from dataclasses import dataclass
+from pathlib import Path
 
 @dataclass
 class TransferResult:
@@ -278,14 +244,45 @@ class TransferResult:
     matched: int
     skipped: int
 
-# dict で返すより型が明確で、IDE 補完も効く
-result.matched  # ← result["matched"] より typo に強い
+result = TransferResult(Path("out.xlsx"), matched=120, skipped=3)
+result.matched          # → 120（result["matched"] より typo に強い・IDE 補完が効く）
+print(result)           # → TransferResult(output_path=..., matched=120, skipped=3) と自動で見やすく出る
 ```
 
-- 定数の入れ物に `enum.Enum` を使う選択肢もあるが、値の取り出しに `.value` が必要になる等
-  初学者に読みにくいため、この規約ではプレーンなクラス定数を使う
-  （typo が `AttributeError` で即発覚するという Enum の主な利点はクラス定数でも同じ）
-- 返す値が2個までならタプルでよい（`return output_path, matched`）。3個以上になったら dataclass を検討する
+- 返す値が **2個まで**ならタプルでよい（`return output_path, matched`）。**3個以上**になったら dataclass を検討する。
+- 「データの箱」であって「振る舞いの主役」ではない。ロジックが増えてきたら普通のクラスにする。
+
+### frozen — 「作った後は変えさせない」dataclass
+
+`@dataclass(frozen=True)` にすると、**作った後にフィールドを書き換えられなくなる**（読み取り専用）。
+うっかり値を上書きする事故を防げるので、**「一度作ったら変わらない値のセット」には frozen を付けるのが安全**。
+
+```python
+@dataclass(frozen=True)
+class Fee:
+    rate: float
+    label: str
+
+fee = Fee(0.1, "消費税")
+fee.rate          # 読むのは OK → 0.1
+fee.rate = 0.08   # ✗ FrozenInstanceError（書き換えようとすると実行時エラーになる）
+```
+
+frozen を付けるとうれしいこと:
+
+| 効果 | 意味 |
+|---|---|
+| 書き換え禁止 | 「途中で誰かが値を変えたせいでおかしくなった」を防げる |
+| ハッシュ可能になる | `set` に入れたり `dict` のキーにできる（変わらない値だから安全にできる） |
+
+使い分けの目安:
+
+- **計算結果・設定値・マスタなど「確定したら変えない」もの** → `frozen=True`（推奨）
+- **作った後に組み立てながら値を詰めていくもの**（ループで `obj.count += 1` する等）→ frozen なし
+
+> 注意: frozen はトップレベルの再代入（`fee.rate = ...`）を止めるだけ。
+> 中にリストを持たせた場合、そのリストの中身（`fee.items.append(...)`）までは止められない。
+> 変えたくないなら中身も `tuple` にする。
 
 ---
 
@@ -374,95 +371,6 @@ class CsvReader:
     @staticmethod
     def _validate_columns(rows: list[dict], columns: list[str]) -> None:
         ...  # CsvReader 以外から呼ばれることを想定していない
-```
-
----
-
-## 設定パターン
-
-### config のシングルトン
-
-`Config` はモジュールレベルでインスタンス化する。Python のモジュールキャッシュにより `Config()` は1回しか実行されず、どこからインポートしても同じインスタンスが返る。
-
-```python
-# src/config.py
-from comken.config import Config
-
-config = Config()
-```
-
-```python
-# 各モジュールはここからインポートする
-from .config import config
-
-source = FileFinder(config.FILES.EXCEL_INPUT_FOLDER).today(pattern="DIY_*.xlsx")
-paths = [config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_EAST,
-         config.FILES.CSV_INPUT_FOLDER / config.FILES.CSV_WEST]
-```
-
-同じ設定値を複数箇所で使う場合はモジュールレベル定数に入れる。
-
-```python
-SHEET_NAME = config.EXCEL.SHEET_NAME  # 複数箇所で使うなら定数化
-
-rows = f.read_rows(SHEET_NAME)
-f.write_cell(SHEET_NAME, row=2, col=1, value="完了")
-```
-
-### BrowserOptions のシングルトン
-
-継承せず、インスタンスに直接属性を上書きする。
-
-```python
-# src/browser_options.py
-from comken.browser.options import BrowserOptions
-
-options = BrowserOptions()
-options.HEADLESS = True
-options.DOWNLOAD_DIR = r"C:\作業\downloads"  # 出力先はローカル（NAS は読み込み元・モジュール置き場）
-options.WAIT_SECONDS = 20
-```
-
-**config.ini に書くのは非機密のプロジェクト固有の値だけ。**
-URL・フォルダパス・フラグなど、環境によって変わるが秘匿不要なものを書く。
-**個人情報・パスワード・トークン・メールアドレス等はすべて `comken.credentials` で暗号化して保存する。**
-
-```ini
-; config.ini（非機密の値のみ。セクション名・キー名は大文字で書く）
-[CREDENTIALS]
-; ユーザー名・パスワード・トークンは python -m comken.credentials で登録する
-; どのサービス名で登録した認証情報を使うかだけをここに書く（キー名は機密ではない）
-SALESFORCE = salesforce
-
-[BROWSER]
-HEADLESS = False
-
-[REPORT]
-OUTPUT_FOLDER = C:\作業\reports
-```
-
----
-
-## 認証情報の規約
-
-仕組みと使い方（登録ツール・`Credentials` クラス等）は README の「認証情報」 を参照。
-ここではルールだけを定める。
-
-| ルール | 理由 |
-|---|---|
-| 機密情報・個人情報（パスワード・トークン・ユーザー名・メールアドレス等）は config.ini に書かず `comken.credentials` で管理する | config.ini は git・メールで流出しうる。credentials は DPAPI 暗号化＋プロジェクト外保存 |
-| キー名は `システム名_項目名`（例: `salesforce_password`）。半角英数字とアンダースコアのみ | コード・config.ini に書く値のため。違反はライブラリが弾く |
-| アカウントを使い分けるときはシステム名に用途を含める（例: `salesforce_test_password`） | プレフィックス切り替えだけで本番⇔テストを一括変更できる |
-| どのプレフィックスを使うかは config.ini の `[CREDENTIALS]` に書く | アカウント切り替えでコードを触らない |
-| 使うキーは `src/credentials.py` の `REQUIRED_CREDENTIALS` に宣言する | 「コードが何を使うか」はコードの事実。登録ツールの「まとめて登録」がこれを読む |
-| コードで使う項目を増やしたら宣言も更新する | 宣言が実態とズレると「まとめて登録」で項目が漏れる |
-
-```python
-# src/credentials.py（宣言の形だけ規約として定める）
-REQUIRED_CREDENTIALS = {
-    "SALESFORCE": ["username", "password", "token"],  # キーは config.ini [CREDENTIALS] のキー名
-    "OJU_SYS": ["password"],
-}
 ```
 
 ---
@@ -703,133 +611,6 @@ if __name__ == "__main__":  # pragma: no cover
 
 ---
 
-## Page Object Model
-
-ブラウザ操作は必ず Page Object パターンで書く。
-selenium を直接 import しない。要素の操作・待機はすべて `BasePage` のメソッドを使う。
-
-セレクターは **`Locator` のクラス変数としてクラス上部にまとめ、`click(locator)` / `input(locator, text)` 等に渡す**（推奨）。
-画面変更でセレクターが変わったとき、直す場所がクラスの先頭に集まる。
-従来のセレクター種別入りメソッド（`click_id`, `input_css`, `wait_visible_id` 等）もそのまま使える。
-
-| ルール | 理由 |
-|---|---|
-| `time.sleep` は原則禁止（`wait_visible_*` 等を使う） | 固定待機は遅いうえに不安定 |
-| セレクターは id > css > xpath の優先順で選ぶ | id が最も壊れにくい |
-| xpath の絶対パス（`/html/body/div[2]/...`）は禁止 | 画面の構造が少し変わるだけで壊れる |
-
-### 継承の構造
-
-| クラス | 提供元 | 役割 |
-|---|---|---|
-| `BasePage` | ライブラリ | click / input / select / alert 等のブラウザ操作の道具箱 |
-| `SitePage` | ライブラリ | `BASE_URL` と `go()` を追加 |
-| `AppPage` | プロジェクトで作る | サイト共通処理（ヘッダー操作・共通エラー取得等） |
-| `LoginPage` 等 | プロジェクトで作る | 各画面の操作 |
-
-### AppPage（サイト共通ベースクラス）
-
-```python
-# src/pages/app_page.py
-from comken.browser.site_page import SitePage
-
-class AppPage(SitePage):
-    BASE_URL = "https://example.com"
-
-    def get_flash_message(self) -> str:
-        return self.text_css("#flash")
-```
-
-### 各画面クラス
-
-```python
-# src/pages/login_page.py
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .dashboard_page import DashboardPage
-
-from comken.browser import Locator
-
-class LoginPage(AppPage):
-    PATH = "/login"
-    USERNAME = Locator.id("username")   # セレクターは Locator のクラス変数でクラス上部にまとめる
-    LOGIN_BTN = Locator.css(".radius")
-
-    def open(self) -> LoginPage:
-        """自分の画面を開くメソッドは self を返す（チェーンできる）。"""
-        self.go(self.PATH)
-        return self
-
-    def login(self, username: str, password: str) -> DashboardPage:
-        """クリックで別画面に遷移するメソッドは、遷移先のページクラスを返す。"""
-        from .dashboard_page import DashboardPage  # 循環インポート対策
-
-        self.input(self.USERNAME, username)
-        self.click(self.LOGIN_BTN)
-        return DashboardPage(self._driver)
-```
-
-```python
-# 呼び出し側: 開く→操作→遷移が1つの流れで読める
-dashboard = LoginPage(d).open().login("user", "pass")
-```
-
-### メソッドの返り値のルール
-
-| メソッドの種類 | 返すもの | 例 |
-|---|---|---|
-| 自分の画面を開く（URL 遷移） | `self` | `open()` |
-| クリック等で**別画面に遷移する** | 遷移先のページクラス | `login() -> DashboardPage` |
-| 同じ画面内の操作・取得 | `None` または取得した値 | `input_id(...)`, `get_error()` |
-
-クリックによる画面遷移も URL 遷移も扱いは同じ:
-「操作の結果どの画面にいるか」をメソッドの返り値で表現する。
-1つのボタンが条件によって遷移先が変わる場合は、遷移先ごとにメソッドを分ける
-（例: `search_and_found() -> ResultPage` / `search_and_not_found() -> ErrorPage`）。
-
-### 要素が複数一致する場合
-
-| 優先順位 | 方法 | 例 |
-|---|---|---|
-| 1. セレクターで一意に絞り込む（原則） | `:nth-child` や親要素を含める | `"table tr:nth-child(2) .edit-btn"` |
-| 2. 全件をリストで取得して選ぶ | `texts_*` / `count_*` | `page.texts_css(".row-name")` |
-| 3. index 引数で何番目かを指定（最終手段） | `click_*(sel, index=1)` | 2番目の「編集」ボタンをクリック |
-
-同じ id が複数ある画面は HTML として不正だが実在する。
-そのため id 版も用意してある（`count_id` / `texts_id` / `click_id(value, index=1)`）。
-
----
-
-## 循環インポートの解決
-
-2つの画面クラスが互いを参照するとき（`LoginPage` → `DashboardPage`、`DashboardPage` → `LoginPage`）に発生する。
-`TYPE_CHECKING` + lazy import の組み合わせで解決する。
-
-```python
-from __future__ import annotations  # ① 型注釈を文字列として扱う（実行時評価しない）
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .dashboard_page import DashboardPage  # ② IDE 補完用（ランタイムでは import されない）
-
-class LoginPage(AppPage):
-    def login(self, username: str, password: str) -> DashboardPage:  # ① のおかげで文字列扱い
-        from .dashboard_page import DashboardPage  # ③ 実行時に必要なタイミングだけ import
-
-        self.click_css(self.LOGIN_BTN_CSS)
-        return DashboardPage(self._driver)
-```
-
-| 方法 | IDE補完 | 実行時 |
-|---|---|---|
-| `TYPE_CHECKING` のみ | ○ | エラー（`DashboardPage` が未定義） |
-| lazy import のみ | × | ○ |
-| **① + ② + ③ 全部** | **○** | **○** |
-
----
-
 ## テスト
 
 テストは**参考パターン**として。書き方を知っておくと後で助かる。
@@ -866,157 +647,6 @@ class TestCsvReaderFind:
 | テストメソッド名は `test_` + 何を確認するか | `test_returns_none_when_not_found` |
 | 一時ファイルは `tmp_path` フィクスチャを使う | `def test_something(tmp_path):` |
 
----
-
-## プロジェクトセットアップファイル
-
-新しいプロジェクトを作るときに毎回用意するファイル。
-
-### ERRORS.md
-
-非エンジニアがエラー画面のエラー名から対処を引ける表。
-雛形（ERRORS.md） をプロジェクトルートにコピーし、
-「プロジェクト固有のエラー」の表にそのプロジェクトで起きやすいエラーを追記していく。
-
-### .gitignore
-
-```gitignore
-# 認証情報・環境設定（絶対に git に含めない）
-config.ini
-.env
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-*.egg-info/
-dist/
-build/
-
-# ログ・一時ファイル
-logs/
-*.log
-```
-
-### pyproject.toml（Ruff 設定）
-
-ライブラリ本体の `pyproject.toml` とは別に、プロジェクト側でも Ruff の設定を置く。
-
-```toml
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I"]  # E=style, F=pyflakes, W=warning, I=import order
-ignore = []
-```
-
-### requirements.txt
-
-> **オフライン環境（社内BO環境）では `pip install -r requirements.txt` は使えない。**
-> インターネット接続がある環境でのみ有効。社内ではライブラリを別途用意する必要がある。
-> 参照用・記録用として維持する。
-
-```
-comken
-openpyxl
-selenium
-simple-salesforce
-pywin32
-```
-
-### config.ini.example
-
-config.ini には**機密情報・個人情報を書かない**。URL・フォルダパス・フラグ等のみ。
-パスワード・トークン・ユーザー名・メールアドレスなど、個人情報になりそうなものはすべて `python -m comken.credentials` で登録する（Windows DPAPI で暗号化される）。
-
-```ini
-; このファイルをコピーして config.ini を作成し、実際の値を入力する
-; config.ini は .gitignore に含まれており git に push されない
-; ※ 認証情報・個人情報はここに書かず python -m comken.credentials で登録する
-; ※ セクション名・キー名は大文字で書く
-
-[CREDENTIALS]
-SALESFORCE = salesforce
-
-[BROWSER]
-; HEADLESS = True にするとブラウザ画面が表示されない
-HEADLESS = False
-
-[REPORT]
-OUTPUT_FOLDER = C:\Users\Public\Downloads
-```
-
----
-
-## 開発環境（VS Code）
-
-### 推奨拡張機能
-
-`.vscode/extensions.json` をリポジトリに含めておくと、他の人が開いたときに自動でインストールを促せる。
-
-```json
-{
-  "recommendations": [
-    "ms-python.python",
-    "ms-python.pylance",
-    "charliermarsh.ruff"
-  ]
-}
-```
-
-| 拡張機能 | 役割 |
-|---|---|
-| `ms-python.python` | Python 実行・デバッグ |
-| `ms-python.pylance` | 型チェック・補完（Pyright ベース） |
-| `charliermarsh.ruff` | リント・フォーマット（本規約準拠） |
-
-### VS Code 設定
-
-`.vscode/settings.json` をリポジトリに含める。
-
-```json
-{
-  "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.ruff": "explicit",
-      "source.organizeImports.ruff": "explicit"
-    }
-  },
-  "ruff.enable": true,
-  "editor.rulers": [100]
-}
-```
-
-| 設定 | 効果 |
-|---|---|
-| `editor.formatOnSave` | 保存時に自動フォーマット |
-| `source.fixAll.ruff` | 保存時にリント違反を自動修正 |
-| `source.organizeImports.ruff` | 保存時に import を自動整理 |
-| `editor.rulers` | 100文字の目安ラインを表示 |
-
-### デバッグ設定
-
-`.vscode/launch.json` でデバッグ実行の設定を書いておく。
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "main.py を実行",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/main.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}"
-    }
-  ]
-}
-```
+> プロジェクトのセットアップファイル（ERRORS.md / .gitignore / pyproject.toml /
+> requirements.txt / config.ini.example）と VS Code の設定は
+> [プロジェクト規約](docs/プロジェクト規約.md#プロジェクトセットアップファイル) を参照。
